@@ -1,0 +1,52 @@
+.sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: linear-gradient(180deg, #0f172a, #1e293b);
+    color: #fff;
+    padding: 20px;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.sidebar-title {
+    text-align: center;
+    margin-bottom: 30px;
+    letter-spacing: 2px;
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-group {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.menu-item {
+    display: block;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    color: #fff;
+    text-decoration: none;
+    background: transparent;
+
+    transition: all 0.3s ease;
+}
+
+/* 🔥 Hover nổi lên */
+.menu-item:hover {
+    background: #334155;
+    transform: translateX(6px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.35);
+}
+
+/* Active (nếu muốn) */
+.menu-item.active {
+    background: #2563eb;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+}
