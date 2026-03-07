@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import "./Sidebar.css";
 
 export default function Sidebar() {
@@ -10,25 +10,48 @@ export default function Sidebar() {
                 <li className="menu-group">Quản lý phòng</li>
 
                 <li>
-                    <Link to="/admin/rooms" className="menu-item">
+                    <NavLink
+                        to="/admin/rooms"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
                         📋 Danh sách phòng
-                    </Link>
+                    </NavLink>
                 </li>
 
                 <li>
-                    <Link to="/admin/rooms/create" className="menu-item">
+                    <NavLink
+                        to="/admin/rooms/create"
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
                         ➕ Thêm phòng
-                    </Link>
+                    </NavLink>
                 </li>
+
                 <li>
-                    <Link to="/admin/rooms/update" className="menu-item">
+                    <NavLink
+                        to="/admin/rooms/update"
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
                         ✏️ Cập nhật phòng
-                    </Link>
+                    </NavLink>
                 </li>
+
                 <li>
-                    <Link to="/admin/rooms/delete" className="menu-item">
+                    <NavLink
+                        to="/admin/rooms/delete"
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
                         🗑️ Xóa phòng
-                    </Link>
+                    </NavLink>
                 </li>
             </ul>
         </div>

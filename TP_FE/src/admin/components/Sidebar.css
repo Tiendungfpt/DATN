@@ -34,19 +34,29 @@
     color: #fff;
     text-decoration: none;
     background: transparent;
-
     transition: all 0.3s ease;
 }
 
-/* 🔥 Hover nổi lên */
+/* hover theo chuột */
 .menu-item:hover {
     background: #334155;
     transform: translateX(6px);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.35);
 }
 
-/* Active (nếu muốn) */
+/* trang đang active */
 .menu-item.active {
-    background: #2563eb;
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+    background: #334155;
+}
+.sidebar:hover .menu-item.active:not(:hover) {
+    background: transparent;
+}
+.menu-item:hover {
+    background: #334155;
+    transform: translateX(6px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.35);
+}
+
+.menu-item.active {
+    background: #334155;
 }

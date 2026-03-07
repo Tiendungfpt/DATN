@@ -7,6 +7,8 @@ import HotelList from "./pages/HotelList";
 import HotelDetail from "./pages/HotelDetail";
 import Contact from "./pages/Contact";
 import AdminLayout from "./admin/AdminLayout";
+import RoomList from "./admin/pages/RoomList";
+import RoomCreat from "./admin/pages/RoomCreat";
 
 function Layout() {
     const location = useLocation();
@@ -21,7 +23,10 @@ function Layout() {
                 <Route path="/khach-san" element={<HotelList />} />
                 <Route path="/khach-san/:id" element={<HotelDetail />} />
                 <Route path="/lien-he" element={<Contact />} />
-                <Route path="/admin/*" element={<AdminLayout />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                    <Route path="rooms" element={<RoomList />} />
+                    <Route path="rooms/create" element={<RoomCreat />} />
+                </Route>
             </Routes>
 
             {!isAdmin && <Footer />}
