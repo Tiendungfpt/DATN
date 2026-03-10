@@ -64,10 +64,22 @@ export const getBookings = async (req,res)=>{
 try{
 
 const bookings = await Booking.find()
-.populate("userId","name email")
-.populate("roomId","name price");
+  .populate("userId", "name email")
+  .populate("roomId", "name price");
 
-res.json(bookings);
+const result = bookings.map(b => ({
+  _id: b._id,
+  user: b.userId,
+  room: b.roomId,
+  checkIn: b.checkIn,
+  checkOut: b.checkOut,
+  totalPrice: b.totalPrice,
+  status: b.status,
+  createdAt: b.createdAt,
+  updatedAt: b.updatedAt
+}));
+
+res.json(result);
 
 }catch(error){
 res.status(500).json({message:error.message});
