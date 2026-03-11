@@ -235,6 +235,7 @@ body {
     display: none;
   }
 }
+
 /* Khách sạn */
 .hotel-container {
   max-width: 1200px;
@@ -295,4 +296,6 @@ body {
 .phone {
   font-weight: bold;
 }
+
+
 
