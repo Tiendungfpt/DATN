@@ -1,30 +1,35 @@
 import { Router } from "express";
 import {
-    addRooms,
-    getAllRooms,
-    getRoomsById,
-    deleteRooms,
-    updateRooms,
-} from "../controllers/rooms";
-// import { checkAuth } from "../middlewares/checkAuth";
+  addRooms,
+  getAllRooms,
+  getRoomsById,
+  deleteRooms,
+  updateRooms,
+  getRoomsByHotel,
+  searchRooms
+} from "../controllers/rooms.js";
 
 const roomsRouter = Router();
 
-// roomsRouter.use(checkAuth);
-
-// GET /api/roomss - Lấy danh sách bài viết
+// GET /api/rooms - lấy tất cả phòng
 roomsRouter.get("/", getAllRooms);
 
-// GET /api/roomss/:id - Lấy chi tiết bài viết
+// tìm phòng theo khách sạn
+roomsRouter.get("/hotel/:hotelId", getRoomsByHotel);
+
+// tìm kiếm phòng (hotel + giá)
+roomsRouter.get("/search", searchRooms);
+
+// GET /api/rooms/:id - lấy phòng theo id
 roomsRouter.get("/:id", getRoomsById);
 
-// ROOMS /api/roomss - Thêm bài viết mới
+// POST /api/rooms - thêm phòng
 roomsRouter.post("/", addRooms);
 
-// // DELETE /api/roomss/:id - Xóa bài viết
+// DELETE /api/rooms/:id - xóa phòng
 roomsRouter.delete("/:id", deleteRooms);
 
-// PUT /api/roomss/:id - Cập nhật bài viết
+// PUT /api/rooms/:id - cập nhật phòng
 roomsRouter.put("/:id", updateRooms);
 
 export default roomsRouter;
