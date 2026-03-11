@@ -33,6 +33,7 @@ const roomsSchema = new mongoose.Schema(
         enum: ["available", "booked"],
         default: "available"
     }
+    
 },
 
 
