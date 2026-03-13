@@ -8,7 +8,7 @@ function HotelList() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:3000/hotels")
+      .get("http://localhost:3000/api/hotels")
       .then((res) => {
         setHotels(res.data);
       })
@@ -43,6 +43,6 @@ function HotelList() {
     </div>
   );
 }
-
+export default HotelList;
 
 

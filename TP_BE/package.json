@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Chào mừng các em đến với **khóa học Node.js/Express cơ bản!** 👨‍🏫",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "dev": "nodemon --exec babel-node src/app.js"
   },
@@ -13,7 +14,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/vanhoa690/nodejs-web503-fall25/issues"
   },

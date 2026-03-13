@@ -17,7 +17,6 @@ function Layout() {
     return (
         <>
             {!isAdmin && <Header />}
-
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/khach-san" element={<HotelList />} />
