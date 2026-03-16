@@ -1,6 +1,7 @@
 {
   "name": "nodejs-web503-fall25",
   "version": "1.0.0",
+  
   "description": "Chào mừng các em đến với **khóa học Node.js/Express cơ bản!** 👨‍🏫",
   "main": "index.js",
   "scripts": {

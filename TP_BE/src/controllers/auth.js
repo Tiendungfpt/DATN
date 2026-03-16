@@ -36,6 +36,25 @@ export const registerUser = async (req, res) => {
     res.status(500).json(error.message);
   }
 };
+export const updateRole = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { role: req.body.role },
+      { new: true }
+    );
+
+    res.json({
+      message: "Cập nhật role thành công",
+      user
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
 
 // 2. Route: api/auth/login
 export const loginUser = async (req, res) => {

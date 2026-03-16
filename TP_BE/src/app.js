@@ -7,6 +7,7 @@ import roomsRouter from "./routers/rooms.js";
 import authRouter from "./routers/auth.js";
 import hotelRouter from "./routers/hotel.js";
 import bookingRouter from "./routers/booking.js";
+import adminRouter from "./routers/admin.js";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use("/api/hotels", hotelRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/rooms", roomsRouter);
 app.use("/api/bookings", bookingRouter);
+app.use("/api/admin", adminRouter);
 
 app.listen(3000, () => {
   console.log(`Server is running on port http://localhost:3000`);
