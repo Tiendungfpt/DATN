@@ -6,7 +6,6 @@ export const createBooking = async (req, res) => {
   try {
     const { userId, roomId, checkIn, checkOut } = req.body;
 
-    // tìm phòng
     const room = await Rooms.findById(roomId);
 
     if (!room) {
@@ -15,7 +14,6 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    // kiểm tra phòng đã đặt chưa
     const booked = await Booking.findOne({
       roomId,
       status: "confirmed",
@@ -29,12 +27,10 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    // tính số ngày
     const days = Math.ceil(
       (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)
     );
 
-    // tính tiền
     const totalPrice = days * room.price;
 
     const booking = await Booking.create({
@@ -43,7 +39,7 @@ export const createBooking = async (req, res) => {
       checkIn,
       checkOut,
       totalPrice,
-      status: "confirmed",
+        status: "pending",
     });
 
     res.status(201).json({
@@ -70,6 +66,7 @@ export const getBookings = async (req, res) => {
       checkOut: b.checkOut,
       totalPrice: b.totalPrice,
       status: b.status,
+      paymentStatus: b.paymentStatus,
       createdAt: b.createdAt,
       updatedAt: b.updatedAt,
     }));
@@ -108,6 +105,7 @@ export const updateBooking = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 // CANCEL BOOKING
 export const cancelBooking = async (req, res) => {
   try {
@@ -136,5 +134,42 @@ export const deleteBooking = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// PAYMENT BOOKING
+export const paymentBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({
+        message: "Không tìm thấy booking",
+      });
+    }
+
+    if (booking.paymentStatus === "paid") {
+      return res.status(400).json({
+        message: "Booking đã thanh toán",
+      });
+    }
+
+    const { paymentMethod } = req.body;
+
+    booking.paymentMethod = paymentMethod || "cash";
+    booking.paymentStatus = "paid";
+    booking.transactionId = "PAY_" + Date.now();
+    booking.status = "confirmed";
+
+    await booking.save();
+
+    res.json({
+      message: "Thanh toán thành công",
+      booking,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };

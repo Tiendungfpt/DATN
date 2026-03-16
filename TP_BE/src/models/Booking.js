@@ -32,6 +32,22 @@ const bookingSchema = new mongoose.Schema(
         type:String,
         enum:["pending","confirmed","cancelled"],
         default:"pending"
+    },
+
+    paymentStatus:{
+        type:String,
+        enum:["unpaid","paid"],
+        default:"unpaid"
+    },
+
+    paymentMethod:{
+        type:String,
+        enum:["cash","vnpay","momo"],
+        default:"cash"
+    },
+
+    transactionId:{
+        type:String
     }
 
 },
