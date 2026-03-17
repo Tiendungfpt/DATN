@@ -2,15 +2,17 @@ import jwt from "jsonwebtoken";
 
 export const checkAuth = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
-  console.log(token);
-  if (!token) {
-    return res.json("Error: Thieu Token");
-  }
+
+  console.log("TOKEN:", token);
+
   jwt.verify(token, "khoa", (err, decoded) => {
+    console.log("ERR:", err);
+    console.log("DECODED:", decoded);
+
     if (err) {
-      return res.json("error: token khong hop le");
+      return res.json("Error: khong xac thuc duoc");
     }
-    console.log("decoded", decoded);
+
     req.userId = decoded.id;
     next();
   });

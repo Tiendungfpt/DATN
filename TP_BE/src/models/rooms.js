@@ -1,47 +1,50 @@
-import { required } from "joi";
 import mongoose from "mongoose";
 
 const roomsSchema = new mongoose.Schema(
-    {
+{
+  name: {
+    type: String,
+    required: true
+  },
 
-    name: {
-        type: String,
-        required: true
-    },
+  image: {
+    type: String,
+    required: true
+  },
 
-    image: {
-        type: String,
-        required: true
-    },
+  description: {
+    type: String
+  },
 
-    description: {
-        type: String
-    },
+  price: {
+    type: Number,
+    required: true
+  },
 
-    price: {
-        type: Number,
-        required: true
-    },
+  capacity: {
+    type: String,
+    required: true
+  },
 
-    capacity: {
-        type: String,
-        required: true
-    },
+  status: {
+    type: String,
+    enum: ["available", "booked"],
+    default: "available"
+  },
 
-    status: {
-        type: String,
-        enum: ["available", "booked"],
-        default: "available"
-    }
+  hotelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Hotel",
+    required: true
+  }
+
 },
-
-
-    {
-        timestamps: true,
-        versionKey: false,
-    }
+{
+  timestamps: true,
+  versionKey: false
+}
 );
 
-const Rooms = mongoose.model("Rooms", roomsSchema);
+const Rooms = mongoose.model("Room", roomsSchema);
 
 export default Rooms;

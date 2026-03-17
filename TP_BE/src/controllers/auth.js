@@ -3,16 +3,57 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 export const registerUser = async (req, res) => {
-  const userExisted = await User.findOne({ email: req.body.email });
+  try {
+    const { name, email, password, phone, role } = req.body;
 
-  if (userExisted) {
-    return res.json("Error: user da ton tai");
+    // kiểm tra password
+    if (!password) {
+      return res.status(400).json({
+        message: "Password không được để trống",
+      });
+    }
+
+    const userExisted = await User.findOne({ email });
+
+    if (userExisted) {
+      return res.json("Error: user da ton tai");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      phone,
+      role,
+    });
+
+    newUser.password = undefined;
+
+    res.json(newUser);
+  } catch (error) {
+    res.status(500).json(error.message);
   }
-  req.body.password = await bcrypt.hash(req.body.password, 10);
+};
+export const updateRole = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { role: req.body.role },
+      { new: true }
+    );
 
-  const newUser = await User.create(req.body);
-  newUser.password = undefined;
-  res.json(newUser);
+    res.json({
+      message: "Cập nhật role thành công",
+      user
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
 };
 
 // 2. Route: api/auth/login
