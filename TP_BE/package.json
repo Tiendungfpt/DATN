@@ -1,7 +1,6 @@
 {
   "name": "nodejs-web503-fall25",
   "version": "1.0.0",
-  
   "description": "Chào mừng các em đến với **khóa học Node.js/Express cơ bản!** 👨‍🏫",
   "main": "index.js",
   "type": "commonjs",
@@ -27,7 +26,8 @@
     "joi": "^18.0.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.23.0",
-    "morgan": "^1.10.1"
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",

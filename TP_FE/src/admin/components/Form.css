@@ -53,3 +53,27 @@
 .hotel-form button:hover {
   background: #0056b3;
 }
+/* select dropdown */
+.hotel-form select {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    outline: none;
+    background-color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* hover */
+.hotel-form select:hover {
+    border-color: #3498db;
+}
+
+/* focus */
+.hotel-form select:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}

@@ -1,12 +1,26 @@
 import Hotel from "../models/Hotel";
-
+import Rooms from "../models/rooms.js";
 export async function getAllHotel(req, res) {
-  // Hotel.find()
   try {
     const hotels = await Hotel.find();
-    return res.json(hotels);
+
+    const result = await Promise.all(
+      hotels.map(async (hotel) => {
+        const count = await Rooms.countDocuments({
+          hotelId: hotel._id,
+        });
+
+        return {
+          ...hotel.toObject(), // 🔥 dùng cái này an toàn hơn _doc
+          roomCount: count,
+        };
+      })
+    );
+
+    return res.json(result);
+
   } catch (error) {
-    return res.json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 }
 
@@ -25,9 +39,13 @@ export async function getHotelById(req, res) {
 
 export async function addHotel(req, res) {
   try {
-    // Model.create(data) : data = req.body, Model = Hotel
-    const newHotel = await Hotel.create(req.body);
+    const newHotel = await Hotel.create({
+      ...req.body,
+      image: req.file ? req.file.filename : "" // 🔥 lấy file
+    });
+
     return res.status(201).json(newHotel);
+
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }

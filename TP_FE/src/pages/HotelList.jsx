@@ -24,8 +24,14 @@ function HotelList() {
       <div className="hotel-grid">
         {hotels.map((hotel, index) => (
           <div className="hotel-card" key={index}>
-            <img src={hotel.image} alt={hotel.name} />
-
+            <img
+              src={
+                hotel.image?.startsWith("http")
+                  ? hotel.image
+                  : `http://localhost:3000/uploads/${hotel.image}`
+              }
+              alt={hotel.name}
+            />
             <div className="hotel-info">
               <h3>{hotel.name}</h3>
 

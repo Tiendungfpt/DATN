@@ -31,6 +31,17 @@ export default function Sidebar() {
                         📋 Danh sách khách sạn
                     </NavLink>
                 </li>
+                <li>
+                    <NavLink
+                        to="/admin/"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
+                        📋 Danh sách người dùng
+                    </NavLink>
+                </li>
 
                 <li>
                     <NavLink
@@ -53,27 +64,6 @@ export default function Sidebar() {
                     </NavLink>
                 </li>
 
-                <li>
-                    <NavLink
-                        to="/admin/rooms/update"
-                        className={({ isActive }) =>
-                            isActive ? "menu-item active" : "menu-item"
-                        }
-                    >
-                        ✏️ Cập nhật phòng
-                    </NavLink>
-                </li>
-
-                <li>
-                    <NavLink
-                        to="/admin/rooms/delete"
-                        className={({ isActive }) =>
-                            isActive ? "menu-item active" : "menu-item"
-                        }
-                    >
-                        🗑️ Xóa phòng
-                    </NavLink>
-                </li>
             </ul>
         </div>
     );

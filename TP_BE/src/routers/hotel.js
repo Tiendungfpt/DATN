@@ -6,6 +6,7 @@ import {
     deleteHotel,
     updateHotel,
 } from "../controllers/hotel";
+import upload from "../middlewares/upload.js";
 // import { checkAuth } from "../middlewares/checkAuth";
 
 const hotelRouter = Router();
@@ -19,7 +20,11 @@ hotelRouter.get("/", getAllHotel);
 hotelRouter.get("/:id", getHotelById);
 
 // HOTEL /api/hotels - Thêm bài viết mới
-hotelRouter.post("/", addHotel);
+hotelRouter.post(
+    "/",
+    upload.single("image"), // 🔥 phải có dòng này
+    addHotel
+);
 
 // // DELETE /api/hotels/:id - Xóa bài viết
 hotelRouter.delete("/:id", deleteHotel);

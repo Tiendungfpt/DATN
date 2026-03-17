@@ -3,10 +3,10 @@ import Rooms from "../models/rooms.js";
 // lấy tất cả phòng
 export async function getAllRooms(req, res) {
   try {
-   const rooms = await Rooms.find().populate(
-  "hotelId",
-  "name rating locationNote"
-);
+    const rooms = await Rooms.find().populate(
+      "hotelId",
+      "name rating locationNote"
+    );
     return res.status(200).json(rooms);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -114,7 +114,11 @@ export async function getRoomsById(req, res) {
 // thêm phòng
 export async function addRooms(req, res) {
   try {
-    const newRoom = await Rooms.create(req.body);
+    const newRoom = await Rooms.create({
+      ...req.body,
+      image: req.file ? req.file.filename : "" // 🔥 thêm dòng này
+    });
+
     return res.status(201).json(newRoom);
 
   } catch (error) {
@@ -125,9 +129,20 @@ export async function addRooms(req, res) {
 // cập nhật phòng
 export async function updateRooms(req, res) {
   try {
-    const room = await Rooms.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    const updateData = {
+      ...req.body
+    };
+
+    // 🔥 nếu có upload ảnh mới thì update ảnh
+    if (req.file) {
+      updateData.image = req.file.filename;
+    }
+
+    const room = await Rooms.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
 
     if (!room) {
       return res.status(404).json({ error: "Không tìm thấy phòng" });
