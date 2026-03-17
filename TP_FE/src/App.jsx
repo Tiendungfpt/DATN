@@ -13,6 +13,7 @@ import Booking from "./pages/Booking";
 import BookingList from "./pages/BookingList";
 import HotelCreate from "./admin/pages/HotelCreat";
 import HotelListAdmin from "./admin/pages/HotelList";
+import RoomsEdit from "./admin/pages/RoomEdit";
 
 function Layout() {
     const location = useLocation();
@@ -33,6 +34,7 @@ function Layout() {
                     <Route path="rooms/create" element={<RoomCreat />} />
                     <Route path="hotels/create" element={<HotelCreate />} />
                     <Route path="hotels" element={<HotelListAdmin />} />
+                    <Route path="rooms/edit/:id" element={<RoomsEdit />} />
                 </Route>
             </Routes>
 

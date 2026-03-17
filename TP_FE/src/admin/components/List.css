@@ -1,61 +1,53 @@
-.hotel-list-container {
-    padding: 20px;
-}
-
-.hotel-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.hotel-table th,
-.hotel-table td {
-    border: 1px solid #ddd;
-    padding: 10px;
-}
-
-.hotel-table th {
-    background-color: #f5f5f5;
-}
-
-.hotel-table img {
-    border-radius: 6px;
+/* action container */
+.admin-actions {
+    display: flex;
+    justify-content: center; /* 🔥 căn giữa ngang */
+    align-items: center;
+    gap: 12px;
+    margin-top: 15px;
 }
 
 /* base button */
-.btn {
-    padding: 6px 12px;
+.admin-actions button {
+    min-width: 90px;
+    padding: 8px 12px;
+    border-radius: 8px;
     border: none;
-    border-radius: 6px;
-    cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    margin-right: 8px;
-    transition: all 0.2s ease;
+    cursor: pointer;
+    transition: all 0.25s ease;
 }
 
-/* nút sửa */
+/* edit */
 .btn-edit {
-    background-color: #3498db;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
     color: white;
 }
 
 .btn-edit:hover {
-    background-color: #2980b9;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-/* nút xoá */
+/* delete */
 .btn-delete {
-    background-color: #e74c3c;
+    background: linear-gradient(135deg, #ff6a6a, #ff3d3d);
     color: white;
 }
 
 .btn-delete:hover {
-    background-color: #c0392b;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-/* hiệu ứng click */
-.btn:active {
+/* click effect */
+.admin-actions button:active {
     transform: scale(0.95);
+}
+.room-count {
+    margin-top: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #27ae60;
 }

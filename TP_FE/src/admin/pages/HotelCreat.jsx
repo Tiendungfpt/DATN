@@ -9,13 +9,15 @@ function HotelCreate() {
     const [hotel, setHotel] = useState({
         name: "",
         address: "",
-        image: "",
         description: "",
         rating: 0,
         reviewCount: 0,
         locationNote: "",
         hotline: ""
     });
+
+    const [file, setFile] = useState(null); // 🔥 file ảnh
+    const [preview, setPreview] = useState(null); // 🔥 preview
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -28,15 +30,44 @@ function HotelCreate() {
         });
     };
 
+    // 🔥 chọn ảnh
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+
+        if (selectedFile) {
+            setFile(selectedFile);
+            setPreview(URL.createObjectURL(selectedFile));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         try {
-            await axios.post("http://localhost:3000/api/hotels", hotel);
+            const formData = new FormData();
+
+            // 🔥 thêm file
+            if (file) {
+                formData.append("image", file);
+            }
+
+            // 🔥 thêm data
+            for (let key in hotel) {
+                formData.append(key, hotel[key]);
+            }
+
+            await axios.post(
+                "http://localhost:3000/api/hotels",
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data"
+                    }
+                }
+            );
 
             alert("Thêm hotel thành công");
-
-            navigate("/admin/hotels"); // 🔥 redirect
+            navigate("/admin/hotels");
 
         } catch (error) {
             console.log(error);
@@ -49,16 +80,31 @@ function HotelCreate() {
             <h2 className="hotel-create-title">Thêm Hotel</h2>
 
             <form className="hotel-form" onSubmit={handleSubmit}>
+
                 <input name="name" placeholder="Tên khách sạn" onChange={handleChange} />
+
                 <input name="address" placeholder="Địa chỉ" onChange={handleChange} />
-                <input name="image" placeholder="Link ảnh" onChange={handleChange} />
+
+                {/* 🔥 upload ảnh */}
+                <input type="file" onChange={handleFileChange} />
+
+                {/* 🔥 preview */}
+                {preview && (
+                    <img src={preview} alt="" width="150" />
+                )}
+
                 <textarea name="description" placeholder="Mô tả" onChange={handleChange} />
+
                 <input name="rating" type="number" placeholder="Rating" onChange={handleChange} />
+
                 <input name="reviewCount" type="number" placeholder="Số review" onChange={handleChange} />
+
                 <input name="locationNote" placeholder="Ghi chú vị trí" onChange={handleChange} />
+
                 <input name="hotline" placeholder="Hotline" onChange={handleChange} />
 
                 <button type="submit">Thêm Hotel</button>
+
             </form>
         </div>
     );

@@ -1,4 +1,6 @@
 import { Router } from "express";
+import upload from "../middlewares/upload.js"; // 🔥 thêm dòng này
+
 import {
   addRooms,
   getAllRooms,
@@ -11,25 +13,25 @@ import {
 
 const roomsRouter = Router();
 
-// GET /api/rooms - lấy tất cả phòng
+// GET /api/rooms
 roomsRouter.get("/", getAllRooms);
 
 // tìm phòng theo khách sạn
 roomsRouter.get("/hotel/:hotelId", getRoomsByHotel);
 
-// tìm kiếm phòng (hotel + giá)
+// tìm kiếm phòng
 roomsRouter.get("/search", searchRooms);
 
-// GET /api/rooms/:id - lấy phòng theo id
+// GET theo id
 roomsRouter.get("/:id", getRoomsById);
 
-// POST /api/rooms - thêm phòng
-roomsRouter.post("/", addRooms);
+// 🔥 POST (THÊM PHÒNG + UPLOAD ẢNH)
+roomsRouter.post("/", upload.single("image"), addRooms);
 
-// DELETE /api/rooms/:id - xóa phòng
+// DELETE
 roomsRouter.delete("/:id", deleteRooms);
 
-// PUT /api/rooms/:id - cập nhật phòng
-roomsRouter.put("/:id", updateRooms);
+// 🔥 PUT (UPDATE + UPLOAD ẢNH luôn nếu muốn)
+roomsRouter.put("/:id", upload.single("image"), updateRooms);
 
 export default roomsRouter;

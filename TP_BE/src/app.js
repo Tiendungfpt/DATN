@@ -27,6 +27,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/rooms", roomsRouter);
 app.use("/api/bookings", bookingRouter);
 
+app.use("/uploads", express.static("uploads"));
+
 // start server
 app.listen(3000, () => {
   console.log("Server is running at http://localhost:3000");
