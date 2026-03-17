@@ -9,6 +9,8 @@ import Contact from "./pages/Contact";
 import AdminLayout from "./admin/AdminLayout";
 import RoomList from "./admin/pages/RoomList";
 import RoomCreat from "./admin/pages/RoomCreat";
+import Booking from "./pages/Booking";
+import BookingList from "./pages/BookingList";
 
 function Layout() {
     const location = useLocation();
@@ -17,12 +19,13 @@ function Layout() {
     return (
         <>
             {!isAdmin && <Header />}
-
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/khach-san" element={<HotelList />} />
                 <Route path="/khach-san/:id" element={<HotelDetail />} />
                 <Route path="/lien-he" element={<Contact />} />
+                <Route path="/booking" element={<Booking />} />
+                <Route path="/booking-list" element={<BookingList />} />
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="rooms" element={<RoomList />} />
                     <Route path="rooms/create" element={<RoomCreat />} />

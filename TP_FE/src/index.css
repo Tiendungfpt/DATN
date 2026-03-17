@@ -235,3 +235,67 @@ body {
     display: none;
   }
 }
+
+/* Khách sạn */
+.hotel-container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+.hotel-container h1 {
+  margin-bottom: 20px;
+}
+
+.hotel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.hotel-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  transition: 0.3s;
+}
+
+.hotel-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.hotel-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.hotel-info {
+  padding: 15px;
+}
+
+.hotel-info h3 {
+  margin-bottom: 10px;
+}
+
+.address {
+  color: #666;
+  font-size: 14px;
+}
+
+.desc {
+  margin: 10px 0;
+}
+
+.rating {
+  color: #f39c12;
+}
+
+.phone {
+  font-weight: bold;
+}
+
+
+

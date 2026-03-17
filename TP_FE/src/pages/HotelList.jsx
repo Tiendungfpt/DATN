@@ -1,16 +1,48 @@
-import hotels from "../data/hotels";
-import HotelCard from "../components/HotelCard";
 
-export default function HotelList() {
-    return (
-        <section className="section-a25">
-            <h2 className="section-title-a25">Danh sách khách sạn</h2>
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-            <div className="cards-a25">
-                {hotels.map(hotel => (
-                    <HotelCard key={hotel.id} hotel={hotel} />
-                ))}
+
+function HotelList() {
+  const [hotels, setHotels] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get("http://localhost:3000/api/hotels")
+      .then((res) => {
+        setHotels(res.data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }, []);
+
+  return (
+    <div className="hotel-container">
+      <h1>Danh sách khách sạn</h1>
+
+      <div className="hotel-grid">
+        {hotels.map((hotel, index) => (
+          <div className="hotel-card" key={index}>
+            <img src={hotel.image} alt={hotel.name} />
+
+            <div className="hotel-info">
+              <h3>{hotel.name}</h3>
+
+              <p className="address">{hotel.address}</p>
+
+              <p className="desc">{hotel.description}</p>
+
+              <p className="rating">⭐ {hotel.rating}</p>
+
+              <p className="phone">📞 {hotel.hotline}</p>
             </div>
-        </section>
-    );
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
+export default HotelList;
+
+

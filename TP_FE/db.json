@@ -1,0 +1,70 @@
+{
+"hotels":[
+{
+   "name": "Hanoi Pearl Hotel",
+   "address": "24 Hàng Tre, Hoàn Kiếm, Hà Nội",
+   "image": "/public/images/hatels1.webp",
+   "description": "Khách sạn 4 sao gần hồ Hoàn Kiếm",
+   "rating": 4.6,
+   "reviewCount": 120,
+   "locationNote": "Cách hồ Hoàn Kiếm 200m",
+   "hotline": "02438288888",
+   "createdAt": "2024-01-01",
+   "updatedAt": "2024-01-01"
+ },
+
+ {
+   "name": "Sunset Beach Resort",
+   "address": "Phú Quốc, Kiên Giang",
+   "image": "/public/images/hotel2.jpg",
+   "description": "Resort sát biển với view hoàng hôn",
+   "rating": 4.8,
+   "reviewCount": 230,
+   "locationNote": "Ngay bãi biển",
+   "hotline": "02973888888"
+ },
+
+ {
+   "name": "Saigon Center Hotel",
+   "address": "Quận 1, TP Hồ Chí Minh",
+   "image": "/public/images/hotels3.jpg",
+   "description": "Khách sạn trung tâm thành phố",
+   "rating": 4.4,
+   "reviewCount": 98,
+   "locationNote": "Gần chợ Bến Thành",
+   "hotline": "02839999999"
+ },
+{
+  "name": "Da Nang Sea Hotel",
+  "address": "123 Võ Nguyên Giáp, Sơn Trà, Đà Nẵng",
+  "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945",
+  "description": "Khách sạn gần biển Mỹ Khê với view biển tuyệt đẹp",
+  "rating": 4.7,
+  "reviewCount": 320,
+  "locationNote": "Cách biển 100m",
+  "hotline": "02363888888"
+},
+
+ {
+  "name": "Sapa Mountain View Hotel",
+  "address": "45 Fansipan, Sapa, Lào Cai",
+  "image": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa",
+  "description": "Khách sạn nằm trên núi với view ruộng bậc thang",
+  "rating": 4.5,
+  "reviewCount": 210,
+  "locationNote": "View núi Fansipan",
+  "hotline": "02143888888"
+},
+  {
+  "name": "Nha Trang Luxury Hotel",
+  "address": "89 Trần Phú, Nha Trang, Khánh Hòa",
+  "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b",
+  "description": "Khách sạn 5 sao ngay trung tâm thành phố biển",
+  "rating": 4.9,
+  "reviewCount": 540,
+  "locationNote": "Gần quảng trường Nha Trang",
+  "hotline": "02583888888"
+}
+    ]
+}
+ 
