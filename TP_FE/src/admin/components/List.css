@@ -1,0 +1,61 @@
+.hotel-list-container {
+    padding: 20px;
+}
+
+.hotel-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.hotel-table th,
+.hotel-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+}
+
+.hotel-table th {
+    background-color: #f5f5f5;
+}
+
+.hotel-table img {
+    border-radius: 6px;
+}
+
+/* base button */
+.btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-right: 8px;
+    transition: all 0.2s ease;
+}
+
+/* nút sửa */
+.btn-edit {
+    background-color: #3498db;
+    color: white;
+}
+
+.btn-edit:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+}
+
+/* nút xoá */
+.btn-delete {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-delete:hover {
+    background-color: #c0392b;
+    transform: translateY(-1px);
+}
+
+/* hiệu ứng click */
+.btn:active {
+    transform: scale(0.95);
+}
