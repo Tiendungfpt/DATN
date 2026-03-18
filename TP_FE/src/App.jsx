@@ -7,6 +7,7 @@ import HotelList from "./pages/HotelList";
 import HotelDetail from "./pages/HotelDetail";
 import Contact from "./pages/Contact";
 import AdminLayout from "./admin/AdminLayout";
+import UserList from "./admin/pages/UserList";
 import RoomList from "./admin/pages/RoomList";
 import RoomCreat from "./admin/pages/RoomCreat";
 import Booking from "./pages/Booking";
@@ -14,6 +15,8 @@ import BookingList from "./pages/BookingList";
 import HotelCreate from "./admin/pages/HotelCreat";
 import HotelListAdmin from "./admin/pages/HotelList";
 import RoomsEdit from "./admin/pages/RoomEdit";
+import Register from "./auth/register";
+import Login from "./auth/login";
 
 function Layout() {
     const location = useLocation();
@@ -24,6 +27,8 @@ function Layout() {
             {!isAdmin && <Header />}
             <Routes>
                 <Route path="/" element={<Home />} />
+                 <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
                 <Route path="/khach-san" element={<HotelList />} />
                 <Route path="/khach-san/:id" element={<HotelDetail />} />
                 <Route path="/lien-he" element={<Contact />} />
@@ -31,6 +36,7 @@ function Layout() {
                 <Route path="/booking-list" element={<BookingList />} />
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="rooms" element={<RoomList />} />
+                    <Route path="users-pagination" element={<UserList />} />
                     <Route path="rooms/create" element={<RoomCreat />} />
                     <Route path="hotels/create" element={<HotelCreate />} />
                     <Route path="hotels" element={<HotelListAdmin />} />

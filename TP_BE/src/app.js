@@ -7,6 +7,7 @@ import roomsRouter from "./routers/rooms";
 import authRouter from "./routers/auth";
 import hotelRouter from "./routers/hotel";
 import bookingRouter from "./routers/booking";
+import adminRouter from "./routers/admin";
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/hotels", hotelRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/rooms", roomsRouter);
 app.use("/api/bookings", bookingRouter);
+app.use("/api/admin", adminRouter);
 
 app.use("/uploads", express.static("uploads"));
 
