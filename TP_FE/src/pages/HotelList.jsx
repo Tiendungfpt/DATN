@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from "react";
 import axios from "axios";
-
+import { Link } from "react-router-dom";
 
 function HotelList() {
   const [hotels, setHotels] = useState([]);
@@ -22,33 +21,39 @@ function HotelList() {
       <h1>Danh sách khách sạn</h1>
 
       <div className="hotel-grid">
-        {hotels.map((hotel, index) => (
-          <div className="hotel-card" key={index}>
-            <img
-              src={
-                hotel.image?.startsWith("http")
-                  ? hotel.image
-                  : `http://localhost:3000/uploads/${hotel.image}`
-              }
-              alt={hotel.name}
-            />
-            <div className="hotel-info">
-              <h3>{hotel.name}</h3>
+        {hotels.map((hotel) => (
+          <Link
+            key={hotel._id}   // dùng _id
+            to={`/khach-san/${hotel._id}`}
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            <div className="hotel-card">
+              <img
+                src={
+                  hotel.image?.startsWith("http")
+                    ? hotel.image
+                    : `http://localhost:3000/uploads/${hotel.image}`
+                }
+                alt={hotel.name}
+              />
 
-              <p className="address">{hotel.address}</p>
+              <div className="hotel-info">
+                <h3>{hotel.name}</h3>
 
-              <p className="desc">{hotel.description}</p>
+                <p className="address">{hotel.address}</p>
 
-              <p className="rating">⭐ {hotel.rating}</p>
+                <p className="desc">{hotel.description}</p>
 
-              <p className="phone">📞 {hotel.hotline}</p>
+                <p className="rating">⭐ {hotel.rating}</p>
+
+                <p className="phone">📞 {hotel.hotline}</p>
+              </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
   );
 }
+
 export default HotelList;
-
-
