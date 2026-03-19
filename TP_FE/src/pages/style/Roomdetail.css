@@ -1,0 +1,72 @@
+.room-detail-container {
+    display: flex;
+    gap: 30px;
+    padding: 30px;
+    background: #f5f6f8;
+}
+
+.room-image img {
+    width: 450px;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.room-info {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    flex: 1;
+}
+
+.room-info h2 {
+    margin-bottom: 10px;
+}
+
+.cancel {
+    color: green;
+    margin: 8px 0;
+}
+
+.deal {
+    color: orange;
+    font-weight: bold;
+}
+
+.price {
+    color: red;
+    margin: 15px 0;
+}
+
+.price span {
+    font-size: 16px;
+    color: #555;
+}
+
+.desc {
+    margin-bottom: 20px;
+}
+
+.features ul {
+    list-style: none;
+    padding: 0;
+}
+
+.features li {
+    margin: 5px 0;
+}
+
+.book-btn {
+    margin-top: 20px;
+    background: #0071c2;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.book-btn:hover {
+    background: #005999;
+}
