@@ -1,82 +1,88 @@
-import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import "../admin/components/List.css"; // hoặc đường dẫn CSS của bạn
+import SearchBar from "../components/SearchBar"; // ✅ đúng path
+import "../admin/components/List.css";
+import { useLocation } from "react-router-dom";
 
 function RoomsList() {
-    const { id } = useParams();
-    const [rooms, setRooms] = useState([]);
-    const navigate = useNavigate();
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        axios
-            .get(`http://localhost:3000/api/rooms/hotel/${id}`)
-            .then((res) => {
-                setRooms(res.data);
-            })
-            .catch((err) => {
-                console.log(err);
-                setRooms([]);
-            });
-    }, [id]);
+  const location = useLocation();
 
-    return (
-        <div className="hotel-container">
-            <h1>Danh sách phòng</h1>
+  // ✅ LOAD DATA khi query thay đổi
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
 
-            <div className="hotel-grid">
-                {rooms.map((room) => (
-                    <div className="hotel-card" key={room._id}>
-                        <img
-                            src={
-                                room.image?.startsWith("http")
-                                    ? room.image
-                                    : `http://localhost:3000/uploads/${room.image}`
-                            }
-                            alt={room.name}
-                        />
+    const minPrice = params.get("minPrice");
+    const maxPrice = params.get("maxPrice");
+    const capacity = params.get("capacity");
+    const sort = params.get("sort");
 
-                        <div className="hotel-info">
-                            <h3>{room.name}</h3>
+    fetchSearch(minPrice, maxPrice, capacity, sort);
+  }, [location.search]);
 
-                            <p className="desc">{room.description}</p>
+  // ✅ API SEARCH
+  const fetchSearch = async (minPrice, maxPrice, capacity, sort) => {
+    setLoading(true);
+    try {
+      const res = await axios.get(
+        "http://localhost:3000/api/rooms/search",
+        {
+          params: {
+            minPrice,
+            maxPrice,
+            capacity,
+            sort,
+          },
+        }
+      );
 
-                            <p className="price">
-                                💰 {room.price?.toLocaleString("vi-VN")} đ
-                            </p>
+      console.log("DATA:", res.data);
 
-                            <p className="capacity">
-                                👤 {room.capacity}
-                            </p>
+      // ✅ fix setRooms
+      setRooms(res.data.data || []);
 
-                            <p
-                                className={
-                                    room.status === "available"
-                                        ? "status available"
-                                        : "status booked"
-                                }
-                            >
-                                {room.status === "available" ? "Còn trống" : "Đã đặt"}
-                            </p>
+    } catch (err) {
+      console.log(err);
+    }
+    setLoading(false);
+  };
 
-                            {/* 🔥 NÚT CHI TIẾT */}
-                            <div className="admin-actions">
-                                <button
-                                    className="btn-edit"
-                                    onClick={() =>
-                                        navigate(`/phong/${room._id}`)
-                                    }
-                                >
-                                    🔍 Chi tiết
-                                </button>
-                            </div>
+  return (
+    <div style={{ display: "flex", gap: "20px" }}>
+      
+      {/* ✅ SIDEBAR */}
+      <SearchBar />
 
-                        </div>
-                    </div>
-                ))}
+      {/* ✅ LIST */}
+      <div className="hotel-container">
+        <h1>Danh sách phòng</h1>
+
+        {loading && <p>⏳ Đang tìm...</p>}
+
+        <div className="hotel-grid">
+          {rooms.length === 0 && !loading && (
+            <p>❌ Không có phòng phù hợp</p>
+          )}
+
+          {rooms.map((room) => (
+            <div className="hotel-card" key={room._id}>
+              <img
+                src={`http://localhost:3000/uploads/${room.image}`}
+                alt=""
+              />
+              <div className="hotel-info">
+                <h3>{room.name}</h3>
+                <p>💰 {room.price?.toLocaleString()} đ</p>
+                <p>👤 {room.capacity} người</p>
+              </div>
             </div>
+          ))}
         </div>
-    );
+      </div>
+    </div>
+  );
 }
 
 export default RoomsList;

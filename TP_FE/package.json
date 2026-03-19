@@ -16,6 +16,7 @@
     "compression": "^1.8.1",
     "express": "^5.2.1",
     "json-server": "^1.0.0-beta.12",
+    "rc-slider": "^11.1.9",
     "react-router-dom": "^7.13.0",
     "sirv": "^3.0.2",
     "vite": "^5.2.0"

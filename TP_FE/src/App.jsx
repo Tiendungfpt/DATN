@@ -5,6 +5,8 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import HotelList from "./pages/HotelList";
 import Contact from "./pages/Contact";
+import RoomsList from "./pages/RoomList"; // ✅ thêm
+
 import AdminLayout from "./admin/AdminLayout";
 import UserList from "./admin/pages/UserList";
 import RoomList from "./admin/pages/RoomList";
@@ -15,7 +17,6 @@ import HotelCreate from "./admin/pages/HotelCreat";
 import HotelListAdmin from "./admin/pages/HotelList";
 import RoomsEdit from "./admin/pages/RoomEdit";
 
-// ✅ dùng code từ branch login
 import Register from "./auth/register";
 import Login from "./auth/login";
 
@@ -34,6 +35,10 @@ function Layout() {
 
                 <Route path="/khach-san" element={<HotelList />} />
                 <Route path="/lien-he" element={<Contact />} />
+
+                {/* ✅ FIX: thêm route search */}
+                <Route path="/rooms" element={<RoomsList />} />
+
                 <Route path="/booking/:roomId" element={<Booking />} />
                 <Route path="/booking-list" element={<BookingList />} />
 

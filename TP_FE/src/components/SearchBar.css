@@ -1,0 +1,38 @@
+layout chính
+.page-container {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+}
+
+/* sidebar search */
+.search-box {
+  width: 280px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  height: fit-content;
+
+  /* 🔥 fix nổi lên đẹp */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* nội dung bên phải */
+.content {
+  flex: 1;
+}
+
+/* fix banner */
+.hero {
+  height: 300px;
+  background: #ccc;
+  position: relative;
+  z-index: 1;
+}
+
+/* tránh bị đè */
+.page-container {
+  position: relative;
+  z-index: 2;
+  margin-top: -100px; /* kéo lên giống booking */
+}

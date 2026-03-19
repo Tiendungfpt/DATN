@@ -16,46 +16,47 @@ export async function getAllRooms(req, res) {
 // tìm kiếm phòng
 export async function searchRooms(req, res) {
   try {
-
     const { hotelId, minPrice, maxPrice, capacity, sort } = req.query;
 
     let query = {};
 
-    // lọc theo khách sạn
+    // 🏨 hotel
     if (hotelId) {
       query.hotelId = hotelId;
     }
 
-    // lọc theo giá
+    // 💰 price
     if (minPrice || maxPrice) {
       query.price = {};
 
-      if (minPrice) {
+      if (minPrice && !isNaN(minPrice)) {
         query.price.$gte = Number(minPrice);
       }
 
-      if (maxPrice) {
+      if (maxPrice && !isNaN(maxPrice)) {
         query.price.$lte = Number(maxPrice);
       }
     }
 
-    // lọc theo số người
-    if (capacity) {
-      query.capacity = capacity;
-    }
+    // 👤 capacity (FIX QUAN TRỌNG)
+    if (capacity && !isNaN(capacity)) {
+  query.capacity = {
+    $gte: Number(capacity)
+  };
+}
 
-    // sắp xếp giá
+    console.log("QUERY:", query); // 🔥 debug
+
+    // 🔽 sort
     let sortOption = {};
-    if (sort === "asc") {
-      sortOption.price = 1;
-    }
-    if (sort === "desc") {
-      sortOption.price = -1;
-    }
+    if (sort === "asc") sortOption.price = 1;
+    if (sort === "desc") sortOption.price = -1;
 
     const rooms = await Rooms.find(query)
       .populate("hotelId", "name rating locationNote")
       .sort(sortOption);
+
+    console.log("RESULT:", rooms.length); // 🔥 debug
 
     return res.status(200).json({
       message: "Search rooms successfully",
