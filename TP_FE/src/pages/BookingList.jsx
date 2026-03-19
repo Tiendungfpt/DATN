@@ -18,7 +18,6 @@ function BookingList() {
         await cancelBooking(id);
         loadBookings();
     };
-
     const handleDelete = async (id) => {
         await deleteBooking(id);
         loadBookings();
