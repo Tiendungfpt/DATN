@@ -66,7 +66,7 @@ export default function Login() {
       </form>
 
       <p>
-        Chưa có tài khoản? <Link to="/">Đăng ký</Link>
+        Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
       </p>
     </div>
   );
