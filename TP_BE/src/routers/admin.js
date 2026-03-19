@@ -2,7 +2,7 @@ import { Router } from "express";
 
 import { checkAuth } from "../middlewares/checkAuth.js";
 import { checkAdmin } from "../middlewares/checkAdmin.js";
-
+import { updateUserRole } from "../controllers/adminController.js";
 import {
   getRevenue,
   getTopRooms
@@ -43,6 +43,13 @@ adminRouter.get("/dashboard", checkAuth, checkAdmin, getDashboard);
 adminRouter.get("/users", checkAuth, checkAdmin, getUsers);
 adminRouter.get("/users/:id", checkAuth, checkAdmin, getUserById);
 adminRouter.delete("/users/:id", checkAuth, checkAdmin, deleteUser);
+// UPDATE ROLE USER
+adminRouter.patch(
+  "/users/:id/role",
+  checkAuth,
+  checkAdmin,
+  updateUserRole
+);
 
 
 // HOTELS

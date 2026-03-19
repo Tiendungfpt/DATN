@@ -33,7 +33,7 @@ export default function Sidebar() {
                 </li>
                 <li>
                     <NavLink
-                        to="/admin/"
+                        to="/admin/users-pagination"
                         end
                         className={({ isActive }) =>
                             isActive ? "menu-item active" : "menu-item"

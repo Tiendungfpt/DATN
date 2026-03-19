@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import HotelList from "./pages/HotelList";
 import Contact from "./pages/Contact";
 import AdminLayout from "./admin/AdminLayout";
+import UserList from "./admin/pages/UserList";
 import RoomList from "./admin/pages/RoomList";
 import RoomCreat from "./admin/pages/RoomCreat";
 import Booking from "./pages/Booking";
@@ -13,9 +14,10 @@ import BookingList from "./pages/BookingList";
 import HotelCreate from "./admin/pages/HotelCreat";
 import HotelListAdmin from "./admin/pages/HotelList";
 import RoomsEdit from "./admin/pages/RoomEdit";
-import RoomsList from "./pages/RoomList";
-import RoomDetail from "./pages/RoomDetail";
-import Payment from "./pages/Payment";
+
+// ✅ dùng code từ branch login
+import Register from "./auth/register";
+import Login from "./auth/login";
 
 function Layout() {
     const location = useLocation();
@@ -24,17 +26,20 @@ function Layout() {
     return (
         <>
             {!isAdmin && <Header />}
+
             <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<Login />} />
+
                 <Route path="/khach-san" element={<HotelList />} />
-                <Route path="/khach-san/:id" element={<RoomsList />} />
-                <Route path="/phong/:roomId" element={<RoomDetail />} />
                 <Route path="/lien-he" element={<Contact />} />
                 <Route path="/booking/:roomId" element={<Booking />} />
                 <Route path="/booking-list" element={<BookingList />} />
-                <Route path="/payment/:id" element={<Payment />} />
+
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="rooms" element={<RoomList />} />
+                    <Route path="users-pagination" element={<UserList />} />
                     <Route path="rooms/create" element={<RoomCreat />} />
                     <Route path="hotels/create" element={<HotelCreate />} />
                     <Route path="hotels" element={<HotelListAdmin />} />
@@ -48,9 +53,5 @@ function Layout() {
 }
 
 export default function App() {
-    return (
-
-        <Layout />
-
-    );
+    return <Layout />;
 }

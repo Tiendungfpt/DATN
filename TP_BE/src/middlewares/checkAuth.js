@@ -3,14 +3,13 @@ import jwt from "jsonwebtoken";
 export const checkAuth = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
 
-  console.log("TOKEN:", token);
+  if (!token) {
+    return res.status(401).json({ message: "Không có token" });
+  }
 
   jwt.verify(token, "khoa", (err, decoded) => {
-    console.log("ERR:", err);
-    console.log("DECODED:", decoded);
-
     if (err) {
-      return res.json("Error: khong xac thuc duoc");
+      return res.status(401).json({ message: "Token không hợp lệ" });
     }
 
     req.userId = decoded.id;
