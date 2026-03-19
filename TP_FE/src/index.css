@@ -55,6 +55,21 @@ body {
 .menu-a25 li a.active,
 .menu-a25 li a:hover {
   color: #9d0b2a;
+
+}
+/* ===== BUTTON LOGOUT ===== */
+.menu-a25 button {
+  background: #9d0b2a;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.menu-a25 button:hover {
+  background: #7f0922;
 }
 
 /* ===== HERO ===== */

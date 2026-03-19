@@ -1,0 +1,128 @@
+/* ===== PAGE ===== */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.user-page {
+  padding: 20px;
+  background: #0f172a;
+  min-height: 100vh;
+  color: #fff;
+}
+
+/* ===== TITLE ===== */
+.title {
+  font-size: 24px;
+  margin-bottom: 20px;
+  letter-spacing: 1px;
+}
+
+/* ===== SEARCH ===== */
+.search-input {
+  padding: 10px 15px;
+  width: 300px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  margin-bottom: 20px;
+  background: #1e293b;
+  color: #fff;
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+/* ===== TABLE ===== */
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1e293b;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.user-table th {
+  background: #020617;
+  color: #fff;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+.user-table th,
+.user-table td {
+  padding: 12px;
+  text-align: center;
+  border-bottom: 1px solid #334155;
+}
+
+/* hover row */
+.user-table tr:hover {
+  background: #334155;
+  transition: 0.3s;
+}
+
+/* ===== ROLE ===== */
+.role-admin {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.role-user {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+/* ===== BUTTON ===== */
+.btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin: 3px;
+  transition: 0.3s;
+}
+
+/* nút cấp quyền */
+.btn-role {
+  background: #22c55e;
+  color: #fff;
+}
+
+.btn-role:hover {
+  background: #16a34a;
+}
+
+/* nút xóa */
+.btn-delete {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn-delete:hover {
+  background: #dc2626;
+}
+
+/* ===== PAGINATION ===== */
+.pagination {
+  margin-top: 20px;
+}
+
+.pagination button {
+  padding: 6px 12px;
+  margin: 0 5px;
+  border-radius: 6px;
+  border: none;
+  background: #1e293b;
+  color: #fff;
+  cursor: pointer;
+}
+
+.pagination button:hover {
+  background: #334155;
+}
+
+.pagination span {
+  margin: 0 10px;
+}
