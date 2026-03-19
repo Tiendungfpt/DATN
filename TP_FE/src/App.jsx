@@ -4,7 +4,6 @@ import Footer from "./components/Footer";
 
 import Home from "./pages/Home";
 import HotelList from "./pages/HotelList";
-import HotelDetail from "./pages/HotelDetail";
 import Contact from "./pages/Contact";
 import AdminLayout from "./admin/AdminLayout";
 import RoomList from "./admin/pages/RoomList";
@@ -14,6 +13,9 @@ import BookingList from "./pages/BookingList";
 import HotelCreate from "./admin/pages/HotelCreat";
 import HotelListAdmin from "./admin/pages/HotelList";
 import RoomsEdit from "./admin/pages/RoomEdit";
+import RoomsList from "./pages/RoomList";
+import RoomDetail from "./pages/RoomDetail";
+import Payment from "./pages/Payment";
 
 function Layout() {
     const location = useLocation();
@@ -25,10 +27,12 @@ function Layout() {
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/khach-san" element={<HotelList />} />
-                <Route path="/khach-san/:id" element={<HotelDetail />} />
+                <Route path="/khach-san/:id" element={<RoomsList />} />
+                <Route path="/phong/:roomId" element={<RoomDetail />} />
                 <Route path="/lien-he" element={<Contact />} />
-                <Route path="/booking" element={<Booking />} />
+                <Route path="/booking/:roomId" element={<Booking />} />
                 <Route path="/booking-list" element={<BookingList />} />
+                <Route path="/payment/:id" element={<Payment />} />
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="rooms" element={<RoomList />} />
                     <Route path="rooms/create" element={<RoomCreat />} />
@@ -45,8 +49,8 @@ function Layout() {
 
 export default function App() {
     return (
-        <BrowserRouter>
-            <Layout />
-        </BrowserRouter>
+
+        <Layout />
+
     );
 }
