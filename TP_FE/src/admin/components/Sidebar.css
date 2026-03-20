@@ -8,6 +8,53 @@
     height: fit-content;
     box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
+.sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: linear-gradient(180deg, #0f172a, #1e293b);
+    color: #fff;
+    padding: 20px;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
+}
+
+/* title */
+.sidebar-title {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* menu */
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+}
+
+.menu-group {
+    margin: 15px 0 10px;
+    font-size: 14px;
+    color: #94a3b8;
+}
+
+/* item */
+.menu-item {
+    display: block;
+    padding: 10px;
+    border-radius: 8px;
+    color: #fff;
+    text-decoration: none;
+    margin-bottom: 8px;
+    transition: 0.3s;
+}
+
+/* hover */
+.menu-item:hover {
+    background: #1e293b;
+}
+
+/* active */
+.menu-item.active {
+    background: linear-gradient(90deg, #2563eb, #4f46e5);
+}
 
 /* input + select */
 .search-a25 input,
