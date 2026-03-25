@@ -39,7 +39,7 @@ export const createBooking = async (req, res) => {
       checkIn,
       checkOut,
       totalPrice,
-        status: "pending",
+      status: "pending",
     });
 
     res.status(201).json({

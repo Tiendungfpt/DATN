@@ -1,114 +1,59 @@
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-export default function Payment() {
-    const { id } = useParams();
-    const navigate = useNavigate();
+function Payment() {
+    const { bookingId } = useParams();
 
     const [booking, setBooking] = useState(null);
-    const [paymentMethod, setPaymentMethod] = useState("cash");
-    const [loading, setLoading] = useState(false);
 
-    // load booking info
     useEffect(() => {
-        const fetchBooking = async () => {
-            try {
-                const res = await axios.get(
-                    `http://localhost:5000/api/bookings/${id}`
-                );
+        axios
+            .get(`http://localhost:3000/api/bookings/${bookingId}`)
+            .then((res) => {
                 setBooking(res.data);
-            } catch (err) {
-                console.log(err);
-            }
-        };
+            })
+            .catch((err) => {
+                console.error("Lỗi load booking:", err);
+            });
+    }, [bookingId]);
 
-        fetchBooking();
-    }, [id]);
-
-    // PAYMENT
-    const handlePayment = async () => {
-        try {
-            setLoading(true);
-
-            const res = await axios.put(
-                `http://localhost:5000/api/bookings/payment/${id}`,
-                {
-                    paymentMethod,
-                }
-            );
-
-            alert(res.data.message);
-
-            navigate("/my-bookings");
-        } catch (err) {
-            alert(err.response?.data?.message || "Payment failed");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (!booking) return <h2>Loading...</h2>;
+    if (!booking) return <h2>Đang tải thanh toán...</h2>;
 
     return (
-        <div className="payment-page">
-            <h1>Thanh toán đặt phòng</h1>
+        <div style={{ maxWidth: "800px", margin: "40px auto" }}>
+            <h1>Thanh toán</h1>
 
-            {/* BOOKING INFO */}
-            <div className="payment-card">
-                <h3>Thông tin đặt phòng</h3>
+            <h2>{booking.roomId?.name}</h2>
 
-                <p><b>Khách:</b> {booking.fullName}</p>
-                <p><b>Phòng:</b> {booking.room?.name}</p>
-                <p><b>Check-in:</b> {booking.checkIn}</p>
-                <p><b>Check-out:</b> {booking.checkOut}</p>
+            <p>
+                Ngày nhận: {booking.checkIn}
+            </p>
 
-                <h2>Tổng tiền: ${booking.totalPrice}</h2>
-            </div>
+            <p>
+                Ngày trả: {booking.checkOut}
+            </p>
 
-            {/* PAYMENT METHOD */}
-            <div className="payment-method">
-                <h3>Chọn phương thức thanh toán</h3>
+            <h3>
+                Tổng tiền:{" "}
+                {booking.total?.toLocaleString("vi-VN")} đ
+            </h3>
 
-                <label>
-                    <input
-                        type="radio"
-                        value="cash"
-                        checked={paymentMethod === "cash"}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                    />
-                    Thanh toán khi nhận phòng
-                </label>
-
-                <label>
-                    <input
-                        type="radio"
-                        value="banking"
-                        checked={paymentMethod === "banking"}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                    />
-                    Chuyển khoản ngân hàng
-                </label>
-
-                <label>
-                    <input
-                        type="radio"
-                        value="momo"
-                        checked={paymentMethod === "momo"}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                    />
-                    Ví MoMo
-                </label>
-            </div>
-
-            {/* BUTTON */}
             <button
-                className="pay-btn"
-                disabled={loading}
-                onClick={handlePayment}
+                style={{
+                    background: "#28a745",
+                    color: "#fff",
+                    padding: "10px 20px",
+                    border: "none",
+                    borderRadius: "5px",
+                    cursor: "pointer",
+                }}
+                onClick={() => alert("Thanh toán thành công 🎉")}
             >
-                {loading ? "Đang xử lý..." : "Thanh toán ngay"}
+                Xác nhận thanh toán
             </button>
         </div>
     );
 }
+
+export default Payment;

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { createBooking } from "../services/bookingApi";
-import "./style/Booking.css";
+import "./Style/Booking.css";
 
 function Booking() {
     const { roomId } = useParams();
@@ -13,8 +13,10 @@ function Booking() {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
 
+    const user = JSON.parse(localStorage.getItem("user"));
+
     const [form, setForm] = useState({
-        userId: "USER_DEMO", // sau này lấy từ login
+        userId: user?._id,
         roomId: roomId,
         checkIn: "",
         checkOut: "",
