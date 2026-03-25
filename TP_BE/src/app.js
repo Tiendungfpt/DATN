@@ -17,9 +17,15 @@ app.use(express.json());
 
 // connect MongoDB
 mongoose
+  //.connect(
+  //"mongodb+srv://thinhphathotel:A12345678@cluster0.jv2l8lz.mongodb.net/hotel?retryWrites=true&w=majority"
+  //)
+  //.then(() => console.log("✅ Connected to MongoDB Atlas"))
+  //.catch((err) => console.error("❌ MongoDB error:", err));
   .connect("mongodb://localhost:27017/thinhphathotel")
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("Could not connect to MongoDB:", err));
+
 
 // routes
 app.use("/api/posts", postRouter);

@@ -18,6 +18,9 @@ import RoomsEdit from "./admin/pages/RoomEdit";
 // ✅ dùng code từ branch login
 import Register from "./auth/register";
 import Login from "./auth/login";
+import RoomsList from "./pages/RoomList";
+import RoomDetail from "./pages/RoomDetail";
+import Payment from "./pages/Payment";
 
 function Layout() {
     const location = useLocation();
@@ -36,6 +39,9 @@ function Layout() {
                 <Route path="/lien-he" element={<Contact />} />
                 <Route path="/booking/:roomId" element={<Booking />} />
                 <Route path="/booking-list" element={<BookingList />} />
+                <Route path="/phong/:id" element={<RoomDetail />} />
+                <Route path="/khach-san/:id" element={<RoomsList />} />
+                <Route path="/payment/:bookingId" element={<Payment />} />
 
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="rooms" element={<RoomList />} />

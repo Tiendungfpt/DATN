@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import {useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "../components/User.css";
 
 
@@ -29,7 +29,7 @@ export default function AdminUsers() {
       });
 
       const data = await res.json();
-
+      console.log("DATA:", data);
       if (!res.ok) {
         console.log("API lỗi:", data);
         return;
