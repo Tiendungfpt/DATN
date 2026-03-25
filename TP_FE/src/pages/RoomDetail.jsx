@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import "./Style/Roomdetail.css"; // nhớ đúng path
+import "./style/Roomdetail.css";
 
 function RoomDetail() {
     const { id } = useParams();
