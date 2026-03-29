@@ -4,6 +4,7 @@ import axios from "axios";
 import "../admin/components/List.css";
 import "./style/RoomsPublic.css";
 import { addDaysLocal, localISODate } from "../utils/dateLocal";
+import { PUBLIC_ROOM_TYPES, getRoomTypeLabel } from "../data/roomTypes";
 
 const API = "http://localhost:3000/api";
 
@@ -90,6 +91,16 @@ function RoomsList() {
   const checkOut =
     searchParams.get("checkOut") || form.checkOut || tomorrowStr();
 
+  const goToRoomDetail = (roomId) => {
+    const q = new URLSearchParams({
+      checkIn,
+      checkOut,
+      adults: searchParams.get("adults") || form.adults || "2",
+      children: searchParams.get("children") || form.children || "0",
+    });
+    navigate(`/phong/${roomId}?${q.toString()}`);
+  };
+
   return (
     <div className="rooms-booking-page">
       <aside className="rooms-booking-sidebar">
@@ -161,9 +172,11 @@ function RoomsList() {
               }
             >
               <option value="">Tất cả</option>
-              <option value="standard">Tiêu chuẩn</option>
-              <option value="deluxe">Deluxe</option>
-              <option value="suite">Suite</option>
+              {PUBLIC_ROOM_TYPES.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.name}
+                </option>
+              ))}
             </select>
           </div>
           <button type="submit" className="rooms-booking-apply">
@@ -207,9 +220,11 @@ function RoomsList() {
             </p>
             {searchParams.get("roomType") ? (
               <p>
-                Bạn đang lọc theo loại <strong>{searchParams.get("roomType")}</strong>.
-                Chỉ có &quot;Phòng Deluxe&quot; thì chọn <strong>Tất cả</strong> ở
-                cột trái rồi nhấn <strong>Áp dụng</strong>.
+                Bạn đang lọc theo{" "}
+                <strong>{getRoomTypeLabel(searchParams.get("roomType"))}</strong>.
+                Thử chọn <strong>Tất cả</strong> ở cột trái rồi nhấn{" "}
+                <strong>Áp dụng</strong>, hoặc kiểm tra tên phòng trong admin có
+                chứa từ khóa đúng loại (để lọc khớp).
               </p>
             ) : null}
             <p className="rooms-booking-hint">
@@ -266,7 +281,7 @@ function RoomsList() {
                     <button
                       type="button"
                       className="btn-edit"
-                      onClick={() => navigate(`/phong/${room._id}`)}
+                      onClick={() => goToRoomDetail(room._id)}
                     >
                       Chi tiết &amp; đặt
                     </button>

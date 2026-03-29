@@ -76,3 +76,81 @@
 .booking-right button:hover {
     background: #005999;
 }
+
+.booking-right button:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+}
+
+/* Khối chọn số phòng (0 phòng, 1 phòng, …) */
+.booking-room-qty-box {
+    margin-top: 4px;
+    padding-top: 8px;
+}
+
+.booking-room-qty-label {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+    color: #212529;
+    margin-bottom: 8px;
+}
+
+.booking-select-room-wrap {
+    position: relative;
+}
+
+.booking-select-room {
+    width: 100%;
+    padding: 12px 14px;
+    margin: 0 0 10px;
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    font-size: 15px;
+    color: #212529;
+    cursor: pointer;
+    font-family: inherit;
+    appearance: auto;
+    min-height: 46px;
+    box-sizing: border-box;
+}
+
+.booking-select-room:disabled {
+    cursor: not-allowed;
+    background: #f8f9fa;
+    color: #868e96;
+}
+
+.booking-qty-hint {
+    font-size: 12px;
+    color: #6c757d;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.booking-avail-loading {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 8px 0 0;
+}
+
+.booking-avail-info {
+    font-size: 0.95rem;
+    color: #334155;
+    margin: 8px 0 4px;
+    line-height: 1.45;
+}
+
+.booking-avail-error {
+    font-size: 0.95rem;
+    color: #b91c1c;
+    margin: 8px 0 0;
+}
+
+.booking-avail-zero {
+    font-size: 0.95rem;
+    color: #b91c1c;
+    margin: 8px 0 10px;
+    font-weight: 600;
+}

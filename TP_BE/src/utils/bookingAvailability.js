@@ -5,8 +5,25 @@ import Booking from "../models/Booking.js";
  * Dùng nửa mở [checkIn, checkOut) tương đương với query Mongo.
  */
 export function parseStayDates(checkIn, checkOut) {
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
+  const a = String(checkIn ?? "").trim();
+  const b = String(checkOut ?? "").trim();
+  if (!a || !b) {
+    return { error: "Ngày không hợp lệ" };
+  }
+
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+  let start;
+  let end;
+  if (isoDate.test(a) && isoDate.test(b)) {
+    const [y1, m1, d1] = a.split("-").map(Number);
+    const [y2, m2, d2] = b.split("-").map(Number);
+    start = new Date(Date.UTC(y1, m1 - 1, d1, 12, 0, 0));
+    end = new Date(Date.UTC(y2, m2 - 1, d2, 12, 0, 0));
+  } else {
+    start = new Date(a);
+    end = new Date(b);
+  }
+
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     return { error: "Ngày không hợp lệ" };
   }

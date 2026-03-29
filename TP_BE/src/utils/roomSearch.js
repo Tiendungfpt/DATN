@@ -1,8 +1,17 @@
-/** Lọc theo loại phòng (khớp tên với từ khóa). */
+/**
+ * Lọc theo loại phòng (khớp tên phòng trong DB với từ khóa).
+ * key khớp query ?roomType=... từ frontend (PUBLIC_ROOM_TYPES).
+ */
 export const ROOM_TYPE_KEYWORDS = {
+  "tieu-chuan": ["tiêu chuẩn", "tieu chuan", "standard", "bình dân", "cơ bản"],
+  "cao-cap-2-don": ["cao cấp-2", "2 giường đơn", "hai giường đơn"],
+  "cao-cap-queen": ["cao cấp-1", "1 giường queen", "giường queen", "queen"],
+  "sang-trong": ["sang trọng", "sang trong", "luxury"],
+  "family-suite": ["family suite"],
+  /** Tương thích bookmark cũ */
   standard: ["tiêu chuẩn", "standard", "bình dân", "cơ bản"],
   deluxe: ["deluxe", "vip"],
-  suite: ["suite", "cao cấp", "presidential"],
+  suite: ["suite", "presidential"],
 };
 
 /** Parse chuỗi capacity cũ nếu document chưa có maxGuests. */

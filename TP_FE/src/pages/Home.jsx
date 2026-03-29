@@ -2,37 +2,11 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import { addDaysLocal, localISODate } from "../utils/dateLocal";
+import { PUBLIC_ROOM_TYPES } from "../data/roomTypes";
 import "./style/Home.css";
 
 const today = localISODate();
 const tomorrow = addDaysLocal(1);
-
-const ROOM_TYPES = [
-  {
-    key: "standard",
-    name: "Phòng tiêu chuẩn",
-    price: 520000,
-    image:
-      "https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=900&q=80",
-    desc: "Không gian gọn gàng, đầy đủ tiện nghi cơ bản cho công tác và nghỉ ngắn ngày.",
-  },
-  {
-    key: "deluxe",
-    name: "Phòng Deluxe",
-    price: 720000,
-    image:
-      "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=900&q=80",
-    desc: "Thiết kế hiện đại, cửa sổ sáng — phù hợp cặp đôi và khách công tác.",
-  },
-  {
-    key: "suite",
-    name: "Phòng Suite",
-    price: 1150000,
-    image:
-      "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=900&q=80",
-    desc: "Không gian rộng, khu vực tiếp khách — trải nghiệm nghỉ dưỡng cao cấp.",
-  },
-];
 
 export default function Home() {
   const [search, setSearch] = useState({
@@ -74,7 +48,7 @@ export default function Home() {
         </p>
 
         <div className="home-rooms-grid">
-          {ROOM_TYPES.map((room) => (
+          {PUBLIC_ROOM_TYPES.map((room) => (
             <article key={room.key} className="home-room-card">
               <div className="home-room-card-img">
                 <img src={room.image} alt={room.name} loading="lazy" />
@@ -88,7 +62,7 @@ export default function Home() {
                 <div className="home-room-card-footer">
                   <span className="home-room-card-tag">Thịnh Phát</span>
                   <Link
-                    to={`/dat-phong?${listQuery}&roomType=${room.key}`}
+                    to={`/loai-phong/${room.key}?${listQuery}`}
                     className="home-room-card-link"
                   >
                     Xem chi tiết

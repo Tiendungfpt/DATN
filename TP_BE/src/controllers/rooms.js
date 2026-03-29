@@ -9,6 +9,12 @@ import {
   roomMatchesType,
 } from "../utils/roomSearch.js";
 
+/** Express có thể trả query dạng string hoặc mảng (trùng key). */
+function firstQuery(val) {
+  if (val == null) return "";
+  return String(Array.isArray(val) ? val[0] : val).trim();
+}
+
 function applyGuestAndTypeFilters(rooms, query) {
   const { adults, children, roomType } = query;
   let list = rooms;
@@ -55,6 +61,70 @@ export async function getAvailableRooms(req, res) {
     }
 
     return res.json(rooms);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+
+/**
+ * GET /api/rooms/availability/book
+ * Query: roomId, checkIn + checkOut (hoặc checkInDate + checkOutDate)
+ * Các phòng cùng tên với phòng tham chiếu, còn trống trong khoảng ngày (đặt nhiều phòng cùng loại).
+ */
+export async function getBookingAvailabilityByRoom(req, res) {
+  try {
+    const roomId = firstQuery(req.query.roomId);
+    const checkIn =
+      firstQuery(req.query.checkInDate) ||
+      firstQuery(req.query.checkIn) ||
+      firstQuery(req.query.checkin);
+    const checkOut =
+      firstQuery(req.query.checkOutDate) ||
+      firstQuery(req.query.checkOut) ||
+      firstQuery(req.query.checkout);
+
+    if (!roomId || !mongoose.isValidObjectId(roomId)) {
+      return res.status(400).json({ message: "Thiếu roomId hợp lệ" });
+    }
+    if (!checkIn || !checkOut) {
+      return res.status(400).json({
+        message: "Cần checkIn và checkOut (hoặc checkInDate, checkOutDate)",
+      });
+    }
+
+    const parsed = parseStayDates(checkIn, checkOut);
+    if (parsed.error) {
+      return res.status(400).json({ message: parsed.error });
+    }
+    const { start, end } = parsed;
+
+    const ref = await Rooms.findById(roomId).lean();
+    if (!ref) {
+      return res.status(404).json({ message: "Không tìm thấy phòng" });
+    }
+
+    const sameNameRooms = await Rooms.find({
+      name: ref.name,
+      status: "available",
+    }).lean();
+
+    const ids = sameNameRooms.map((r) => r._id);
+    if (!ids.length) {
+      return res.json({
+        roomName: ref.name,
+        availableCount: 0,
+        availableRoomIds: [],
+      });
+    }
+
+    const busy = await getBusyRoomIds(ids, start, end);
+    const free = sameNameRooms.filter((r) => !busy.has(String(r._id)));
+
+    return res.json({
+      roomName: ref.name,
+      availableCount: free.length,
+      availableRoomIds: free.map((r) => String(r._id)),
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

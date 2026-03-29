@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "./style/Roomdetail.css";
@@ -6,6 +6,7 @@ import "./style/Roomdetail.css";
 function RoomDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
     const [room, setRoom] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -89,7 +90,15 @@ function RoomDetail() {
 
                 <button
                     className="btn-book"
-                    onClick={() => navigate(`/booking/${room._id}`)}
+                    type="button"
+                    onClick={() => {
+                        const q = searchParams.toString();
+                        navigate(
+                            q
+                                ? `/booking/${room._id}?${q}`
+                                : `/booking/${room._id}`
+                        );
+                    }}
                 >
                     🛎️ Đặt phòng
                 </button>
