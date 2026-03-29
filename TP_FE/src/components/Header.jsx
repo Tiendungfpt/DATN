@@ -21,6 +21,7 @@ export default function Header() {
     // logout (nhánh main)
     const handleLogout = () => {
         localStorage.removeItem("token");
+        localStorage.removeItem("user");
         navigate("/login");
         window.location.reload();
     };
@@ -47,7 +48,7 @@ export default function Header() {
 
                     <ul className="menu-a25">
                         <li><NavLink to="/">Trang chủ</NavLink></li>
-                        <li><NavLink to="/khach-san">Khách sạn</NavLink></li>
+                        <li><NavLink to="/dat-phong">Đặt phòng</NavLink></li>
                         <li><NavLink to="/lien-he">Liên hệ</NavLink></li>
 
                         {!token ? (
@@ -56,11 +57,14 @@ export default function Header() {
                                 <li><NavLink to="/login">Đăng nhập</NavLink></li>
                             </>
                         ) : (
-                            <li>
-                                <button onClick={handleLogout}>
-                                    Đăng xuất
-                                </button>
-                            </li>
+                            <>
+                                <li><NavLink to="/booking-list">Đặt phòng của tôi</NavLink></li>
+                                <li>
+                                    <button type="button" onClick={handleLogout}>
+                                        Đăng xuất
+                                    </button>
+                                </li>
+                            </>
                         )}
                     </ul>
                 </div>

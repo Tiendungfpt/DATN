@@ -50,7 +50,8 @@ function RoomDetail() {
                     <h2>{room.name}</h2>
 
                     <p className="room-size">
-                        🛏 {room.capacity} người
+                        🛏 Tối đa {room.maxGuests} người
+                        {room.capacity ? ` · ${room.capacity}` : ""}
                     </p>
 
                     <p className="desc">{room.description}</p>

@@ -1,50 +1,26 @@
 import mongoose from "mongoose";
 
-const roomsSchema = new mongoose.Schema(
-{
-  name: {
-    type: String,
-    required: true
+/** Một khách sạn duy nhất — không có hotelId */
+const roomSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    image: { type: String, required: true },
+    description: { type: String },
+    price: { type: Number, required: true, min: 0 },
+    maxGuests: { type: Number, required: true, min: 1 },
+    capacity: { type: String },
+    /** Không dùng "booked" để khóa phòng — chỉ trạng thái vận hành */
+    status: {
+      type: String,
+      enum: ["available", "maintenance"],
+      default: "available",
+    },
   },
-
-  image: {
-    type: String,
-    required: true
-  },
-
-  description: {
-    type: String
-  },
-
-  price: {
-    type: Number,
-    required: true
-  },
-
-  capacity: {
-    type: String,
-    required: true
-  },
-
-  status: {
-    type: String,
-    enum: ["available", "booked"],
-    default: "available"
-  },
-
-  hotelId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Hotel",
-    required: true
+  {
+    timestamps: true,
+    versionKey: false,
+    strictPopulate: false,
   }
-
-},
-{
-  timestamps: true,
-  versionKey: false
-}
 );
 
-const Rooms = mongoose.model("Room", roomsSchema);
-
-export default Rooms;
+export default mongoose.model("Room", roomSchema);

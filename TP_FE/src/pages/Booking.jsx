@@ -5,187 +5,182 @@ import { createBooking } from "../services/bookingApi";
 import "./style/Booking.css";
 
 function Booking() {
-    const { roomId } = useParams();
-    const navigate = useNavigate();
+  const { roomId } = useParams();
+  const navigate = useNavigate();
 
-    const [room, setRoom] = useState(null);
-    const [nights, setNights] = useState(0);
-    const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(false);
+  const [room, setRoom] = useState(null);
+  const [nights, setNights] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-    const user = JSON.parse(localStorage.getItem("user"));
+  const [form, setForm] = useState({
+    checkIn: "",
+    checkOut: "",
+  });
 
-    const [form, setForm] = useState({
-        userId: user?._id,
-        roomId: roomId,
-        checkIn: "",
-        checkOut: "",
-    });
+  useEffect(() => {
+    if (!localStorage.getItem("token")) {
+      alert("Vui lòng đăng nhập để đặt phòng");
+      navigate("/login", { state: { from: `/booking/${roomId}` } });
+    }
+  }, [navigate, roomId]);
 
-    // =====================
-    // LOAD ROOM INFO
-    // =====================
-    useEffect(() => {
-        axios
-            .get(`http://localhost:3000/api/rooms/${roomId}`)
-            .then((res) => setRoom(res.data))
-            .catch(console.log);
-    }, [roomId]);
+  useEffect(() => {
+    axios
+      .get(`http://localhost:3000/api/rooms/${roomId}`)
+      .then((res) => setRoom(res.data))
+      .catch(console.log);
+  }, [roomId]);
 
-    // =====================
-    // CALCULATE NIGHTS + TOTAL
-    // =====================
-    useEffect(() => {
-        if (form.checkIn && form.checkOut && room) {
-            const inDate = new Date(form.checkIn);
-            const outDate = new Date(form.checkOut);
+  useEffect(() => {
+    if (form.checkIn && form.checkOut && room) {
+      const inDate = new Date(form.checkIn);
+      const outDate = new Date(form.checkOut);
 
-            const diff =
-                (outDate - inDate) / (1000 * 60 * 60 * 24);
+      const diff = (outDate - inDate) / (1000 * 60 * 60 * 24);
 
-            if (diff > 0) {
-                setNights(diff);
-                setTotal(diff * room.price);
-            } else {
-                setNights(0);
-                setTotal(0);
-            }
-        }
-    }, [form.checkIn, form.checkOut, room]);
+      if (diff > 0) {
+        setNights(diff);
+        setTotal(diff * room.price);
+      } else {
+        setNights(0);
+        setTotal(0);
+      }
+    }
+  }, [form.checkIn, form.checkOut, room]);
 
-    // =====================
-    // HANDLE CHANGE + VALIDATE DATE
-    // =====================
-    const handleChange = (e) => {
-        const { name, value } = e.target;
+  const handleChange = (e) => {
+    const { name, value } = e.target;
 
-        const newForm = {
-            ...form,
-            [name]: value,
-        };
-
-        if (newForm.checkIn && newForm.checkOut) {
-            const inDate = new Date(newForm.checkIn);
-            const outDate = new Date(newForm.checkOut);
-
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            if (inDate < today) {
-                alert("Không thể chọn ngày trong quá khứ");
-                return;
-            }
-
-            if (outDate <= inDate) {
-                alert("Ngày trả phòng phải sau ngày nhận phòng");
-                return;
-            }
-        }
-
-        setForm(newForm);
+    const newForm = {
+      ...form,
+      [name]: value,
     };
 
-    // =====================
-    // SUBMIT BOOKING → GO PAYMENT
-    // =====================
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    if (newForm.checkIn && newForm.checkOut) {
+      const inDate = new Date(newForm.checkIn);
+      const outDate = new Date(newForm.checkOut);
 
-        if (!total) {
-            alert("Vui lòng chọn ngày hợp lệ");
-            return;
-        }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-        try {
-            setLoading(true);
+      if (inDate < today) {
+        alert("Không thể chọn ngày trong quá khứ");
+        return;
+      }
 
-            const res = await createBooking(form);
+      if (outDate <= inDate) {
+        alert("Ngày trả phòng phải sau ngày nhận phòng");
+        return;
+      }
+    }
 
-            alert("✅ Đặt phòng thành công");
+    setForm(newForm);
+  };
 
-            const bookingId = res.data.booking._id;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-            // chuyển sang trang thanh toán
-            navigate(`/payment/${bookingId}`);
+    if (!localStorage.getItem("token")) {
+      navigate("/login");
+      return;
+    }
 
-        } catch (err) {
-            alert(err.response?.data?.message || "Đặt phòng thất bại");
-        } finally {
-            setLoading(false);
-        }
-    };
+    if (!total) {
+      alert("Vui lòng chọn ngày hợp lệ");
+      return;
+    }
 
-    if (!room) return <h2>Đang tải...</h2>;
+    try {
+      setLoading(true);
 
-    const today = new Date().toISOString().split("T")[0];
+      const res = await createBooking({
+        roomIds: [roomId],
+        checkInDate: form.checkIn,
+        checkOutDate: form.checkOut,
+      });
 
-    return (
-        <div className="booking-wrapper">
+      alert("✅ Đặt phòng thành công");
 
-            {/* LEFT */}
-            <div className="booking-left">
-                <img
-                    src={
-                        room.image?.startsWith("http")
-                            ? room.image
-                            : `http://localhost:3000/uploads/${room.image}`
-                    }
-                    alt={room.name}
-                />
+      const bookingId = res.data.booking._id;
+      navigate(`/payment/${bookingId}`);
+    } catch (err) {
+      alert(err.response?.data?.message || "Đặt phòng thất bại");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                <h2>{room.name}</h2>
-                <p>{room.description}</p>
+  if (!room) return <h2>Đang tải...</h2>;
 
-                <h3 className="price">
-                    {room.price.toLocaleString("vi-VN")} đ / đêm
-                </h3>
-            </div>
+  const today = new Date().toISOString().split("T")[0];
 
-            {/* RIGHT */}
-            <form className="booking-right" onSubmit={handleSubmit}>
-                <h2>Thông tin đặt phòng</h2>
+  return (
+    <div className="booking-wrapper">
+      <div className="booking-left">
+        <img
+          src={
+            room.image?.startsWith("http")
+              ? room.image
+              : `http://localhost:3000/uploads/${room.image}`
+          }
+          alt={room.name}
+        />
 
-                <label>Nhận phòng</label>
-                <input
-                    type="date"
-                    name="checkIn"
-                    min={today}
-                    required
-                    value={form.checkIn}
-                    onChange={handleChange}
-                />
+        <h2>{room.name}</h2>
+        <p>{room.description}</p>
 
-                <label>Trả phòng</label>
-                <input
-                    type="date"
-                    name="checkOut"
-                    min={form.checkIn || today}
-                    required
-                    value={form.checkOut}
-                    onChange={handleChange}
-                />
+        <h3 className="price">
+          {room.price.toLocaleString("vi-VN")} đ / đêm
+        </h3>
+      </div>
 
-                <div className="summary">
-                    <p>Số đêm: <b>{nights}</b></p>
-                    <p>
-                        Giá / đêm:{" "}
-                        {room.price.toLocaleString("vi-VN")} đ
-                    </p>
+      <form className="booking-right" onSubmit={handleSubmit}>
+        <h2>Thông tin đặt phòng</h2>
 
-                    <h3>
-                        Tổng tiền:
-                        <span>
-                            {total.toLocaleString("vi-VN")} đ
-                        </span>
-                    </h3>
-                </div>
+        <label>Nhận phòng</label>
+        <input
+          type="date"
+          name="checkIn"
+          min={today}
+          required
+          value={form.checkIn}
+          onChange={handleChange}
+        />
 
-                <button type="submit" disabled={!total || loading}>
-                    {loading ? "Đang xử lý..." : "Thanh toán ngay"}
-                </button>
-            </form>
+        <label>Trả phòng</label>
+        <input
+          type="date"
+          name="checkOut"
+          min={form.checkIn || today}
+          required
+          value={form.checkOut}
+          onChange={handleChange}
+        />
+
+        <div className="summary">
+          <p>
+            Số đêm: <b>{nights}</b>
+          </p>
+          <p>
+            Giá / đêm: {room.price.toLocaleString("vi-VN")} đ
+          </p>
+
+          <h3>
+            Tổng tiền (ước tính):
+            <span>{total.toLocaleString("vi-VN")} đ</span>
+          </h3>
+          <p className="booking-hint">
+            Giá cuối cùng do hệ thống tính khi xác nhận đặt phòng.
+          </p>
         </div>
-    );
+
+        <button type="submit" disabled={!total || loading}>
+          {loading ? "Đang xử lý..." : "Thanh toán ngay"}
+        </button>
+      </form>
+    </div>
+  );
 }
 
 export default Booking;

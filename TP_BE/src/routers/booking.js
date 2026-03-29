@@ -1,30 +1,28 @@
-import {Router} from "express";
+import { Router } from "express";
+import { checkAuth } from "../middlewares/checkAuth.js";
+import { checkAdmin } from "../middlewares/checkAdmin.js";
 import {
-createBooking,
-getBookings,
-getBookingById,
-updateBooking,
-cancelBooking,
-deleteBooking,
-paymentBooking
-} from "../controllers/booking";
+  createBooking,
+  getMyBookings,
+  getAllBookingsAdmin,
+  getBookingById,
+  updateBooking,
+  cancelBooking,
+  deleteBooking,
+  paymentBooking,
+} from "../controllers/booking.js";
 
 const bookingRouter = Router();
 
-bookingRouter.get("/",getBookings);
+bookingRouter.post("/", checkAuth, createBooking);
+bookingRouter.get("/user", checkAuth, getMyBookings);
+bookingRouter.get("/", checkAuth, checkAdmin, getAllBookingsAdmin);
 
-bookingRouter.post("/",createBooking);
-//Router thanh toán
-bookingRouter.put("/payment/:id",paymentBooking);
+bookingRouter.put("/payment/:id", checkAuth, paymentBooking);
+bookingRouter.put("/cancel/:id", checkAuth, cancelBooking);
 
-bookingRouter.put("/:id",updateBooking);
-
-bookingRouter.put("/cancel/:id",cancelBooking);
-
-bookingRouter.get("/:id",getBookingById);
-
-bookingRouter.delete("/:id",deleteBooking);
-
-
+bookingRouter.get("/:id", checkAuth, getBookingById);
+bookingRouter.put("/:id", checkAuth, checkAdmin, updateBooking);
+bookingRouter.delete("/:id", checkAuth, checkAdmin, deleteBooking);
 
 export default bookingRouter;

@@ -4,13 +4,13 @@ export default function Footer() {
             <div className="footer-inner-a25">
                 <div>
                     <h4>Thịnh Phát Hotel</h4>
-                    <p>Chuỗi khách sạn hàng đầu Việt Nam</p>
+                    <p>Khách sạn Thịnh Phát — đặt phòng trực tuyến</p>
                 </div>
 
                 <div>
                     <h4>Liên hệ</h4>
                     <p>Hotline: 1900 6925</p>
-                    <p>Email: info@a25hotel.com</p>
+                    <p>Email: info@thinhphathotel.com</p>
                 </div>
             </div>
 

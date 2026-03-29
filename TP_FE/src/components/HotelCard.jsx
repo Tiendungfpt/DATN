@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function HotelCard({ hotel }) {
     return (
-        <Link to={`/khach-san/${hotel.id}`} className="card-a25">
+        <Link to="/dat-phong" className="card-a25">
             <img src={hotel.image} />
             <div className="info">
                 <h4>{hotel.name}</h4>

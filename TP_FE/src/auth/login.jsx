@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || "/";
 
   const [form, setForm] = useState({
     email: "",
@@ -33,7 +35,10 @@ export default function Login() {
       if (res.ok) {
         alert("Đăng nhập thành công!");
         localStorage.setItem("token", data.token);
-        navigate("/");
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user));
+        }
+        navigate(from, { replace: true });
       } else {
         alert(data.message || "Đăng nhập thất bại");
       }
@@ -66,7 +71,7 @@ export default function Login() {
       </form>
 
       <p>
-        Chưa có tài khoản? <Link to="/">Đăng ký</Link>
+        Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
       </p>
     </div>
   );
