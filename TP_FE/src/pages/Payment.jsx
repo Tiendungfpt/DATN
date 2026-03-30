@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getBookingById, payBooking } from "../services/bookingApi";
-import "./style/Payment.css";
+import "./Style/Payment.css";
 
 function formatDate(d) {
   if (!d) return "—";

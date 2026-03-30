@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "khoa";
 
+// REGISTER
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -11,18 +12,23 @@ export const registerUser = async (req, res) => {
     if (!name || !email) {
       return res.status(400).json({ message: "Thiếu name hoặc email" });
     }
+
     if (!password || String(password).length < 6) {
       return res.status(400).json({
         message: "Mật khẩu tối thiểu 6 ký tự",
       });
     }
 
-    const existed = await User.findOne({ email: String(email).trim() });
+    const existed = await User.findOne({
+      email: String(email).trim().toLowerCase(),
+    });
+
     if (existed) {
       return res.status(409).json({ message: "Email đã được đăng ký" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUser = await User.create({
       name: name.trim(),
       email: String(email).trim().toLowerCase(),
@@ -32,18 +38,20 @@ export const registerUser = async (req, res) => {
 
     const userObj = newUser.toObject();
     delete userObj.password;
+
     res.status(201).json(userObj);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// UPDATE ROLE
 export const updateRole = async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { role: req.body.role },
-      { new: true }
+      { new: true },
     ).select("-password");
 
     res.json({ message: "Cập nhật role thành công", user });
@@ -52,35 +60,56 @@ export const updateRole = async (req, res) => {
   }
 };
 
+// LOGIN (đã merge conflict + tối ưu)
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
-      return res.status(400).json({ message: "Thiếu email hoặc mật khẩu" });
+      return res.status(400).json({
+        message: "Vui lòng nhập email và mật khẩu",
+      });
     }
 
     const user = await User.findOne({
       email: String(email).trim().toLowerCase(),
-    });
+    }).select("+password");
+
     if (!user) {
-      return res.status(401).json({ message: "Sai email hoặc mật khẩu" });
+      return res.status(401).json({
+        message: "Email hoặc mật khẩu không đúng",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
-      return res.status(401).json({ message: "Sai email hoặc mật khẩu" });
+      return res.status(401).json({
+        message: "Email hoặc mật khẩu không đúng",
+      });
     }
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
-    const safe = user.toObject();
-    delete safe.password;
+    // Tạo token (gộp ưu điểm của cả 2 version)
+    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
-    res.json({ user: safe, token });
+    const safeUser = user.toObject();
+    delete safeUser.password;
+
+    res.json({
+      success: true,
+      message: "Đăng nhập thành công",
+      user: safeUser,
+      token,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
+// GET PROFILE
 export const getProfileUser = (req, res) => {
   res.json({ userId: req.userId });
 };

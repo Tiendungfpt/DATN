@@ -9,7 +9,7 @@ import {
 import axios from "axios";
 import { PUBLIC_ROOM_TYPES } from "../data/roomTypes";
 import { addDaysLocal, localISODate } from "../utils/dateLocal";
-import "./style/RoomTypeDetail.css";
+import "./Style/RoomTypeDetail.css";
 
 const API = "http://localhost:3000/api";
 

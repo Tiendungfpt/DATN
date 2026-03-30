@@ -1,87 +1,48 @@
-import { useNavigate } from "react-router-dom";
-import { addDaysLocal, localISODate } from "../utils/dateLocal";
-
-export default function SearchBar({ search, setSearch }) {
-  const navigate = useNavigate();
-  const today = localISODate();
-  const tomorrow = addDaysLocal(1);
-
-  const checkIn = search.checkIn || today;
-  const checkOut = search.checkOut || tomorrow;
-
-  const handleChange = (field, value) => {
-    setSearch((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const params = new URLSearchParams({
-      checkIn,
-      checkOut,
-      adults: String(search.adults ?? "2"),
-      children: String(search.children ?? "0"),
-    });
-    navigate(`/dat-phong?${params.toString()}`);
-  };
-
+export default function SearchBar() {
   return (
-    <form className="home-search-card" onSubmit={handleSubmit}>
-      <h2 className="home-search-title">Tìm phòng</h2>
-      <div className="home-search-grid">
-        <div className="home-search-field">
-          <label htmlFor="home-checkin">Ngày nhận phòng</label>
-          <input
-            id="home-checkin"
-            type="date"
-            min={today}
-            value={checkIn}
-            onChange={(e) => handleChange("checkIn", e.target.value)}
-          />
-        </div>
-        <div className="home-search-field">
-          <label htmlFor="home-checkout">Ngày trả phòng</label>
-          <input
-            id="home-checkout"
-            type="date"
-            min={checkIn || today}
-            value={checkOut}
-            onChange={(e) => handleChange("checkOut", e.target.value)}
-          />
-        </div>
-        <div className="home-search-field">
-          <label htmlFor="home-adults">Người lớn</label>
-          <select
-            id="home-adults"
-            value={search.adults ?? "2"}
-            onChange={(e) => handleChange("adults", e.target.value)}
-          >
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <option key={n} value={String(n)}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="home-search-field">
-          <label htmlFor="home-children">Trẻ em</label>
-          <select
-            id="home-children"
-            value={search.children ?? "0"}
-            onChange={(e) => handleChange("children", e.target.value)}
-          >
-            {[0, 1, 2, 3, 4].map((n) => (
-              <option key={n} value={String(n)}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="home-search-action">
-          <button type="submit" className="home-search-btn">
-            Tìm phòng
-          </button>
+    <div className="search-container mt-4">
+      <div className="card shadow-lg border-0 rounded-4 overflow-hidden">
+        <div className="card-body p-4">
+          <div className="row g-3 align-items-end">
+            <div className="col-lg-4">
+              <label className="form-label fw-medium text-muted">
+                Điểm đến
+              </label>
+              <div className="input-group">
+                <span className="input-group-text bg-white border-end-0">
+                  <i className="bi bi-geo-alt"></i>
+                </span>
+                <input
+                  type="text"
+                  className="form-control border-start-0"
+                  placeholder="Bạn muốn đi đâu?"
+                />
+              </div>
+            </div>
+
+            <div className="col-lg-3">
+              <label className="form-label fw-medium text-muted">
+                Nhận phòng
+              </label>
+              <input type="date" className="form-control" />
+            </div>
+
+            <div className="col-lg-3">
+              <label className="form-label fw-medium text-muted">
+                Trả phòng
+              </label>
+              <input type="date" className="form-control" />
+            </div>
+
+            <div className="col-lg-2">
+              <button className="btn btn-primary w-100 py-3 fw-semibold rounded-3">
+                <i className="bi bi-search me-2"></i>
+                Tìm phòng
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </form>
+    </div>
   );
 }

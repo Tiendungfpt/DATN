@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyBookings, cancelBooking } from "../services/bookingApi";
-import "./style/BookingList.css";
+import "./Style/BookingList.css";
 
 function formatDate(d) {
   if (!d) return "—";

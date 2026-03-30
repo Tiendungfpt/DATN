@@ -1,299 +1,244 @@
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
-import "../admin/components/List.css";
-import "./style/RoomsPublic.css";
-import { addDaysLocal, localISODate } from "../utils/dateLocal";
-import { PUBLIC_ROOM_TYPES, getRoomTypeLabel } from "../data/roomTypes";
-
-const API = "http://localhost:3000/api";
-
-function todayStr() {
-  return localISODate();
-}
-function tomorrowStr() {
-  return addDaysLocal(1);
-}
 
 function RoomsList() {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState("");
-  const [form, setForm] = useState({
-    checkIn: searchParams.get("checkIn") || todayStr(),
-    checkOut: searchParams.get("checkOut") || tomorrowStr(),
-    adults: searchParams.get("adults") || "2",
-    children: searchParams.get("children") || "0",
-    roomType: searchParams.get("roomType") || "",
-  });
+    const { id } = useParams(); 
+    const navigate = useNavigate();
 
-  useEffect(() => {
-    setForm({
-      checkIn: searchParams.get("checkIn") || todayStr(),
-      checkOut: searchParams.get("checkOut") || tomorrowStr(),
-      adults: searchParams.get("adults") || "2",
-      children: searchParams.get("children") || "0",
-      roomType: searchParams.get("roomType") || "",
-    });
-  }, [searchParams]);
+    const [rooms, setRooms] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [hotelName, setHotelName] = useState("");
 
-  useEffect(() => {
-    const params = {
-      checkIn: searchParams.get("checkIn") || todayStr(),
-      checkOut: searchParams.get("checkOut") || tomorrowStr(),
-      adults: searchParams.get("adults") || "2",
-      children: searchParams.get("children") || "0",
-    };
-    const rt = searchParams.get("roomType");
-    if (rt) params.roomType = rt;
+    const placeholderImage = "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
+    useEffect(() => {
+        axios
+            .get(`http://localhost:3000/api/rooms/hotel/${id}`)
+            .then((res) => {
+                const data = Array.isArray(res.data) ? res.data : [];
+                setRooms(data);
+                
+                if (data.length > 0 && data[0].hotelId?.name) {
+                    setHotelName(data[0].hotelId.name);
+                }
+            })
+            .catch((err) => {
+                console.error("Error fetching rooms:", err);
+                setRooms([]);
+            })
+            .finally(() => setLoading(false));
+    }, [id]);
 
-    let cancelled = false;
-    setLoading(true);
-    setFetchError("");
-    axios
-      .get(`${API}/rooms/available`, { params })
-      .then((res) => {
-        if (!cancelled) setRooms(Array.isArray(res.data) ? res.data : []);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setRooms([]);
-          const msg =
-            err.response?.data?.message ||
-            err.message ||
-            "Không gọi được API. Hãy chạy backend (port 3000) và thử lại.";
-          setFetchError(msg);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [searchParams]);
+    if (loading) {
+        return <div style={styles.loading}>Đang tải danh sách phòng...</div>;
+    }
 
-  const handleApply = (e) => {
-    e.preventDefault();
-    const next = new URLSearchParams();
-    next.set("checkIn", form.checkIn);
-    next.set("checkOut", form.checkOut);
-    next.set("adults", form.adults);
-    next.set("children", form.children);
-    if (form.roomType) next.set("roomType", form.roomType);
-    setSearchParams(next);
-  };
+    return (
+        <div style={styles.container}>
+            {/* Header */}
+            <div style={styles.header}>
+                <h1 style={styles.title}>
+                    {hotelName ? `Phòng tại ${hotelName}` : "Danh sách phòng"}
+                </h1>
+                <p style={styles.subtitle}>
+                    {rooms.length} phòng • Chọn phòng phù hợp với bạn
+                </p>
+            </div>
 
-  const checkIn =
-    searchParams.get("checkIn") || form.checkIn || todayStr();
-  const checkOut =
-    searchParams.get("checkOut") || form.checkOut || tomorrowStr();
+            {/* Room Grid */}
+            <div style={styles.grid}>
+                {rooms.map((room) => (
+                    <div key={room._id} style={styles.card}>
+                        <div style={styles.imageContainer}>
+                            <img
+                                src={
+                                    room.image?.startsWith("http")
+                                        ? room.image
+                                        : `http://localhost:3000/uploads/${room.image}`
+                                }
+                                alt={room.name}
+                                style={styles.image}
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = placeholderImage;
+                                }}
+                            />
+                            <div style={{
+                                ...styles.statusBadge,
+                                backgroundColor: room.status === "available" ? "#10b981" : "#ef4444"
+                            }}>
+                                {room.status === "available" ? "Còn trống" : "Đã đặt"}
+                            </div>
+                        </div>
 
-  const goToRoomDetail = (roomId) => {
-    const q = new URLSearchParams({
-      checkIn,
-      checkOut,
-      adults: searchParams.get("adults") || form.adults || "2",
-      children: searchParams.get("children") || form.children || "0",
-    });
-    navigate(`/phong/${roomId}?${q.toString()}`);
-  };
+                        <div style={styles.cardContent}>
+                            <h3 style={styles.roomName}>{room.name}</h3>
+                            
+                            <p style={styles.capacity}>
+                                🛏️ {room.capacity} người • {room.size || "35m²"}
+                            </p>
 
-  return (
-    <div className="rooms-booking-page">
-      <aside className="rooms-booking-sidebar">
-        <h2>Tìm phòng</h2>
-        <form onSubmit={handleApply}>
-          <div className="rooms-booking-field">
-            <label htmlFor="rb-checkin">Ngày nhận phòng</label>
-            <input
-              id="rb-checkin"
-              type="date"
-              min={todayStr()}
-              value={form.checkIn}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, checkIn: e.target.value }))
-              }
-            />
-          </div>
-          <div className="rooms-booking-field">
-            <label htmlFor="rb-checkout">Ngày trả phòng</label>
-            <input
-              id="rb-checkout"
-              type="date"
-              min={form.checkIn || todayStr()}
-              value={form.checkOut}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, checkOut: e.target.value }))
-              }
-            />
-          </div>
-          <div className="rooms-booking-field">
-            <label htmlFor="rb-adults">Người lớn</label>
-            <select
-              id="rb-adults"
-              value={form.adults}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, adults: e.target.value }))
-              }
-            >
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <option key={n} value={String(n)}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="rooms-booking-field">
-            <label htmlFor="rb-children">Trẻ em</label>
-            <select
-              id="rb-children"
-              value={form.children}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, children: e.target.value }))
-              }
-            >
-              {[0, 1, 2, 3, 4].map((n) => (
-                <option key={n} value={String(n)}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="rooms-booking-field">
-            <label htmlFor="rb-type">Loại phòng</label>
-            <select
-              id="rb-type"
-              value={form.roomType}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, roomType: e.target.value }))
-              }
-            >
-              <option value="">Tất cả</option>
-              {PUBLIC_ROOM_TYPES.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button type="submit" className="rooms-booking-apply">
-            Áp dụng
-          </button>
-        </form>
-      </aside>
+                            <p style={styles.description}>
+                                {room.description?.substring(0, 120)}...
+                            </p>
 
-      <main className="rooms-booking-main">
-        <h1>Thịnh Phát Hotel</h1>
-        <p className="rooms-booking-meta">
-          Phòng còn trống phù hợp ngày{" "}
-          <strong>
-            {checkIn} → {checkOut}
-          </strong>
-          {searchParams.get("roomType") && (
-            <>
-              {" "}
-              · Loại:{" "}
-              <strong>
-                {searchParams.get("roomType")}
-              </strong>
-            </>
-          )}
-        </p>
+                            <div style={styles.priceRow}>
+                                <div>
+                                    <span style={styles.price}>
+                                        {room.price?.toLocaleString("vi-VN")} ₫
+                                    </span>
+                                    <span style={styles.perNight}> / đêm</span>
+                                </div>
+                            </div>
 
-        {loading ? (
-          <div className="hotel-container">
-            <p>Đang tải phòng…</p>
-          </div>
-        ) : fetchError ? (
-          <div className="hotel-container">
-            <p className="rooms-booking-error">{fetchError}</p>
-          </div>
-        ) : !rooms.length ? (
-          <div className="hotel-container rooms-booking-empty">
-            <p>
-              Không có phòng phù hợp. Thử giảm tổng số khách (người lớn + trẻ)
-              so với <code>maxGuests</code> của phòng, đổi ngày, hoặc bỏ lọc loại
-              phòng.
-            </p>
-            {searchParams.get("roomType") ? (
-              <p>
-                Bạn đang lọc theo{" "}
-                <strong>{getRoomTypeLabel(searchParams.get("roomType"))}</strong>.
-                Thử chọn <strong>Tất cả</strong> ở cột trái rồi nhấn{" "}
-                <strong>Áp dụng</strong>, hoặc kiểm tra tên phòng trong admin có
-                chứa từ khóa đúng loại (để lọc khớp).
-              </p>
-            ) : null}
-            <p className="rooms-booking-hint">
-              Nếu trong MongoDB collection <code>bookings</code> có bản ghi
-              trùng ngày với phòng này (pending/confirmed), phòng sẽ bị ẩn cho
-              khoảng đó.
-            </p>
-          </div>
-        ) : (
-          <div className="hotel-grid">
-            {rooms.map((room) => (
-              <div className="hotel-card" key={room._id}>
-                <img
-                  src={
-                    room.image?.startsWith("http")
-                      ? room.image
-                      : `http://localhost:3000/uploads/${room.image}`
-                  }
-                  alt={room.name}
-                />
+                            <button
+                                style={styles.button}
+                                onClick={() => navigate(`/phong/${room._id}`)}
+                            >
+                                Xem chi tiết & Đặt phòng
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
 
-                <div className="hotel-info">
-                  <p className="rooms-booking-hotel-name">Thịnh Phát Hotel</p>
-                  <h3>{room.name}</h3>
-
-                  <p className="desc">{room.description}</p>
-
-                  <p className="price">
-                    💰 {room.price?.toLocaleString("vi-VN")} đ / đêm
-                  </p>
-
-                  <p className="capacity">
-                    👤 Tối đa {room.maxGuests ?? "—"} người
-                    {room.capacity ? ` · ${room.capacity}` : ""}
-                  </p>
-
-                  <p
-                    className={
-                      room.status === "available"
-                        ? "status available"
-                        : room.status === "maintenance"
-                          ? "status maintenance"
-                          : "status booked"
-                    }
-                  >
-                    {room.status === "available"
-                      ? "Còn trống"
-                      : room.status === "maintenance"
-                        ? "Bảo trì"
-                        : room.status}
-                  </p>
-
-                  <div className="admin-actions">
-                    <button
-                      type="button"
-                      className="btn-edit"
-                      onClick={() => goToRoomDetail(room._id)}
-                    >
-                      Chi tiết &amp; đặt
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
-    </div>
-  );
+            {rooms.length === 0 && (
+                <p style={styles.noRoom}>Không có phòng nào khả dụng tại thời điểm này.</p>
+            )}
+        </div>
+    );
 }
+
+const styles = {
+    container: {
+        fontFamily: "'Segoe UI', system-ui, sans-serif",
+        backgroundColor: "#f8fafc",
+        minHeight: "100vh",
+        padding: "40px 5%",
+    },
+
+    loading: {
+        textAlign: "center",
+        marginTop: "120px",
+        fontSize: "22px",
+        color: "#64748b",
+    },
+
+    header: {
+        textAlign: "center",
+        marginBottom: "50px",
+    },
+
+    title: {
+        fontSize: "36px",
+        fontWeight: "700",
+        color: "#1e2937",
+        marginBottom: "8px",
+    },
+
+    subtitle: {
+        fontSize: "18px",
+        color: "#64748b",
+    },
+
+    grid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
+        gap: "30px",
+        maxWidth: "1400px",
+        margin: "0 auto",
+    },
+
+    card: {
+        background: "white",
+        borderRadius: "16px",
+        overflow: "hidden",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+        transition: "all 0.3s ease",
+    },
+
+    imageContainer: {
+        position: "relative",
+        height: "240px",
+    },
+
+    image: {
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        transition: "0.3s",
+    },
+
+    statusBadge: {
+        position: "absolute",
+        top: "15px",
+        right: "15px",
+        padding: "6px 14px",
+        borderRadius: "30px",
+        color: "white",
+        fontSize: "14px",
+        fontWeight: "600",
+    },
+
+    cardContent: {
+        padding: "24px",
+    },
+
+    roomName: {
+        fontSize: "22px",
+        fontWeight: "700",
+        margin: "0 0 8px 0",
+        color: "#1e2937",
+    },
+
+    capacity: {
+        color: "#64748b",
+        fontSize: "15.5px",
+        marginBottom: "12px",
+    },
+
+    description: {
+        color: "#475569",
+        fontSize: "15px",
+        lineHeight: "1.6",
+        marginBottom: "20px",
+        minHeight: "70px",
+    },
+
+    priceRow: {
+        marginBottom: "20px",
+    },
+
+    price: {
+        fontSize: "26px",
+        fontWeight: "700",
+        color: "#1e2937",
+    },
+
+    perNight: {
+        color: "#64748b",
+        fontSize: "16px",
+    },
+
+    button: {
+        width: "100%",
+        padding: "14px",
+        background: "linear-gradient(135deg, #f59e0b, #ea580c)",
+        color: "white",
+        border: "none",
+        borderRadius: "10px",
+        fontSize: "16px",
+        fontWeight: "700",
+        cursor: "pointer",
+        transition: "all 0.3s",
+    },
+
+    noRoom: {
+        textAlign: "center",
+        fontSize: "18px",
+        color: "#64748b",
+        marginTop: "50px",
+    },
+};
 
 export default RoomsList;
