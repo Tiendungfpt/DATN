@@ -36,7 +36,7 @@ export default function Register() {
         alert("Đăng ký thành công!");
         navigate("/login");
       } else {
-        alert(data);
+        alert(data?.message || "Đăng ký thất bại");
       }
     } catch (error) {
       alert("Lỗi server");

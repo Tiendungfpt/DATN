@@ -12,40 +12,34 @@ function RoomsEdit() {
         image: "",
         description: "",
         price: 0,
+        maxGuests: 2,
         capacity: "",
         status: "available",
-        hotelId: ""
     });
 
-    const [hotels, setHotels] = useState([]);
     const [preview, setPreview] = useState(null);
     const [file, setFile] = useState(null);
 
-    // lấy hotel
     useEffect(() => {
-        axios.get("http://localhost:3000/api/hotels")
-            .then(res => setHotels(res.data));
-    }, []);
+        axios.get(`http://localhost:3000/api/rooms/${id}`).then((res) => {
+            const data = res.data;
 
-    // 🔥 FIX CHÍNH Ở ĐÂY
-    useEffect(() => {
-        axios.get(`http://localhost:3000/api/rooms/${id}`)
-            .then(res => {
-                const data = res.data;
-
-                setRoom({
-                    ...data,
-                    // 🔥 fix hotelId (object → string)
-                    hotelId: data.hotelId?._id || data.hotelId
-                });
-
-                // preview ảnh
-                if (data.image?.startsWith("http")) {
-                    setPreview(data.image);
-                } else {
-                    setPreview(`http://localhost:3000/uploads/${data.image}`);
-                }
+            setRoom({
+                name: data.name || "",
+                image: data.image || "",
+                description: data.description || "",
+                price: data.price ?? 0,
+                maxGuests: data.maxGuests ?? 2,
+                capacity: data.capacity || "",
+                status: data.status || "available",
             });
+
+            if (data.image?.startsWith("http")) {
+                setPreview(data.image);
+            } else {
+                setPreview(`http://localhost:3000/uploads/${data.image}`);
+            }
+        });
     }, [id]);
 
     const handleChange = (e) => {
@@ -53,7 +47,7 @@ function RoomsEdit() {
 
         setRoom({
             ...room,
-            [name]: name === "price" ? Number(value) : value
+            [name]: name === "price" || name === "maxGuests" ? Number(value) : value,
         });
     };
 
@@ -72,26 +66,20 @@ function RoomsEdit() {
         try {
             const formData = new FormData();
 
-            // 🔥 nếu có file mới
             if (file) {
                 formData.append("image", file);
             }
 
-            // append field khác
             for (let key in room) {
                 if (key !== "image") {
                     formData.append(key, room[key]);
                 }
             }
 
-            await axios.put(
-                `http://localhost:3000/api/rooms/${id}`,
-                formData
-            );
+            await axios.put(`http://localhost:3000/api/rooms/${id}`, formData);
 
             alert("Cập nhật thành công");
             navigate("/admin/rooms");
-
         } catch (error) {
             console.log(error);
         }
@@ -102,21 +90,6 @@ function RoomsEdit() {
             <h2 className="hotel-create-title">Sửa phòng</h2>
 
             <form className="hotel-form" onSubmit={handleSubmit}>
-
-                {/* 🔥 select sẽ hoạt động đúng */}
-                <select
-                    name="hotelId"
-                    value={room.hotelId}
-                    onChange={handleChange}
-                >
-                    <option value="">-- Chọn khách sạn --</option>
-                    {hotels.map(h => (
-                        <option key={h._id} value={h._id}>
-                            {h.name}
-                        </option>
-                    ))}
-                </select>
-
                 <input
                     name="name"
                     value={room.name}
@@ -126,7 +99,7 @@ function RoomsEdit() {
 
                 <input type="file" onChange={handleFileChange} />
 
-                {preview && <img src={preview} width="150" />}
+                {preview && <img src={preview} width="150" alt="" />}
 
                 <textarea
                     name="description"
@@ -144,23 +117,27 @@ function RoomsEdit() {
                 />
 
                 <input
+                    name="maxGuests"
+                    type="number"
+                    min="1"
+                    value={room.maxGuests}
+                    onChange={handleChange}
+                    placeholder="Số khách tối đa"
+                />
+
+                <input
                     name="capacity"
                     value={room.capacity}
                     onChange={handleChange}
-                    placeholder="Sức chứa"
+                    placeholder="Ghi chú sức chứa (tuỳ chọn)"
                 />
 
-                <select
-                    name="status"
-                    value={room.status}
-                    onChange={handleChange}
-                >
-                    <option value="available">Còn trống</option>
-                    <option value="booked">Đã đặt</option>
+                <select name="status" value={room.status === "booked" ? "maintenance" : room.status} onChange={handleChange}>
+                    <option value="available">Sẵn sàng cho đặt</option>
+                    <option value="maintenance">Bảo trì</option>
                 </select>
 
                 <button type="submit">Cập nhật</button>
-
             </form>
         </div>
     );

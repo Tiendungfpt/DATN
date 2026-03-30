@@ -1,29 +1,78 @@
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
-import HotelCard from "../components/HotelCard";
-import hotels from "../data/hotels";
+import { addDaysLocal, localISODate } from "../utils/dateLocal";
+import { PUBLIC_ROOM_TYPES } from "../data/roomTypes";
+import "./style/Home.css";
+
+const today = localISODate();
+const tomorrow = addDaysLocal(1);
 
 export default function Home() {
-    return (
-        <>
-            <section className="hero-a25">
-                <div className="hero-overlay-a25"></div>
+  const [search, setSearch] = useState({
+    checkIn: today,
+    checkOut: tomorrow,
+    adults: "2",
+    children: "0",
+  });
 
-                <div className="hero-text-a25">
-                    Chào mừng bạn đến với <br /> Thịnh Phát Hotel
+  const listQuery = useMemo(() => {
+    return new URLSearchParams({
+      checkIn: search.checkIn,
+      checkOut: search.checkOut,
+      adults: String(search.adults ?? "2"),
+      children: String(search.children ?? "0"),
+    }).toString();
+  }, [search]);
+
+  return (
+    <>
+      <section className="home-hero">
+        <div className="home-hero-bg" aria-hidden="true" />
+        <div className="home-hero-inner">
+          <p className="home-hero-kicker">Thịnh Phát Hotel</p>
+          <h1 className="home-hero-title">
+            Nghỉ dưỡng tinh tế — đặt phòng trong vài giây
+          </h1>
+          <p className="home-hero-sub">
+            Chọn ngày, số khách và tìm phòng phù hợp. Giá minh bạch, xác nhận nhanh.
+          </p>
+        </div>
+        <SearchBar search={search} setSearch={setSearch} />
+      </section>
+
+      <section className="home-rooms-section" id="phong">
+        <h2 className="home-rooms-heading">Phòng</h2>
+        <p className="home-rooms-lead">
+          Các hạng phòng tại Thịnh Phát — chọn ngày ở form trên rồi tìm phòng trống
+        </p>
+
+        <div className="home-rooms-grid">
+          {PUBLIC_ROOM_TYPES.map((room) => (
+            <article key={room.key} className="home-room-card">
+              <div className="home-room-card-img">
+                <img src={room.image} alt={room.name} loading="lazy" />
+              </div>
+              <div className="home-room-card-body">
+                <h3>{room.name}</h3>
+                <p className="home-room-card-desc">{room.desc}</p>
+                <p className="home-room-card-price">
+                  {room.price.toLocaleString("vi-VN")} đ / đêm
+                </p>
+                <div className="home-room-card-footer">
+                  <span className="home-room-card-tag">Thịnh Phát</span>
+                  <Link
+                    to={`/loai-phong/${room.key}?${listQuery}`}
+                    className="home-room-card-link"
+                  >
+                    Xem chi tiết
+                  </Link>
                 </div>
-
-                <SearchBar />
-            </section>
-
-            <section className="section-a25">
-                <h2 className="section-title-a25">Ưu đãi nổi bật</h2>
-
-                <div className="cards-a25">
-                    {hotels.slice(0, 3).map(hotel => (
-                        <HotelCard key={hotel.id} hotel={hotel} />
-                    ))}
-                </div>
-            </section>
-        </>
-    );
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </>
+  );
 }

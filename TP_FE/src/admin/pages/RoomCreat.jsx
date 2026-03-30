@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../components/Form.css";
@@ -6,43 +6,33 @@ import "../components/Form.css";
 function RoomsCreate() {
     const navigate = useNavigate();
 
-    const [hotels, setHotels] = useState([]);
-
     const [room, setRoom] = useState({
         name: "",
         image: "",
         description: "",
         price: 0,
+        maxGuests: 2,
         capacity: "",
         status: "available",
-        hotelId: ""
     });
 
-    const [file, setFile] = useState(null); // 🔥 file
-    const [preview, setPreview] = useState(""); // 🔥 preview
-
-    // lấy hotel
-    useEffect(() => {
-        axios.get("http://localhost:3000/api/hotels")
-            .then(res => setHotels(res.data));
-    }, []);
+    const [file, setFile] = useState(null);
+    const [preview, setPreview] = useState("");
 
     const handleChange = (e) => {
         const { name, value } = e.target;
 
         setRoom({
             ...room,
-            [name]: name === "price" ? Number(value) : value
+            [name]: name === "price" || name === "maxGuests" ? Number(value) : value,
         });
 
-        // 🔥 nếu nhập link thì preview luôn
         if (name === "image") {
             setPreview(value);
-            setFile(null); // bỏ file nếu dùng link
+            setFile(null);
         }
     };
 
-    // 🔥 chọn file
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
 
@@ -52,7 +42,7 @@ function RoomsCreate() {
 
             setRoom({
                 ...room,
-                image: "" // clear link
+                image: "",
             });
         }
     };
@@ -63,14 +53,12 @@ function RoomsCreate() {
         try {
             const formData = new FormData();
 
-            // 🔥 nếu có file → dùng file
             if (file) {
                 formData.append("image", file);
             } else {
-                formData.append("image", room.image); // link
+                formData.append("image", room.image);
             }
 
-            // append các field khác
             for (let key in room) {
                 if (key !== "image") {
                     formData.append(key, room[key]);
@@ -79,13 +67,12 @@ function RoomsCreate() {
 
             await axios.post("http://localhost:3000/api/rooms", formData, {
                 headers: {
-                    "Content-Type": "multipart/form-data"
-                }
+                    "Content-Type": "multipart/form-data",
+                },
             });
 
             alert("Thêm phòng thành công");
             navigate("/admin/rooms");
-
         } catch (error) {
             console.log(error);
             alert("Lỗi");
@@ -94,35 +81,23 @@ function RoomsCreate() {
 
     return (
         <div className="hotel-create-container">
-            <h2 className="hotel-create-title">Thêm phòng</h2>
+            <h2 className="hotel-create-title">Thêm phòng (Thịnh Phát)</h2>
 
             <form className="hotel-form" onSubmit={handleSubmit}>
+                <input name="name" placeholder="Tên phòng" onChange={handleChange} required />
 
-                {/* chọn hotel */}
-                <select name="hotelId" onChange={handleChange}>
-                    <option value="">-- Chọn khách sạn --</option>
-                    {hotels.map(h => (
-                        <option key={h._id} value={h._id}>{h.name}</option>
-                    ))}
-                </select>
-
-                <input name="name" placeholder="Tên phòng" onChange={handleChange} />
-
-                {/* 🔥 upload file */}
                 <div className="upload-box">
                     <input type="file" onChange={handleFileChange} />
                 </div>
 
                 <p className="or-text">Hoặc nhập link ảnh</p>
 
-                {/* 🔥 nhập link */}
                 <input
                     name="image"
                     placeholder="https://..."
                     onChange={handleChange}
                 />
 
-                {/* 🔥 preview */}
                 {preview && (
                     <div className="preview-box">
                         <img src={preview} alt="preview" />
@@ -131,17 +106,30 @@ function RoomsCreate() {
 
                 <textarea name="description" placeholder="Mô tả" onChange={handleChange} />
 
-                <input name="price" type="number" placeholder="Giá" onChange={handleChange} />
+                <input name="price" type="number" min="0" placeholder="Giá / đêm" onChange={handleChange} />
 
-                <input name="capacity" placeholder="Sức chứa" onChange={handleChange} />
+                <input
+                    name="maxGuests"
+                    type="number"
+                    min="1"
+                    placeholder="Số khách tối đa (bắt buộc)"
+                    value={room.maxGuests}
+                    onChange={handleChange}
+                    required
+                />
 
-                <select name="status" onChange={handleChange}>
-                    <option value="available">Còn trống</option>
-                    <option value="booked">Đã đặt</option>
+                <input
+                    name="capacity"
+                    placeholder="Ghi chú sức chứa (tuỳ chọn, vd: 2 người lớn + 1 trẻ)"
+                    onChange={handleChange}
+                />
+
+                <select name="status" value={room.status} onChange={handleChange}>
+                    <option value="available">Sẵn sàng cho đặt</option>
+                    <option value="maintenance">Bảo trì (ẩn khỏi tìm phòng)</option>
                 </select>
 
                 <button type="submit">Thêm phòng</button>
-
             </form>
         </div>
     );

@@ -1,19 +1,34 @@
-import axios from "axios";
+import { api } from "./api";
 
-const API = "http://localhost:3000/api/bookings";
-
+/** POST /api/bookings — { roomIds, checkInDate, checkOutDate } — cần JWT */
 export const createBooking = (data) => {
-    return axios.post(API, data);
+  return api.post("/bookings", data);
 };
 
-export const getBookings = () => {
-    return axios.get(API);
+/** GET /api/bookings/user — đặt phòng của tôi */
+export const getMyBookings = () => {
+  return api.get("/bookings/user");
+};
+
+/** GET /api/bookings — admin */
+export const getAllBookingsAdmin = () => {
+  return api.get("/bookings");
+};
+
+/** GET /api/bookings/:id */
+export const getBookingById = (id) => {
+  return api.get(`/bookings/${id}`);
 };
 
 export const cancelBooking = (id) => {
-    return axios.put(`${API}/cancel/${id}`);
+  return api.put(`/bookings/cancel/${id}`);
 };
 
 export const deleteBooking = (id) => {
-    return axios.delete(`${API}/${id}`);
+  return api.delete(`/bookings/${id}`);
+};
+
+/** PUT /api/bookings/payment/:id */
+export const payBooking = (id, body = {}) => {
+  return api.put(`/bookings/payment/${id}`, body);
 };

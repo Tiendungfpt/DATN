@@ -1,0 +1,27 @@
+.payment-page {
+  padding: 1rem;
+}
+
+.payment-error {
+  color: #c0392b;
+}
+
+.payment-done {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.payment-btn {
+  background: #28a745;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.payment-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

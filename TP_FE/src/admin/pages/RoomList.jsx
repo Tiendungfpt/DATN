@@ -58,7 +58,8 @@ function RoomsList() {
                             </p>
 
                             <p className="capacity">
-                                👤 {room.capacity}
+                                👤 Tối đa {room.maxGuests ?? "—"} người
+                                {room.capacity ? ` · ${room.capacity}` : ""}
                             </p>
 
                             <p className={
@@ -66,7 +67,11 @@ function RoomsList() {
                                     ? "status available"
                                     : "status booked"
                             }>
-                                {room.status}
+                                {room.status === "available"
+                                    ? "available"
+                                    : room.status === "maintenance"
+                                      ? "maintenance (bảo trì)"
+                                      : room.status}
                             </p>
 
                             <div className="admin-actions">

@@ -76,7 +76,14 @@ body {
 .hero-a25 {
   position: relative;
   height: 460px;
-  background: url("/banner-a25.jpg") center / cover no-repeat;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(90, 15, 35, 0.85) 0%,
+      rgba(40, 25, 30, 0.8) 100%
+    ),
+    url("https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1920&q=80")
+      center / cover no-repeat;
 }
 
 .hero-overlay-a25 {
