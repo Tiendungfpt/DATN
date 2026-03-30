@@ -1,29 +1,59 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 export default function HotelCard({ hotel }) {
+  const [imgError, setImgError] = useState(false);
+
+  const defaultImage = "https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80";
+
+  const imageSrc = imgError 
+    ? defaultImage 
+    : (hotel.image?.startsWith("http") 
+        ? hotel.image 
+        : `http://localhost:3000/uploads/${hotel.image}`);
+
   return (
-    <Link to={`/khach-san/${hotel.id}`} className="text-decoration-none">
-      <div className="card h-100 shadow border-0 overflow-hidden hover-card">
+    <Link to={`/khach-san/${hotel._id}`} className="text-decoration-none">
+      <div className="card h-100 shadow border-0 overflow-hidden hotel-card">
         <div className="position-relative">
           <img
-            src={hotel.image}
+            src={imageSrc}
             className="card-img-top"
             alt={hotel.name}
             style={{ height: "260px", objectFit: "cover" }}
+            onError={() => setImgError(true)}   // ← Xử lý lỗi load ảnh
           />
 
+          {/* Badge HOT */}
           <div className="position-absolute top-0 end-0 m-3">
-            <span className="badge bg-danger px-3 py-2 fw-bold">HOT</span>
+            <span className="badge bg-danger px-3 py-2 fw-bold shadow-sm">
+              HOT
+            </span>
+          </div>
+
+          {/* Rating */}
+          <div className="position-absolute bottom-0 start-0 m-3">
+            <div className="bg-white px-2 py-1 rounded shadow-sm d-flex align-items-center gap-1">
+              <i className="bi bi-star-fill text-warning"></i>
+              <span className="fw-bold text-dark">{hotel.rating || 0}</span>
+              <small className="text-muted">({hotel.reviewCount || 0})</small>
+            </div>
           </div>
         </div>
 
         <div className="card-body d-flex flex-column p-4">
-          <h5 className="card-title fw-bold mb-2">{hotel.name}</h5>
+          <h5 className="card-title fw-bold mb-2 text-dark">{hotel.name}</h5>
 
           <p className="text-muted mb-3 d-flex align-items-center gap-1">
             <i className="bi bi-geo-alt-fill text-primary"></i>
-            Hà Nội, Việt Nam
+            {hotel.address}
           </p>
+
+          {hotel.locationNote && (
+            <p className="text-muted small mb-3">
+              <i className="bi bi-info-circle"></i> {hotel.locationNote}
+            </p>
+          )}
 
           <div className="mt-auto">
             <div className="border-top pt-3">
@@ -31,11 +61,13 @@ export default function HotelCard({ hotel }) {
                 <div>
                   <small className="text-muted d-block">Giá từ</small>
                   <h5 className="text-primary fw-bold mb-0 fs-4">
-                    {hotel.price}
+                    {hotel.cheapestPrice
+                      ? hotel.cheapestPrice.toLocaleString("vi-VN") + "đ"
+                      : "Liên hệ"}
                   </h5>
                 </div>
 
-                <button className="btn btn-outline-primary px-4 py-2 fw-medium">
+                <button className="btn btn-primary px-4 py-2 fw-medium">
                   Xem chi tiết
                 </button>
               </div>

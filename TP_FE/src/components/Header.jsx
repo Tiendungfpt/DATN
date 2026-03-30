@@ -3,17 +3,10 @@ import { useEffect, useState } from "react";
 
 export default function Header() {
   const [logo, setLogo] = useState("");
-  const [user, setUser] = useState(null); // Lưu thông tin người dùng
+  const [user, setUser] = useState(null); 
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
-  // Load logo
-  useEffect(() => {
-    fetch("http://localhost:3000/api/logo")
-      .then((res) => res.json())
-      .then((data) => setLogo(data.logo))
-      .catch((err) => console.error("Lỗi load logo:", err));
-  }, []);
 
   useEffect(() => {
     if (token) {
@@ -21,7 +14,6 @@ export default function Header() {
       if (savedUser) {
         setUser(JSON.parse(savedUser));
       } else {
-        // Nếu chưa lưu user, dùng tên mặc định
         setUser({ name: "Khách hàng" });
       }
     }

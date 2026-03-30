@@ -5,31 +5,25 @@ import {
     getHotelById,
     deleteHotel,
     updateHotel,
+    getHotelsForHome
 } from "../controllers/hotel";
 import upload from "../middlewares/upload.js";
-// import { checkAuth } from "../middlewares/checkAuth";
 
 const hotelRouter = Router();
 
-// hotelRouter.use(checkAuth);
-
-// GET /api/hotels - Lấy danh sách bài viết
 hotelRouter.get("/", getAllHotel);
 
-// GET /api/hotels/:id - Lấy chi tiết bài viết
 hotelRouter.get("/:id", getHotelById);
 
-// HOTEL /api/hotels - Thêm bài viết mới
 hotelRouter.post(
     "/",
-    upload.single("image"), // 🔥 phải có dòng này
+    upload.single("image"), 
     addHotel
 );
 
-// // DELETE /api/hotels/:id - Xóa bài viết
 hotelRouter.delete("/:id", deleteHotel);
 
-// PUT /api/hotels/:id - Cập nhật bài viết
 hotelRouter.put("/:id", updateHotel);
+
 
 export default hotelRouter;

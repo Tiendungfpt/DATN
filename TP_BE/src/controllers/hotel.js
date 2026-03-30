@@ -14,11 +14,10 @@ export async function getAllHotel(req, res) {
           ...hotel.toObject(), // 🔥 dùng cái này an toàn hơn _doc
           roomCount: count,
         };
-      })
+      }),
     );
 
     return res.json(result);
-
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -41,11 +40,10 @@ export async function addHotel(req, res) {
   try {
     const newHotel = await Hotel.create({
       ...req.body,
-      image: req.file ? req.file.filename : "" // 🔥 lấy file
+      image: req.file ? req.file.filename : "", // 🔥 lấy file
     });
 
     return res.status(201).json(newHotel);
-
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }
@@ -77,3 +75,4 @@ export async function deleteHotel(req, res) {
     return res.json({ error: error.message });
   }
 }
+
