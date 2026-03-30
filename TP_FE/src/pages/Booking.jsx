@@ -4,10 +4,9 @@ import axios from "axios";
 import DatePicker from "react-datepicker";
 import { registerLocale, setDefaultLocale } from "react-datepicker";
 import { vi } from "date-fns/locale/vi";
-import { addDays } from "date-fns";
 import "react-datepicker/dist/react-datepicker.css";
-import { createBooking } from "../services/bookingApi";
 import "./Style/Booking.css";
+
 registerLocale("vi", vi);
 setDefaultLocale("vi");
 
@@ -19,24 +18,43 @@ function Booking() {
     const [nights, setNights] = useState(0);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
-    const user = JSON.parse(localStorage.getItem("user"));
+    const [currentUser, setCurrentUser] = useState(null);
+
+    useEffect(() => {
+        const userStr = localStorage.getItem("user");
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                setCurrentUser(user);
+            } catch (err) {
+                console.error("Lỗi parse user:", err);
+                localStorage.removeItem("user");
+            }
+        }
+    }, []);
 
     const [checkInDate, setCheckInDate] = useState(null);
     const [checkOutDate, setCheckOutDate] = useState(null);
 
     useEffect(() => {
+        if (!roomId) return;
+
         axios
             .get(`http://localhost:3000/api/rooms/${roomId}`)
             .then((res) => setRoom(res.data))
-            .catch((err) => console.error("Lỗi load phòng:", err));
+            .catch((err) => {
+                console.error("Lỗi load phòng:", err);
+                setError("Không thể tải thông tin phòng. Vui lòng thử lại sau.");
+            });
     }, [roomId]);
 
     useEffect(() => {
         if (checkInDate && checkOutDate && room) {
-            const diffTime = Math.abs(checkOutDate - checkInDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+            const diffDays = Math.ceil(
+                Math.abs(checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)
+            );
             setNights(diffDays);
             setTotal(diffDays * room.price);
         } else {
@@ -45,15 +63,22 @@ function Booking() {
         }
     }, [checkInDate, checkOutDate, room]);
 
-    const handleSubmit = async (e) => {
+    const handleMoMoPayment = async (e) => {
         e.preventDefault();
-        if (!checkInDate || !checkOutDate || !total) {
-            alert("Vui lòng chọn ngày nhận và trả phòng hợp lệ");
+
+        if (!currentUser || !currentUser._id) {
+            alert("Vui lòng đăng nhập để đặt phòng!");
+            navigate("/login");
+            return;
+        }
+
+        if (!checkInDate || !checkOutDate || total <= 0) {
+            alert("Vui lòng chọn ngày nhận và trả phòng hợp lệ!");
             return;
         }
 
         const formData = {
-            userId: user?._id,
+            userId: currentUser._id,
             roomId: roomId,
             checkIn: checkInDate.toISOString().split("T")[0],
             checkOut: checkOutDate.toISOString().split("T")[0],
@@ -61,28 +86,61 @@ function Booking() {
 
         try {
             setLoading(true);
-            const res = await createBooking(formData);
-            alert("✅ Đặt phòng thành công!");
-            navigate(`/payment/${res.data.booking._id}`);
+            setError("");
+
+            console.log("🔄 Đang tạo booking...", formData);
+
+            const bookingRes = await axios.post("http://localhost:3000/api/bookings", formData);
+
+            let bookingId = null;
+            const resData = bookingRes.data;
+
+            if (resData?.booking?._id) bookingId = resData.booking._id;
+            else if (resData?._id) bookingId = resData._id;
+            else if (resData?.booking?.id) bookingId = resData.booking.id;
+
+            if (!bookingId) {
+                throw new Error("Không nhận được ID booking từ server");
+            }
+
+            console.log("✅ Booking ID:", bookingId);
+
+            const momoRes = await axios.post("http://localhost:3000/api/momo/create", {
+                bookingId: bookingId,
+            });
+
+            console.log("✅ MoMo Response:", momoRes.data);
+
+            if (momoRes.data?.success && momoRes.data?.payUrl) {
+                alert("Đang chuyển hướng đến MoMo để thanh toán...");
+                window.location.href = momoRes.data.payUrl;
+            } else {
+                throw new Error(momoRes.data?.message || "Không thể tạo link thanh toán MoMo");
+            }
+
         } catch (err) {
-            alert(err.response?.data?.message || "Đặt phòng thất bại");
+            console.error("❌ Lỗi thanh toán:", err);
+            const errorMsg = err.response?.data?.message || err.message || "Thanh toán thất bại. Vui lòng thử lại!";
+            setError(errorMsg);
+            alert(errorMsg);
         } finally {
             setLoading(false);
         }
     };
 
-    if (!room) {
-        return <div className="booking-loading">Đang tải thông tin phòng...</div>;
-    }
-
     const formatDateDisplay = (date) => {
-        if (!date) return "Chọn ngày";
+        if (!date) return "Chưa chọn";
         return date.toLocaleDateString("vi-VN", {
+            weekday: "long",
             day: "numeric",
             month: "long",
             year: "numeric",
         });
     };
+
+    if (!room) {
+        return <div className="booking-loading">Đang tải thông tin phòng...</div>;
+    }
 
     return (
         <div className="booking-container">
@@ -107,7 +165,6 @@ function Booking() {
                         <h1>{room.name}</h1>
                         <p className="capacity">🛏️ {room.capacity} người • {room.size || "35m²"}</p>
                         <p className="description">{room.description}</p>
-
                         <div className="price-per-night">
                             <span className="price">{room.price.toLocaleString("vi-VN")} ₫</span>
                             <span className="per-night">/ đêm</span>
@@ -115,13 +172,15 @@ function Booking() {
                     </div>
                 </div>
 
+                {/* RIGHT - Form đặt phòng */}
                 <div className="booking-right">
                     <div className="booking-card">
                         <h2>Thông tin đặt phòng</h2>
                         <p className="free-cancel">✔ Hủy miễn phí trước 48 giờ</p>
 
-                        <form onSubmit={handleSubmit}>
-                            {/* Date Range Picker */}
+                        {error && <p className="error-message">{error}</p>}
+
+                        <form onSubmit={handleMoMoPayment}>
                             <div className="date-range-group">
                                 <label>Chọn ngày nhận - trả phòng</label>
                                 <div className="date-picker-wrapper">
@@ -139,11 +198,12 @@ function Booking() {
                                         monthsShown={2}
                                         locale="vi"
                                         dateFormat="dd/MM/yyyy"
-                                        placeholderText="Chọn khoảng thời gian"
+                                        placeholderText="Chọn khoảng thời gian lưu trú"
                                         className="custom-date-input"
                                         calendarClassName="custom-calendar"
                                         showPopperArrow={false}
                                         isClearable={true}
+                                        disabled={loading}
                                     />
                                 </div>
                             </div>
@@ -162,7 +222,7 @@ function Booking() {
                             <div className="summary">
                                 <div className="summary-row">
                                     <span>Số đêm:</span>
-                                    <strong>{nights}</strong>
+                                    <strong>{nights} đêm</strong>
                                 </div>
                                 <div className="summary-row">
                                     <span>Giá mỗi đêm:</span>
@@ -178,13 +238,15 @@ function Booking() {
 
                             <button
                                 type="submit"
-                                className="book-button"
-                                disabled={!total || loading}
+                                className="book-button momo-pay-button"
+                                disabled={!total || loading || !checkInDate || !checkOutDate}
                             >
-                                {loading ? "Đang xử lý..." : "Thanh toán ngay"}
+                                {loading ? "Đang xử lý..." : "Thanh toán ngay bằng MoMo"}
                             </button>
 
-                            <p className="guarantee">Đảm bảo giá tốt nhất • Thanh toán an toàn</p>
+                            <p className="guarantee">
+                                Đảm bảo giá tốt nhất • Thanh toán an toàn qua MoMo
+                            </p>
                         </form>
                     </div>
                 </div>

@@ -76,3 +76,40 @@ export async function deleteHotel(req, res) {
   }
 }
 
+// Thêm hàm này vào file hotel controller
+export async function getHotelsForHome(req, res) {
+  try {
+    const hotels = await Hotel.find()
+      .select(
+        "name address image description rating reviewCount locationNote hotline",
+      ) 
+      .lean(); 
+
+    const result = await Promise.all(
+      hotels.map(async (hotel) => {
+        const roomCount = await Rooms.countDocuments({ hotelId: hotel._id });
+
+        const cheapestRoom = await Rooms.findOne({ hotelId: hotel._id })
+          .sort({ price: 1 })
+          .select("price")
+          .lean();
+
+        return {
+          ...hotel,
+          roomCount,
+          cheapestPrice: cheapestRoom ? cheapestRoom.price : null,
+          formattedPrice: cheapestRoom
+            ? cheapestRoom.price.toLocaleString("vi-VN") + "đ"
+            : "Liên hệ",
+        };
+      }),
+    );
+
+    return res.json(result);
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ error: "Lỗi server khi lấy dữ liệu trang chủ" });
+  }
+}

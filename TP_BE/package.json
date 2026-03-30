@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/vanhoa690/nodejs-web503-fall25#readme",
   "dependencies": {
+    "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

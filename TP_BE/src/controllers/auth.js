@@ -56,24 +56,47 @@ export const updateRole = async (req, res) => {
   }
 };
 
-// 2. Route: api/auth/login
 export const loginUser = async (req, res) => {
-  const user = await User.findOne({ email: req.body.email });
-  // check user co trong db ko
-  if (!user) {
-    return res.status(401).json("Error: khong xac thuc duoc");
-  }
+    try {
+        const { email, password } = req.body;
 
-  // so sanh password
-  const isMatch = await bcrypt.compare(req.body.password, user.password);
+        if (!email || !password) {
+            return res.status(400).json({ message: "Vui lòng nhập email và password" });
+        }
 
-  if (!isMatch) {
-    return res.status(401).json("Error: khong xac thuc duoc");
-  }
+        const user = await User.findOne({ email }).select("+password"); // cần lấy password để so sánh
 
-  const token = jwt.sign({ id: user._id }, "khoa", { expiresIn: "1h" });
-  user.password = undefined;
-  res.json({ user, token });
+        if (!user) {
+            return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
+            return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
+        }
+
+        // Tạo token
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.JWT_SECRET || "khoa", 
+            { expiresIn: "7d" }   // tăng thời gian lên 7 ngày cho tiện
+        );
+
+        // Không trả password về client
+        user.password = undefined;
+
+        res.json({
+            success: true,
+            message: "Đăng nhập thành công",
+            user,
+            token
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Lỗi server" });
+    }
 };
 
 export const getProfileUser = (req, res) => {
