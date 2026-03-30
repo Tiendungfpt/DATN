@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import DatePicker from "react-datepicker";
+import { registerLocale, setDefaultLocale } from "react-datepicker";
+import { vi } from "date-fns/locale/vi";
+import { addDays } from "date-fns";
+import "react-datepicker/dist/react-datepicker.css";
 import { createBooking } from "../services/bookingApi";
 import "./Style/Booking.css";
+registerLocale("vi", vi);
+setDefaultLocale("vi");
 
 function Booking() {
     const { roomId } = useParams();
@@ -15,99 +22,48 @@ function Booking() {
 
     const user = JSON.parse(localStorage.getItem("user"));
 
-    const [form, setForm] = useState({
-        userId: user?._id,
-        roomId: roomId,
-        checkIn: "",
-        checkOut: "",
-    });
+    const [checkInDate, setCheckInDate] = useState(null);
+    const [checkOutDate, setCheckOutDate] = useState(null);
 
-    // =====================
-    // LOAD ROOM INFO
-    // =====================
     useEffect(() => {
         axios
             .get(`http://localhost:3000/api/rooms/${roomId}`)
             .then((res) => setRoom(res.data))
-            .catch(console.log);
+            .catch((err) => console.error("Lỗi load phòng:", err));
     }, [roomId]);
 
-    // =====================
-    // CALCULATE NIGHTS + TOTAL
-    // =====================
     useEffect(() => {
-        if (form.checkIn && form.checkOut && room) {
-            const inDate = new Date(form.checkIn);
-            const outDate = new Date(form.checkOut);
+        if (checkInDate && checkOutDate && room) {
+            const diffTime = Math.abs(checkOutDate - checkInDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            const diff =
-                (outDate - inDate) / (1000 * 60 * 60 * 24);
-
-            if (diff > 0) {
-                setNights(diff);
-                setTotal(diff * room.price);
-            } else {
-                setNights(0);
-                setTotal(0);
-            }
+            setNights(diffDays);
+            setTotal(diffDays * room.price);
+        } else {
+            setNights(0);
+            setTotal(0);
         }
-    }, [form.checkIn, form.checkOut, room]);
+    }, [checkInDate, checkOutDate, room]);
 
-    // =====================
-    // HANDLE CHANGE + VALIDATE DATE
-    // =====================
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-
-        const newForm = {
-            ...form,
-            [name]: value,
-        };
-
-        if (newForm.checkIn && newForm.checkOut) {
-            const inDate = new Date(newForm.checkIn);
-            const outDate = new Date(newForm.checkOut);
-
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            if (inDate < today) {
-                alert("Không thể chọn ngày trong quá khứ");
-                return;
-            }
-
-            if (outDate <= inDate) {
-                alert("Ngày trả phòng phải sau ngày nhận phòng");
-                return;
-            }
-        }
-
-        setForm(newForm);
-    };
-
-    // =====================
-    // SUBMIT BOOKING → GO PAYMENT
-    // =====================
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!total) {
-            alert("Vui lòng chọn ngày hợp lệ");
+        if (!checkInDate || !checkOutDate || !total) {
+            alert("Vui lòng chọn ngày nhận và trả phòng hợp lệ");
             return;
         }
 
+        const formData = {
+            userId: user?._id,
+            roomId: roomId,
+            checkIn: checkInDate.toISOString().split("T")[0],
+            checkOut: checkOutDate.toISOString().split("T")[0],
+        };
+
         try {
             setLoading(true);
-
-            const res = await createBooking(form);
-
-            alert("✅ Đặt phòng thành công");
-
-            const bookingId = res.data.booking._id;
-
-            // chuyển sang trang thanh toán
-            navigate(`/payment/${bookingId}`);
-
+            const res = await createBooking(formData);
+            alert("✅ Đặt phòng thành công!");
+            navigate(`/payment/${res.data.booking._id}`);
         } catch (err) {
             alert(err.response?.data?.message || "Đặt phòng thất bại");
         } finally {
@@ -115,75 +71,124 @@ function Booking() {
         }
     };
 
-    if (!room) return <h2>Đang tải...</h2>;
+    if (!room) {
+        return <div className="booking-loading">Đang tải thông tin phòng...</div>;
+    }
 
-    const today = new Date().toISOString().split("T")[0];
+    const formatDateDisplay = (date) => {
+        if (!date) return "Chọn ngày";
+        return date.toLocaleDateString("vi-VN", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        });
+    };
 
     return (
-        <div className="booking-wrapper">
+        <div className="booking-container">
+            <div className="booking-content">
+                <div className="booking-left">
+                    <div className="room-image-container">
+                        <img
+                            src={
+                                room.image?.startsWith("http")
+                                    ? room.image
+                                    : `http://localhost:3000/uploads/${room.image}`
+                            }
+                            alt={room.name}
+                            className="room-image"
+                            onError={(e) => {
+                                e.target.src = "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
+                            }}
+                        />
+                    </div>
 
-            {/* LEFT */}
-            <div className="booking-left">
-                <img
-                    src={
-                        room.image?.startsWith("http")
-                            ? room.image
-                            : `http://localhost:3000/uploads/${room.image}`
-                    }
-                    alt={room.name}
-                />
+                    <div className="room-info">
+                        <h1>{room.name}</h1>
+                        <p className="capacity">🛏️ {room.capacity} người • {room.size || "35m²"}</p>
+                        <p className="description">{room.description}</p>
 
-                <h2>{room.name}</h2>
-                <p>{room.description}</p>
-
-                <h3 className="price">
-                    {room.price.toLocaleString("vi-VN")} đ / đêm
-                </h3>
-            </div>
-
-            {/* RIGHT */}
-            <form className="booking-right" onSubmit={handleSubmit}>
-                <h2>Thông tin đặt phòng</h2>
-
-                <label>Nhận phòng</label>
-                <input
-                    type="date"
-                    name="checkIn"
-                    min={today}
-                    required
-                    value={form.checkIn}
-                    onChange={handleChange}
-                />
-
-                <label>Trả phòng</label>
-                <input
-                    type="date"
-                    name="checkOut"
-                    min={form.checkIn || today}
-                    required
-                    value={form.checkOut}
-                    onChange={handleChange}
-                />
-
-                <div className="summary">
-                    <p>Số đêm: <b>{nights}</b></p>
-                    <p>
-                        Giá / đêm:{" "}
-                        {room.price.toLocaleString("vi-VN")} đ
-                    </p>
-
-                    <h3>
-                        Tổng tiền:
-                        <span>
-                            {total.toLocaleString("vi-VN")} đ
-                        </span>
-                    </h3>
+                        <div className="price-per-night">
+                            <span className="price">{room.price.toLocaleString("vi-VN")} ₫</span>
+                            <span className="per-night">/ đêm</span>
+                        </div>
+                    </div>
                 </div>
 
-                <button type="submit" disabled={!total || loading}>
-                    {loading ? "Đang xử lý..." : "Thanh toán ngay"}
-                </button>
-            </form>
+                <div className="booking-right">
+                    <div className="booking-card">
+                        <h2>Thông tin đặt phòng</h2>
+                        <p className="free-cancel">✔ Hủy miễn phí trước 48 giờ</p>
+
+                        <form onSubmit={handleSubmit}>
+                            {/* Date Range Picker */}
+                            <div className="date-range-group">
+                                <label>Chọn ngày nhận - trả phòng</label>
+                                <div className="date-picker-wrapper">
+                                    <DatePicker
+                                        selected={checkInDate}
+                                        onChange={(dates) => {
+                                            const [start, end] = dates;
+                                            setCheckInDate(start);
+                                            setCheckOutDate(end);
+                                        }}
+                                        startDate={checkInDate}
+                                        endDate={checkOutDate}
+                                        minDate={new Date()}
+                                        selectsRange
+                                        monthsShown={2}
+                                        locale="vi"
+                                        dateFormat="dd/MM/yyyy"
+                                        placeholderText="Chọn khoảng thời gian"
+                                        className="custom-date-input"
+                                        calendarClassName="custom-calendar"
+                                        showPopperArrow={false}
+                                        isClearable={true}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="selected-dates">
+                                <div className="date-box">
+                                    <span className="label">Nhận phòng</span>
+                                    <strong>{formatDateDisplay(checkInDate)}</strong>
+                                </div>
+                                <div className="date-box">
+                                    <span className="label">Trả phòng</span>
+                                    <strong>{formatDateDisplay(checkOutDate)}</strong>
+                                </div>
+                            </div>
+
+                            <div className="summary">
+                                <div className="summary-row">
+                                    <span>Số đêm:</span>
+                                    <strong>{nights}</strong>
+                                </div>
+                                <div className="summary-row">
+                                    <span>Giá mỗi đêm:</span>
+                                    <span>{room.price.toLocaleString("vi-VN")} ₫</span>
+                                </div>
+                                <div className="total-row">
+                                    <span>Tổng tiền:</span>
+                                    <span className="total-price">
+                                        {total.toLocaleString("vi-VN")} ₫
+                                    </span>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="book-button"
+                                disabled={!total || loading}
+                            >
+                                {loading ? "Đang xử lý..." : "Thanh toán ngay"}
+                            </button>
+
+                            <p className="guarantee">Đảm bảo giá tốt nhất • Thanh toán an toàn</p>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
