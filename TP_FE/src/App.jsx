@@ -19,6 +19,7 @@ import RoomDetail from "./pages/RoomDetail";
 import RoomTypeDetail from "./pages/RoomTypeDetail";
 import Payment from "./pages/Payment";
 import HotelList from "./pages/HotelList";
+import PaymentSuccess from "./pages/PaymentSuccess";
 
 function RedirectToDatPhong() {
     const { search } = useLocation();
@@ -47,6 +48,7 @@ function Layout() {
                 <Route path="/phong/:id" element={<RoomDetail />} />
                 <Route path="/khach-san/:id" element={<RoomsList />} />
                 <Route path="/payment/:bookingId" element={<Payment />} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
 
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="rooms" element={<RoomList />} />

@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 
-/** Một khách sạn duy nhất — không có hotelId */
 const roomSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -9,7 +8,6 @@ const roomSchema = new mongoose.Schema(
     price: { type: Number, required: true, min: 0 },
     maxGuests: { type: Number, required: true, min: 1 },
     capacity: { type: String },
-    /** Không dùng "booked" để khóa phòng — chỉ trạng thái vận hành */
     status: {
       type: String,
       enum: ["available", "maintenance"],

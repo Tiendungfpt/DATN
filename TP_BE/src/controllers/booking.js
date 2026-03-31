@@ -12,7 +12,6 @@ function nightsBetween(start, end) {
   return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 }
 
-/** POST /api/bookings — body: { roomIds: string[], checkInDate, checkOutDate } */
 export const createBooking = async (req, res) => {
   try {
     const userId = req.userId;

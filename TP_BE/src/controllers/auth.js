@@ -60,7 +60,6 @@ export const updateRole = async (req, res) => {
   }
 };
 
-// LOGIN (đã merge conflict + tối ưu)
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -89,7 +88,6 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Tạo token (gộp ưu điểm của cả 2 version)
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
       expiresIn: "7d",
     });
