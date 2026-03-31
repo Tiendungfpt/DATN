@@ -10,6 +10,7 @@ import hotelRouter from "./routers/hotel.js";
 import bookingRouter from "./routers/booking.js";
 import adminRouter from "./routers/admin.js";
 import momoRouter from "./routers/momoRoutes.js";
+import userRoutes from "./routers/user.js";
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/api/rooms", roomsRouter);
 app.use("/api/bookings", bookingRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/momo", momoRouter);
+app.use("/api/users", userRoutes);
 app.use("/uploads", express.static("uploads"));
 
 app.listen(3000, () => {

@@ -3,10 +3,9 @@ import { useEffect, useState } from "react";
 
 export default function Header() {
   const [logo, setLogo] = useState("");
-  const [user, setUser] = useState(null); 
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-
 
   useEffect(() => {
     if (token) {
@@ -100,21 +99,26 @@ export default function Header() {
                     aria-expanded="false"
                   >
                     <i className="bi bi-person-circle fs-5"></i>
-                    Xin chào,{" "}
-                    <span className="fw-semibold">
-                      {user?.name || "Khách hàng"}
-                    </span>
+                    Xin chào, <span className="fw-semibold">{user?.name}</span>
                   </a>
 
                   <ul className="dropdown-menu dropdown-menu-end shadow">
                     <li>
-                      <a className="dropdown-item" href="#">
+                      <a className="dropdown-item" href="/thong-tin-tai-khoan">
                         <i className="bi bi-person me-2"></i>Thông tin tài khoản
                       </a>
                     </li>
                     <li>
-                      <a className="dropdown-item" href="#">
-                        <i className="bi bi-bookmark me-2"></i>Đặt phòng của tôi
+                      <a
+                        className="dropdown-item"
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          window.location.href = "/thong-tin-tai-khoan?tab=history";
+                        }}
+                      >
+                        <i className="bi bi-bookmark me-2"></i>
+                        Lịch sử đặt phòng
                       </a>
                     </li>
                     <li>

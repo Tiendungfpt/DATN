@@ -16,10 +16,9 @@ import Register from "./auth/register";
 import Login from "./auth/login";
 import RoomsList from "./pages/RoomList";
 import RoomDetail from "./pages/RoomDetail";
-import RoomTypeDetail from "./pages/RoomTypeDetail";
-import Payment from "./pages/Payment";
 import HotelList from "./pages/HotelList";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import UserProfile from "./pages/Profile/UserProfile";
 
 function RedirectToDatPhong() {
     const { search } = useLocation();
@@ -40,15 +39,14 @@ function Layout() {
                 <Route path="/login" element={<Login />} />
 
                 <Route path="/dat-phong" element={<RoomsList />} />
-                <Route path="/loai-phong/:roomTypeKey" element={<RoomTypeDetail />} />
                 <Route path="/khach-san" element={<HotelList />} />
                 <Route path="/lien-he" element={<Contact />} />
                 <Route path="/booking/:roomId" element={<Booking />} />
                 <Route path="/booking-list" element={<BookingList />} />
                 <Route path="/phong/:id" element={<RoomDetail />} />
                 <Route path="/khach-san/:id" element={<RoomsList />} />
-                <Route path="/payment/:bookingId" element={<Payment />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
+                <Route path="/thong-tin-tai-khoan" element={<UserProfile/>}></Route>
 
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="rooms" element={<RoomList />} />
