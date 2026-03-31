@@ -11,6 +11,7 @@ import bookingRouter from "./routers/booking.js";
 import adminRouter from "./routers/admin.js";
 import momoRouter from "./routers/momoRoutes.js";
 import userRoutes from "./routers/user.js";
+import dashboardRoutes from "./routers/dashboard.route.js";
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/bookings", bookingRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/momo", momoRouter);
 app.use("/api/users", userRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 app.use("/uploads", express.static("uploads"));
 
 app.listen(3000, () => {
