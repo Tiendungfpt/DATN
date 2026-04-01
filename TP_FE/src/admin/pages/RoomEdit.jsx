@@ -9,11 +9,11 @@ function RoomsEdit() {
 
     const [room, setRoom] = useState({
         name: "",
+        room_type: "standard",
+        room_no: "",
         image: "",
-        description: "",
         price: 0,
-        maxGuests: 2,
-        capacity: "",
+        capacity: 2,
         status: "available",
     });
 
@@ -21,16 +21,19 @@ function RoomsEdit() {
     const [file, setFile] = useState(null);
 
     useEffect(() => {
-        axios.get(`http://localhost:3000/api/rooms/${id}`).then((res) => {
+        const token = localStorage.getItem("token");
+        axios.get(`http://localhost:3000/api/admin/rooms/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then((res) => {
             const data = res.data;
 
             setRoom({
                 name: data.name || "",
+                room_type: data.room_type || "standard",
+                room_no: data.room_no || "",
                 image: data.image || "",
-                description: data.description || "",
                 price: data.price ?? 0,
-                maxGuests: data.maxGuests ?? 2,
-                capacity: data.capacity || "",
+                capacity: data.capacity ?? data.maxGuests ?? 2,
                 status: data.status || "available",
             });
 
@@ -47,7 +50,7 @@ function RoomsEdit() {
 
         setRoom({
             ...room,
-            [name]: name === "price" || name === "maxGuests" ? Number(value) : value,
+            [name]: name === "price" || name === "capacity" ? Number(value) : value,
         });
     };
 
@@ -76,7 +79,10 @@ function RoomsEdit() {
                 }
             }
 
-            await axios.put(`http://localhost:3000/api/rooms/${id}`, formData);
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:3000/api/admin/rooms/${id}`, formData, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
 
             alert("Cập nhật thành công");
             navigate("/admin/rooms");
@@ -97,16 +103,24 @@ function RoomsEdit() {
                     placeholder="Tên phòng"
                 />
 
+                <select name="room_type" value={room.room_type} onChange={handleChange}>
+                    <option value="standard">standard</option>
+                    <option value="deluxe_twin">deluxe_twin</option>
+                    <option value="deluxe_queen">deluxe_queen</option>
+                    <option value="luxury">luxury</option>
+                    <option value="family_suite">family_suite</option>
+                </select>
+
+                <input
+                    name="room_no"
+                    value={room.room_no}
+                    onChange={handleChange}
+                    placeholder="Số phòng"
+                />
+
                 <input type="file" onChange={handleFileChange} />
 
                 {preview && <img src={preview} width="150" alt="" />}
-
-                <textarea
-                    name="description"
-                    value={room.description}
-                    onChange={handleChange}
-                    placeholder="Mô tả"
-                />
 
                 <input
                     name="price"
@@ -117,24 +131,17 @@ function RoomsEdit() {
                 />
 
                 <input
-                    name="maxGuests"
+                    name="capacity"
                     type="number"
                     min="1"
-                    value={room.maxGuests}
+                    value={room.capacity}
                     onChange={handleChange}
                     placeholder="Số khách tối đa"
                 />
 
-                <input
-                    name="capacity"
-                    value={room.capacity}
-                    onChange={handleChange}
-                    placeholder="Ghi chú sức chứa (tuỳ chọn)"
-                />
-
-                <select name="status" value={room.status === "booked" ? "maintenance" : room.status} onChange={handleChange}>
+                <select name="status" value={room.status} onChange={handleChange}>
                     <option value="available">Sẵn sàng cho đặt</option>
-                    <option value="maintenance">Bảo trì</option>
+                    <option value="booked">Đã đặt</option>
                 </select>
 
                 <button type="submit">Cập nhật</button>

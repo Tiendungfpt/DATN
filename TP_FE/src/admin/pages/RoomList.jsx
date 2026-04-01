@@ -6,10 +6,23 @@ import { useNavigate } from "react-router-dom";
 function RoomsList() {
     const [rooms, setRooms] = useState([]);
     const navigate = useNavigate();
+    const fallbackImage =
+        "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
+
+    const resolveImage = (imageValue) => {
+        const raw = String(imageValue || "").trim();
+        if (!raw) return fallbackImage;
+        if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+        if (raw.startsWith("//")) return `https:${raw}`;
+        return `http://localhost:3000/uploads/${raw}`;
+    };
 
     const fetchRooms = async () => {
         try {
-            const res = await axios.get("http://localhost:3000/api/rooms");
+            const token = localStorage.getItem("token");
+            const res = await axios.get("http://localhost:3000/api/admin/rooms", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
             setRooms(res.data);
         } catch (error) {
             console.log(error);
@@ -24,7 +37,10 @@ function RoomsList() {
         if (!window.confirm("Bạn có chắc muốn xoá phòng này?")) return;
 
         try {
-            await axios.delete(`http://localhost:3000/api/rooms/${id}`);
+            const token = localStorage.getItem("token");
+            await axios.delete(`http://localhost:3000/api/admin/rooms/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
             fetchRooms();
         } catch (error) {
             console.log(error);
@@ -39,27 +55,27 @@ function RoomsList() {
                 {rooms.map((room) => (
                     <div className="hotel-card" key={room._id}>
                         <img
-                            src={
-                                room.image?.startsWith("http")
-                                    ? room.image
-                                    : `http://localhost:3000/uploads/${room.image}`
-                            }
+                            src={resolveImage(room.image)}
                             alt=""
                             width="80"
+                            onError={(e) => {
+                                e.currentTarget.src = fallbackImage;
+                            }}
                         />
 
                         <div className="hotel-info">
                             <h3>{room.name}</h3>
-
-                            <p className="desc">{room.description}</p>
+                            <p className="desc">
+                                <strong>Loại:</strong> {room.room_type || "—"} ·{" "}
+                                <strong>Số phòng:</strong> {room.room_no || "—"}
+                            </p>
 
                             <p className="price">
                                 💰 {room.price.toLocaleString("vi-VN")} đ
                             </p>
 
                             <p className="capacity">
-                                👤 Tối đa {room.maxGuests ?? "—"} người
-                                {room.capacity ? ` · ${room.capacity}` : ""}
+                                👤 Tối đa {room.capacity ?? room.maxGuests ?? "—"} người
                             </p>
 
                             <p className={
@@ -69,8 +85,8 @@ function RoomsList() {
                             }>
                                 {room.status === "available"
                                     ? "available"
-                                    : room.status === "maintenance"
-                                      ? "maintenance (bảo trì)"
+                                    : room.status === "booked"
+                                      ? "booked (đã đặt)"
                                       : room.status}
                             </p>
 

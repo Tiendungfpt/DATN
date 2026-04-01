@@ -144,13 +144,13 @@ function BookingHistory() {
 
       <div className="row g-4">
         {bookings.map((booking) => {
-          const checkIn = new Date(booking.checkInDate);
-          const checkOut = new Date(booking.checkOutDate);
+          const checkIn = new Date(booking.check_in_date);
+          const checkOut = new Date(booking.check_out_date);
           const nights = Math.ceil((checkOut - checkIn) / (1000 * 3600 * 24));
 
           const isPending = booking.status === "pending";
           const isCancelled = booking.status === "cancelled";
-          const isPaid = booking.paymentStatus === "paid";
+          const isPaid = booking.status === "confirmed";
 
           return (
             <div key={booking._id} className="col-12">
@@ -163,7 +163,7 @@ function BookingHistory() {
                         <span className="badge bg-primary-subtle text-primary px-4 py-2 fs-6 rounded-3 fw-medium">
                           {nights} đêm
                         </span>
-                        {getStatusBadge(booking.status, booking.paymentStatus)}
+                        {getStatusBadge(booking.status, isPaid ? "paid" : "unpaid")}
                         {isPaid && (
                           <span className="badge bg-info-subtle text-info px-4 py-2 fs-6 rounded-3 fw-medium d-flex align-items-center gap-1">
                             <i className="bi bi-credit-card"></i> Đã thanh toán
@@ -219,21 +219,24 @@ function BookingHistory() {
                           Phòng đã đặt:
                         </strong>
                         <div className="d-flex flex-wrap gap-2">
-                          {booking.roomsDetail?.length > 0 ? (
-                            booking.roomsDetail.map((room, index) => (
-                              <span
-                                key={index}
-                                className="badge bg-light text-dark border px-4 py-2 fs-6 fw-medium"
-                              >
-                                {room.name || room.type || `Phòng ${room}`}
+                            {(booking.assigned_room_id?.name || booking.room_id?.name) ? (
+                              <span className="badge bg-light text-dark border px-4 py-2 fs-6 fw-medium">
+                                {(booking.assigned_room_id?.name || booking.room_id?.name)}
+                                {(booking.assigned_room_id?.room_no || booking.room_id?.room_no)
+                                  ? ` - ${(booking.assigned_room_id?.room_no || booking.room_id?.room_no)}`
+                                  : ""}
                               </span>
-                            ))
-                          ) : (
-                            <span className="text-muted">
-                              Không có thông tin phòng
-                            </span>
-                          )}
+                            ) : (
+                              <span className="text-muted">
+                                Không có thông tin phòng
+                              </span>
+                            )}
                         </div>
+                        {!booking.assigned_room_id && (
+                          <small className="text-muted d-block mt-2">
+                            Booking đang chờ admin xếp phòng cụ thể.
+                          </small>
+                        )}
                       </div>
                     </div>
 
@@ -242,7 +245,7 @@ function BookingHistory() {
                       <div className="mb-4">
                         <small className="text-muted">Tổng thanh toán</small>
                         <h3 className="fw-bold text-primary mb-1">
-                          {booking.totalPrice.toLocaleString("vi-VN")} ₫
+                          {(booking.total_price ?? 0).toLocaleString("vi-VN")} ₫
                         </h3>
                         <small className="text-muted">({nights} đêm)</small>
                       </div>

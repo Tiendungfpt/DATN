@@ -1,17 +1,19 @@
 .hotel-create-container {
-  max-width: 600px;
-  margin: 40px auto;
+  max-width: 700px;
+  margin: 10px auto;
   background: #ffffff;
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  padding: 26px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .hotel-create-title {
   text-align: center;
-  margin-bottom: 25px;
+  margin-bottom: 18px;
   font-size: 24px;
-  font-weight: bold;
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .hotel-form {
@@ -22,10 +24,11 @@
 
 .hotel-form input,
 .hotel-form textarea {
-  padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  padding: 11px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
   font-size: 14px;
+  background: #f8fafc;
 }
 
 .hotel-form textarea {
@@ -41,28 +44,28 @@
 
 .hotel-form button {
   padding: 12px;
-  background: #007bff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: white;
-  font-weight: bold;
+  font-weight: 700;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
   transition: 0.3s;
 }
 
 .hotel-form button:hover {
-  background: #0056b3;
+  transform: translateY(-1px);
 }
 /* select dropdown */
 .hotel-form select {
     width: 100%;
     padding: 10px 12px;
-    margin-bottom: 12px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
+    margin-bottom: 0;
+    border-radius: 9px;
+    border: 1px solid #cbd5e1;
     font-size: 14px;
     outline: none;
-    background-color: #fff;
+    background-color: #f8fafc;
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -76,4 +79,12 @@
 .hotel-form select:focus {
     border-color: #3498db;
     box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+.preview-box img,
+.hotel-form img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 10px;
 }

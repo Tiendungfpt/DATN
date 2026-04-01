@@ -1,10 +1,14 @@
 import User from "../models/User.js";
 import Rooms from "../models/rooms.js";
 import Booking from "../models/Booking.js";
-import {
-  mapRoomsById,
-  collectRoomIdsFromBookings,
-} from "../utils/roomLookup.js";
+
+function normalizeImageValue(imageValue) {
+  const raw = String(imageValue || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("//")) return `https:${raw}`;
+  return `https://${raw}`;
+}
 
 // ================= DASHBOARD =================
 
@@ -99,6 +103,53 @@ export const getRooms = async (req, res) => {
   }
 };
 
+export const getRoomById = async (req, res) => {
+  try {
+    const room = await Rooms.findById(req.params.id);
+    if (!room) {
+      return res.status(404).json({ message: "Không tìm thấy phòng" });
+    }
+    res.json(room);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const createRoom = async (req, res) => {
+  try {
+    const payload = {
+      ...req.body,
+      image: req.file
+        ? req.file.filename
+        : normalizeImageValue(req.body.image || ""),
+    };
+    const room = await Rooms.create(payload);
+    res.status(201).json(room);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateRoom = async (req, res) => {
+  try {
+    const payload = { ...req.body };
+    if (req.file) {
+      payload.image = req.file.filename;
+    } else if (Object.prototype.hasOwnProperty.call(req.body, "image")) {
+      payload.image = normalizeImageValue(req.body.image || "");
+    }
+    const room = await Rooms.findByIdAndUpdate(req.params.id, payload, {
+      new: true,
+    });
+    if (!room) {
+      return res.status(404).json({ message: "Không tìm thấy phòng" });
+    }
+    res.json(room);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 export const deleteRoom = async (req, res) => {
   try {
     await Rooms.findByIdAndDelete(req.params.id);
@@ -113,22 +164,11 @@ export const deleteRoom = async (req, res) => {
 export const getBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
-      .populate("userId", "email")
+      .populate("user_id", "name email")
+      .populate("room_id", "name image price capacity")
       .sort({ createdAt: -1 })
       .lean();
-
-    const roomMap = await mapRoomsById(
-      collectRoomIdsFromBookings(bookings)
-    );
-
-    const merged = bookings.map((b) => ({
-      ...b,
-      roomsDetail: (b.rooms || []).map(
-        (id) => roomMap.get(String(id)) || id
-      ),
-    }));
-
-    res.json(merged);
+    res.json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -152,7 +192,7 @@ export const getRevenue = async (req, res) => {
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: "$totalPrice" },
+          totalRevenue: { $sum: "$total_price" },
           totalBookings: { $sum: 1 },
         },
       },
@@ -175,11 +215,11 @@ export const getTopRooms = async (req, res) => {
   try {
     const topRooms = await Booking.aggregate([
       { $match: { status: { $ne: "cancelled" } } },
-      { $unwind: "$rooms" },
       {
         $group: {
-          _id: "$rooms",
+          _id: "$room_id",
           totalBookings: { $sum: 1 },
+          revenue: { $sum: "$total_price" },
         },
       },
       { $sort: { totalBookings: -1 } },

@@ -1,26 +1,62 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
-import HotelCard from "../components/HotelCard";
 
 export default function Home() {
-  const [hotels, setHotels] = useState([]);
+  const fallbackRoomImage =
+    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
+
+  const featuredRoomNames = [
+    "Phòng Tiêu Chuẩn",
+    "Phòng Cao cấp-2 giường đơn",
+    "Phòng Cao cấp-1 giường Queen",
+    "Phòng Sang Trọng",
+    "Family Suite",
+  ];
+
+  const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const fetchHotels = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      setIsAdmin(user?.role === "admin");
+    } catch {
+      setIsAdmin(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
       try {
-        const res = await fetch("http://localhost:3000/api/hotels");
+        const res = await fetch("http://localhost:3000/api/rooms");
 
         if (!res.ok) throw new Error(`Lỗi server: ${res.status}`);
 
         const data = await res.json();
 
-        const hotelList = Array.isArray(data)
+        const roomList = Array.isArray(data)
           ? data
           : data?.data || data?.result || [];
 
-        setHotels(hotelList);
+        const normalizeName = (value) =>
+          String(value || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9]/g, "")
+            .toLowerCase();
+
+        const selected = [];
+        featuredRoomNames.forEach((name) => {
+          const found = roomList.find(
+            (r) => normalizeName(r.name) === normalizeName(name),
+          );
+          if (found) selected.push(found);
+        });
+
+        setRooms(selected.slice(0, 5));
       } catch (err) {
         console.error("Lỗi khi lấy dữ liệu:", err);
         setError(err.message);
@@ -29,7 +65,7 @@ export default function Home() {
       }
     };
 
-    fetchHotels();
+    fetchRooms();
   }, []);
 
   if (loading) {
@@ -92,26 +128,60 @@ export default function Home() {
             <div>
               <h3 className="fw-bold mb-1">Ưu đãi nổi bật</h3>
               <p className="text-muted">
-                Khám phá các khách sạn được yêu thích nhất
+                Khám phá 5 loại phòng nổi bật
               </p>
             </div>
-            <a
-              href="/khach-san"
-              className="text-primary fw-medium text-decoration-none"
-            >
+            <Link to="/khach-san" className="text-primary fw-medium text-decoration-none">
               Xem tất cả →
-            </a>
+            </Link>
           </div>
 
-          {hotels.length === 0 ? (
+          {rooms.length === 0 ? (
             <div className="text-center py-5">
-              <p className="text-muted fs-5">Hiện chưa có khách sạn nào.</p>
+              <p className="text-muted fs-5">Hiện chưa có phòng nào.</p>
             </div>
           ) : (
             <div className="row g-4">
-              {hotels.slice(0, 6).map((hotel) => (
-                <div className="col-md-6 col-lg-4" key={hotel._id}>
-                  <HotelCard hotel={hotel} />
+              {rooms.map((room) => (
+                <div className="col-md-6 col-lg-4" key={room._id}>
+                  <div className="card h-100 border-0 shadow-sm overflow-hidden">
+                    <img
+                      src={
+                        room.image?.startsWith("http")
+                          ? room.image
+                          : room.image
+                            ? `http://localhost:3000/uploads/${room.image}`
+                            : fallbackRoomImage
+                      }
+                      alt={room.name}
+                      style={{ height: "220px", objectFit: "cover" }}
+                      onError={(e) => {
+                        e.currentTarget.src = fallbackRoomImage;
+                      }}
+                    />
+                    <div className="card-body d-flex flex-column">
+                      <h5 className="fw-bold">{room.name}</h5>
+                      <p className="text-muted mb-2">
+                        Sức chứa: {room.capacity ?? room.maxGuests ?? "Đang cập nhật"} người
+                      </p>
+                      <p className="mb-3">
+                        Giá:{" "}
+                        <strong>
+                          {room.price
+                            ? `${Number(room.price).toLocaleString("vi-VN")}đ/đêm`
+                            : "Liên hệ"}
+                        </strong>
+                      </p>
+                      {!isAdmin && (
+                        <Link
+                          to={`/booking/${room._id}`}
+                          className="btn btn-primary mt-auto"
+                        >
+                          Đặt phòng
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

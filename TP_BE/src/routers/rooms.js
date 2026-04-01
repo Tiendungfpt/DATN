@@ -4,19 +4,15 @@ import upload from "../middlewares/upload.js"; // 🔥 thêm dòng này
 import {
   addRooms,
   getAllRooms,
+  searchRooms,
   getRoomsById,
   deleteRooms,
-  updateRooms,
-  getRoomsByHotel,
-  searchRooms
+  updateRooms
 } from "../controllers/rooms.js";
 
 const roomsRouter = Router();
 
 roomsRouter.get("/", getAllRooms);
-
-roomsRouter.get("/hotel/:hotelId", getRoomsByHotel);
-
 roomsRouter.get("/search", searchRooms);
 
 roomsRouter.get("/:id", getRoomsById);

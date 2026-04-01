@@ -9,7 +9,6 @@ function PaymentSuccess() {
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [hotelInfo, setHotelInfo] = useState(null); 
 
   useEffect(() => {
     if (!bookingId) {
@@ -17,8 +16,11 @@ function PaymentSuccess() {
       return;
     }
 
+    const token = localStorage.getItem("token");
     axios
-      .get(`http://localhost:3000/api/bookings/${bookingId}`)
+      .get(`http://localhost:3000/api/bookings/${bookingId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       .then((res) => {
         setBooking(res.data);
       })
@@ -71,7 +73,7 @@ function PaymentSuccess() {
                           <div className="d-flex justify-content-between py-2 border-bottom">
                             <span className="text-muted">Tổng thanh toán:</span>
                             <strong className="text-success fs-5">
-                              {booking.totalPrice?.toLocaleString("vi-VN")} ₫
+                              {booking.total_price?.toLocaleString("vi-VN")} ₫
                             </strong>
                           </div>
                         </div>
@@ -88,7 +90,7 @@ function PaymentSuccess() {
                         <div className="col-12">
                           <div className="d-flex justify-content-between py-2 border-bottom">
                             <span className="text-muted">Phương thức thanh toán:</span>
-                            <strong>{booking.paymentMethod?.toUpperCase() || "VNPay/Momo"}</strong>
+                            <strong>MOMO</strong>
                           </div>
                         </div>
                       </div>
@@ -111,7 +113,7 @@ function PaymentSuccess() {
                   </button>
 
                   <button 
-                    onClick={() => navigate("/lich-su-dat-phong")}
+                    onClick={() => navigate("/booking-list")}
                     className="btn btn-outline-secondary btn-lg py-3 fw-semibold"
                   >
                     <i className="bi bi-clock-history me-2"></i>

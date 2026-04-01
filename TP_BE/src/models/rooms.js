@@ -3,14 +3,14 @@ import mongoose from "mongoose";
 const roomSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    image: { type: String, required: true },
-    description: { type: String },
+    room_type: { type: String, required: true, trim: true },
+    room_no: { type: String, required: true, trim: true },
+    image: { type: String, default: "" },
     price: { type: Number, required: true, min: 0 },
-    maxGuests: { type: Number, required: true, min: 1 },
-    capacity: { type: String },
+    capacity: { type: Number, required: true, min: 1 },
     status: {
       type: String,
-      enum: ["available", "maintenance"],
+      enum: ["available", "booked"],
       default: "available",
     },
   },

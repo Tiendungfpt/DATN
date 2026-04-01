@@ -7,6 +7,7 @@ import {
   getAllBookingsAdmin,
   getBookingById,
   updateBooking,
+  getAssignableRooms,
   cancelBooking,
   deleteBooking,
   paymentBooking,
@@ -21,6 +22,7 @@ bookingRouter.get("/", checkAuth, checkAdmin, getAllBookingsAdmin);
 bookingRouter.put("/payment/:id", checkAuth, paymentBooking);
 bookingRouter.put("/cancel/:id", checkAuth, cancelBooking);
 
+bookingRouter.get("/:id/assignable-rooms", checkAuth, checkAdmin, getAssignableRooms);
 bookingRouter.get("/:id", checkAuth, getBookingById);
 bookingRouter.put("/:id", checkAuth, checkAdmin, updateBooking);
 bookingRouter.delete("/:id", checkAuth, checkAdmin, deleteBooking);

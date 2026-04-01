@@ -60,7 +60,7 @@ export default function Header() {
               </li>
               <li className="nav-item">
                 <NavLink className="nav-link fw-medium px-3" to="/khach-san">
-                  Khách sạn
+                  Danh sách phòng
                 </NavLink>
               </li>
               <li className="nav-item">
@@ -89,51 +89,63 @@ export default function Header() {
                   </li>
                 </>
               ) : (
-                /* === Phần Dropdown khi đã đăng nhập === */
-                <li className="nav-item ms-3 dropdown">
-                  <a
-                    className="nav-link dropdown-toggle fw-medium d-flex align-items-center gap-2"
-                    href="#"
-                    role="button"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                  >
-                    <i className="bi bi-person-circle fs-5"></i>
-                    Xin chào, <span className="fw-semibold">{user?.name}</span>
-                  </a>
+                <>
+                  {user?.role === "admin" && (
+                    <li className="nav-item ms-2">
+                      <NavLink
+                        className="btn btn-warning px-3 fw-semibold"
+                        to="/admin/rooms"
+                      >
+                        Admin
+                      </NavLink>
+                    </li>
+                  )}
+                  {/* === Phần Dropdown khi đã đăng nhập === */}
+                  <li className="nav-item ms-3 dropdown">
+                    <a
+                      className="nav-link dropdown-toggle fw-medium d-flex align-items-center gap-2"
+                      href="#"
+                      role="button"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false"
+                    >
+                      <i className="bi bi-person-circle fs-5"></i>
+                      Xin chào, <span className="fw-semibold">{user?.name}</span>
+                    </a>
 
-                  <ul className="dropdown-menu dropdown-menu-end shadow">
-                    <li>
-                      <a className="dropdown-item" href="/thong-tin-tai-khoan">
-                        <i className="bi bi-person me-2"></i>Thông tin tài khoản
-                      </a>
-                    </li>
-                    <li>
-                      <a
-                        className="dropdown-item"
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          window.location.href = "/thong-tin-tai-khoan?tab=history";
-                        }}
-                      >
-                        <i className="bi bi-bookmark me-2"></i>
-                        Lịch sử đặt phòng
-                      </a>
-                    </li>
-                    <li>
-                      <hr className="dropdown-divider" />
-                    </li>
-                    <li>
-                      <button
-                        onClick={handleLogout}
-                        className="dropdown-item text-danger fw-medium"
-                      >
-                        <i className="bi bi-box-arrow-right me-2"></i>Đăng xuất
-                      </button>
-                    </li>
-                  </ul>
-                </li>
+                    <ul className="dropdown-menu dropdown-menu-end shadow">
+                      <li>
+                        <a className="dropdown-item" href="/thong-tin-tai-khoan">
+                          <i className="bi bi-person me-2"></i>Thông tin tài khoản
+                        </a>
+                      </li>
+                      <li>
+                        <a
+                          className="dropdown-item"
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            window.location.href = "/thong-tin-tai-khoan?tab=history";
+                          }}
+                        >
+                          <i className="bi bi-bookmark me-2"></i>
+                          Lịch sử đặt phòng
+                        </a>
+                      </li>
+                      <li>
+                        <hr className="dropdown-divider" />
+                      </li>
+                      <li>
+                        <button
+                          onClick={handleLogout}
+                          className="dropdown-item text-danger fw-medium"
+                        >
+                          <i className="bi bi-box-arrow-right me-2"></i>Đăng xuất
+                        </button>
+                      </li>
+                    </ul>
+                  </li>
+                </>
               )}
             </ul>
           </div>

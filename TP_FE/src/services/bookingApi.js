@@ -1,6 +1,6 @@
 import { api } from "./api";
 
-/** POST /api/bookings — { roomIds, checkInDate, checkOutDate } — cần JWT */
+/** POST /api/bookings — { room_id, check_in_date, check_out_date, room_quantity } — cần JWT */
 export const createBooking = (data) => {
   return api.post("/bookings", data);
 };

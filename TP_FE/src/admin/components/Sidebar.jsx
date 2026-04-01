@@ -4,7 +4,8 @@ import "./Sidebar.css";
 export default function Sidebar() {
     return (
         <div className="sidebar">
-            <h2 className="sidebar-title">ADMIN</h2>
+            <h2 className="sidebar-title">ADMIN PANEL</h2>
+            <p className="sidebar-subtitle">Quản trị hệ thống đặt phòng</p>
 
             <ul className="sidebar-menu">
                 <li className="menu-group">Quản lý phòng</li>
@@ -29,6 +30,17 @@ export default function Sidebar() {
                         }
                     >
                         📋 Danh sách người dùng
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
+                        to="/admin/bookings"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
+                        📋 Danh sách booking
                     </NavLink>
                 </li>
 

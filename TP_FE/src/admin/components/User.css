@@ -1,51 +1,45 @@
-/* ===== PAGE ===== */
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
-
 .user-page {
-  padding: 20px;
-  background: #0f172a;
-  min-height: 100vh;
-  color: #fff;
+  padding: 8px;
+  color: #0f172a;
 }
 
 /* ===== TITLE ===== */
 .title {
-  font-size: 24px;
-  margin-bottom: 20px;
-  letter-spacing: 1px;
+  font-size: 1.9rem;
+  margin-bottom: 16px;
+  font-weight: 800;
 }
 
 /* ===== SEARCH ===== */
 .search-input {
-  padding: 10px 15px;
+  padding: 10px 14px;
   width: 300px;
-  border-radius: 8px;
-  border: none;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
   outline: none;
   margin-bottom: 20px;
-  background: #1e293b;
-  color: #fff;
+  background: #fff;
+  color: #0f172a;
 }
 
 .search-input::placeholder {
-  color: #94a3b8;
+  color: #64748b;
 }
 
 /* ===== TABLE ===== */
 .user-table {
   width: 100%;
   border-collapse: collapse;
-  background: #1e293b;
-  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
 }
 
 .user-table th {
-  background: #020617;
-  color: #fff;
+  background: #f8fafc;
+  color: #334155;
   text-transform: uppercase;
   font-size: 13px;
 }
@@ -54,12 +48,12 @@ body {
 .user-table td {
   padding: 12px;
   text-align: center;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 /* hover row */
 .user-table tr:hover {
-  background: #334155;
+  background: #f8fafc;
   transition: 0.3s;
 }
 
@@ -114,13 +108,13 @@ body {
   margin: 0 5px;
   border-radius: 6px;
   border: none;
-  background: #1e293b;
-  color: #fff;
+  background: #e2e8f0;
+  color: #0f172a;
   cursor: pointer;
 }
 
 .pagination button:hover {
-  background: #334155;
+  background: #cbd5e1;
 }
 
 .pagination span {

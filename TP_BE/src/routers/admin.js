@@ -1,4 +1,5 @@
 import { Router } from "express";
+import upload from "../middlewares/upload.js";
 
 import { checkAuth } from "../middlewares/checkAuth.js";
 import { checkAdmin } from "../middlewares/checkAdmin.js";
@@ -11,6 +12,9 @@ import {
   getUserById,
   deleteUser,
   getRooms,
+  getRoomById,
+  createRoom,
+  updateRoom,
   deleteRoom,
   getBookings,
   deleteBooking,
@@ -34,6 +38,9 @@ adminRouter.patch(
 );
 
 adminRouter.get("/rooms", checkAuth, checkAdmin, getRooms);
+adminRouter.get("/rooms/:id", checkAuth, checkAdmin, getRoomById);
+adminRouter.post("/rooms", checkAuth, checkAdmin, upload.single("image"), createRoom);
+adminRouter.put("/rooms/:id", checkAuth, checkAdmin, upload.single("image"), updateRoom);
 adminRouter.delete("/rooms/:id", checkAuth, checkAdmin, deleteRoom);
 
 adminRouter.get("/bookings", checkAuth, checkAdmin, getBookings);

@@ -1,33 +1,37 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
 function RoomsList() {
-    const { id } = useParams(); 
     const navigate = useNavigate();
 
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [hotelName, setHotelName] = useState("");
+    const [isAdmin, setIsAdmin] = useState(false);
 
     const placeholderImage = "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
     useEffect(() => {
+        try {
+            const user = JSON.parse(localStorage.getItem("user") || "null");
+            setIsAdmin(user?.role === "admin");
+        } catch {
+            setIsAdmin(false);
+        }
+    }, []);
+
+    useEffect(() => {
         axios
-            .get(`http://localhost:3000/api/rooms/hotel/${id}`)
+            .get("http://localhost:3000/api/rooms")
             .then((res) => {
                 const data = Array.isArray(res.data) ? res.data : [];
                 setRooms(data);
-                
-                if (data.length > 0 && data[0].hotelId?.name) {
-                    setHotelName(data[0].hotelId.name);
-                }
             })
             .catch((err) => {
                 console.error("Error fetching rooms:", err);
                 setRooms([]);
             })
             .finally(() => setLoading(false));
-    }, [id]);
+    }, []);
 
     if (loading) {
         return <div style={styles.loading}>Đang tải danh sách phòng...</div>;
@@ -38,7 +42,7 @@ function RoomsList() {
             {/* Header */}
             <div style={styles.header}>
                 <h1 style={styles.title}>
-                    {hotelName ? `Phòng tại ${hotelName}` : "Danh sách phòng"}
+                    Danh sách phòng
                 </h1>
                 <p style={styles.subtitle}>
                     {rooms.length} phòng • Chọn phòng phù hợp với bạn
@@ -75,11 +79,11 @@ function RoomsList() {
                             <h3 style={styles.roomName}>{room.name}</h3>
                             
                             <p style={styles.capacity}>
-                                🛏️ {room.capacity} người • {room.size || "35m²"}
+                                🛏️ {room.capacity} người
                             </p>
 
                             <p style={styles.description}>
-                                {room.description?.substring(0, 120)}...
+                                Không gian sạch sẽ, đầy đủ tiện nghi cho kỳ nghỉ của bạn.
                             </p>
 
                             <div style={styles.priceRow}>
@@ -91,12 +95,14 @@ function RoomsList() {
                                 </div>
                             </div>
 
-                            <button
-                                style={styles.button}
-                                onClick={() => navigate(`/phong/${room._id}`)}
-                            >
-                                Xem chi tiết & Đặt phòng
-                            </button>
+                            {!isAdmin && (
+                                <button
+                                    style={styles.button}
+                                    onClick={() => navigate(`/booking/${room._id}`)}
+                                >
+                                    Đặt phòng
+                                </button>
+                            )}
                         </div>
                     </div>
                 ))}

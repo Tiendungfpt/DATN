@@ -9,8 +9,18 @@ function RoomDetail() {
 
     const [room, setRoom] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     const placeholderImage = "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
+
+    useEffect(() => {
+        try {
+            const user = JSON.parse(localStorage.getItem("user") || "null");
+            setIsAdmin(user?.role === "admin");
+        } catch {
+            setIsAdmin(false);
+        }
+    }, []);
 
     useEffect(() => {
         axios
@@ -85,12 +95,14 @@ function RoomDetail() {
                             </div>
                         </div>
 
-                        <button 
-                            style={styles.bookButton}
-                            onClick={() => navigate(`/booking/${room._id}`)}
-                        >
-                            Đặt phòng ngay
-                        </button>
+                        {!isAdmin && (
+                            <button 
+                                style={styles.bookButton}
+                                onClick={() => navigate(`/booking/${room._id}`)}
+                            >
+                                Đặt phòng ngay
+                            </button>
+                        )}
 
                         <p style={styles.guarantee}>Đảm bảo giá tốt nhất</p>
                     </div>

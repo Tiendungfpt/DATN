@@ -1,53 +1,87 @@
-/* action container */
+.hotel-container h1 {
+  margin: 0 0 18px;
+  font-size: 1.9rem;
+  color: #0f172a;
+}
+
+.hotel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.hotel-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+.hotel-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.hotel-info h3 {
+  margin: 12px 0 8px;
+  font-size: 1.15rem;
+}
+
+.desc {
+  color: #64748b;
+  margin: 0 0 8px;
+}
+
+.price, .capacity {
+  margin: 0.25rem 0;
+}
+
+.status {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.status.available {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status.booked {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .admin-actions {
-    display: flex;
-    justify-content: center; /* 🔥 căn giữa ngang */
-    align-items: center;
-    gap: 12px;
-    margin-top: 15px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
 }
 
-/* base button */
 .admin-actions button {
-    min-width: 90px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: none;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.25s ease;
+  min-width: 90px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-/* edit */
 .btn-edit {
-    background: linear-gradient(135deg, #4facfe, #00f2fe);
-    color: white;
+  background: #2563eb;
+  color: #fff;
 }
 
-.btn-edit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-}
-
-/* delete */
 .btn-delete {
-    background: linear-gradient(135deg, #ff6a6a, #ff3d3d);
-    color: white;
-}
-
-.btn-delete:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-}
-
-/* click effect */
-.admin-actions button:active {
-    transform: scale(0.95);
-}
-.room-count {
-    margin-top: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #27ae60;
+  background: #ef4444;
+  color: #fff;
 }

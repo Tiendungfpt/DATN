@@ -1,6 +1,6 @@
 import axios from "axios";
 import crypto from "crypto";
-import Booking from "../models/Booking";
+import Booking from "../models/Booking.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -26,9 +26,10 @@ class MoMoController {
         });
       }
 
-      const booking = await Booking.findById(bookingId)
-        .populate("rooms", "name price")
-        .populate("userId", "name email");
+      const booking = await Booking.findById(bookingId).populate(
+        "room_id",
+        "name price",
+      );
 
       if (!booking) {
         return res.status(404).json({
@@ -37,18 +38,16 @@ class MoMoController {
         });
       }
 
-      if (booking.paymentStatus === "paid") {
-        return res.status(400).json({
-          success: false,
-          message: "Booking đã thanh toán",
-        });
-      }
-
-      // ✅ FIX: lấy tên phòng đúng (vì bạn dùng rooms array)
-      const roomName = booking.rooms?.[0]?.name || "Khách sạn";
+      const roomName = booking.room_id?.name || "Khách sạn";
 
       const orderId = `BOOK_${booking._id}_${Date.now()}`;
-      const amount = Math.round(booking.totalPrice);
+      const amount = Math.round(booking.total_price || 0);
+      if (amount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Số tiền booking không hợp lệ",
+        });
+      }
       const orderInfo = `Thanh toán phòng ${roomName} - ${booking._id}`;
 
       const requestId = Date.now().toString();
@@ -101,11 +100,6 @@ class MoMoController {
       const result = response.data;
 
       if (result.resultCode === 0 && result.payUrl) {
-        // lưu transaction
-        booking.transactionId = orderId;
-        booking.paymentMethod = "momo";
-        await booking.save();
-
         return res.json({
           success: true,
           payUrl: result.payUrl,
@@ -138,7 +132,15 @@ class MoMoController {
         );
       }
 
-      const booking = await Booking.findOne({ transactionId: orderId });
+      const idMatch = String(orderId).match(/^BOOK_([a-fA-F0-9]{24})_/);
+      const bookingId = idMatch?.[1];
+      if (!bookingId) {
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/payment-failed?message=orderId không hợp lệ`,
+        );
+      }
+
+      const booking = await Booking.findById(bookingId);
 
       if (!booking) {
         return res.redirect(
@@ -149,10 +151,8 @@ class MoMoController {
       const isSuccess = Number(resultCode) === 0;
 
       if (isSuccess) {
-        booking.paymentStatus = "paid";
-        booking.status = "confirmed";
-        booking.transactionId = transId || orderId;
-
+        // Thanh toán thành công nhưng vẫn chờ admin xác nhận.
+        booking.status = "pending";
         await booking.save();
 
         return res.redirect(

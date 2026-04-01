@@ -8,6 +8,7 @@ import AdminLayout from "./admin/AdminLayout";
 import UserList from "./admin/pages/UserList";
 import RoomList from "./admin/pages/RoomList";
 import RoomCreat from "./admin/pages/RoomCreat";
+import BookingAdmin from "./admin/pages/BookingAdmin";
 import Booking from "./pages/Booking";
 import BookingList from "./pages/BookingList";
 import RoomsEdit from "./admin/pages/RoomEdit";
@@ -44,13 +45,14 @@ function Layout() {
                 <Route path="/booking/:roomId" element={<Booking />} />
                 <Route path="/booking-list" element={<BookingList />} />
                 <Route path="/phong/:id" element={<RoomDetail />} />
-                <Route path="/khach-san/:id" element={<RoomsList />} />
+                <Route path="/khach-san/:id" element={<HotelList />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/thong-tin-tai-khoan" element={<UserProfile/>}></Route>
 
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="rooms" element={<RoomList />} />
                     <Route path="users-pagination" element={<UserList />} />
+                    <Route path="bookings" element={<BookingAdmin />} />
                     <Route path="rooms/create" element={<RoomCreat />} />
                     <Route path="rooms/edit/:id" element={<RoomsEdit />} />
                 </Route>

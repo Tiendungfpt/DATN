@@ -8,11 +8,11 @@ function RoomsCreate() {
 
     const [room, setRoom] = useState({
         name: "",
+        room_type: "standard",
+        room_no: "",
         image: "",
-        description: "",
         price: 0,
-        maxGuests: 2,
-        capacity: "",
+        capacity: 2,
         status: "available",
     });
 
@@ -24,7 +24,7 @@ function RoomsCreate() {
 
         setRoom({
             ...room,
-            [name]: name === "price" || name === "maxGuests" ? Number(value) : value,
+            [name]: name === "price" || name === "capacity" ? Number(value) : value,
         });
 
         if (name === "image") {
@@ -65,9 +65,11 @@ function RoomsCreate() {
                 }
             }
 
-            await axios.post("http://localhost:3000/api/rooms", formData, {
+            const token = localStorage.getItem("token");
+            await axios.post("http://localhost:3000/api/admin/rooms", formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
+                    Authorization: `Bearer ${token}`,
                 },
             });
 
@@ -85,6 +87,21 @@ function RoomsCreate() {
 
             <form className="hotel-form" onSubmit={handleSubmit}>
                 <input name="name" placeholder="Tên phòng" onChange={handleChange} required />
+
+                <select name="room_type" value={room.room_type} onChange={handleChange} required>
+                    <option value="standard">standard</option>
+                    <option value="deluxe_twin">deluxe_twin</option>
+                    <option value="deluxe_queen">deluxe_queen</option>
+                    <option value="luxury">luxury</option>
+                    <option value="family_suite">family_suite</option>
+                </select>
+
+                <input
+                    name="room_no"
+                    placeholder="Số phòng (vd: A101)"
+                    onChange={handleChange}
+                    required
+                />
 
                 <div className="upload-box">
                     <input type="file" onChange={handleFileChange} />
@@ -104,29 +121,21 @@ function RoomsCreate() {
                     </div>
                 )}
 
-                <textarea name="description" placeholder="Mô tả" onChange={handleChange} />
-
                 <input name="price" type="number" min="0" placeholder="Giá / đêm" onChange={handleChange} />
 
                 <input
-                    name="maxGuests"
+                    name="capacity"
                     type="number"
                     min="1"
                     placeholder="Số khách tối đa (bắt buộc)"
-                    value={room.maxGuests}
+                    value={room.capacity}
                     onChange={handleChange}
                     required
                 />
 
-                <input
-                    name="capacity"
-                    placeholder="Ghi chú sức chứa (tuỳ chọn, vd: 2 người lớn + 1 trẻ)"
-                    onChange={handleChange}
-                />
-
                 <select name="status" value={room.status} onChange={handleChange}>
                     <option value="available">Sẵn sàng cho đặt</option>
-                    <option value="maintenance">Bảo trì (ẩn khỏi tìm phòng)</option>
+                    <option value="booked">Đã đặt</option>
                 </select>
 
                 <button type="submit">Thêm phòng</button>

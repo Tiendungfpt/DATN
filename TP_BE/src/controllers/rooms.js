@@ -1,98 +1,73 @@
 import Rooms from "../models/rooms.js";
-import mongoose from "mongoose";
+import Booking from "../models/Booking.js";
+import { parseStayDates } from "../utils/bookingAvailability.js";
 
-// lấy tất cả phòng
+// GET /api/rooms - danh sách phòng
 export async function getAllRooms(req, res) {
   try {
-    const rooms = await Rooms.find().populate(
-      "hotelId",
-      "name rating locationNote",
-    );
+    const rooms = await Rooms.find().sort({ createdAt: -1 });
     return res.status(200).json(rooms);
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 }
 
-// tìm kiếm phòng
+// GET /api/rooms/search?check_in_date=YYYY-MM-DD&check_out_date=YYYY-MM-DD&capacity=2
 export async function searchRooms(req, res) {
   try {
-    const { hotelId, minPrice, maxPrice, capacity, sort } = req.query;
+    const { check_in_date, check_out_date, capacity } = req.query;
+    const requestedCapacity = Number(capacity || 1);
 
-    let query = {};
-
-    // lọc theo khách sạn
-    if (hotelId) {
-      query.hotelId = hotelId;
+    if (!check_in_date || !check_out_date) {
+      return res
+        .status(400)
+        .json({ message: "Thiếu check_in_date hoặc check_out_date" });
+    }
+    if (!Number.isFinite(requestedCapacity) || requestedCapacity < 1) {
+      return res.status(400).json({ message: "capacity không hợp lệ" });
     }
 
-    // lọc theo giá
-    if (minPrice || maxPrice) {
-      query.price = {};
+    const parsed = parseStayDates(check_in_date, check_out_date);
+    if (parsed.error) {
+      return res.status(400).json({ message: parsed.error });
+    }
+    const { start, end } = parsed;
 
-      if (minPrice) {
-        query.price.$gte = Number(minPrice);
-      }
+    const capacityFilter = {
+      $or: [{ capacity: { $gte: requestedCapacity } }, { maxGuests: { $gte: requestedCapacity } }],
+    };
 
-      if (maxPrice) {
-        query.price.$lte = Number(maxPrice);
-      }
+    const candidateRooms = await Rooms.find(capacityFilter).lean();
+    if (!candidateRooms.length) {
+      return res.status(200).json([]);
     }
 
-    // lọc theo số người
-    if (capacity) {
-      query.capacity = capacity;
-    }
+    const candidateRoomIds = candidateRooms.map((r) => r._id);
 
-    // sắp xếp giá
-    let sortOption = {};
-    if (sort === "asc") {
-      sortOption.price = 1;
-    }
-    if (sort === "desc") {
-      sortOption.price = -1;
-    }
+    const busyBookings = await Booking.find({
+      room_id: { $in: candidateRoomIds },
+      status: { $in: ["pending", "confirmed"] },
+      check_in_date: { $lt: end },
+      check_out_date: { $gt: start },
+    })
+      .select("room_id")
+      .lean();
 
-    const rooms = await Rooms.find(query)
-      .populate("hotelId", "name rating locationNote")
-      .sort(sortOption);
+    const busyRoomIdSet = new Set(busyBookings.map((b) => String(b.room_id)));
+    const availableRooms = candidateRooms.filter(
+      (room) => !busyRoomIdSet.has(String(room._id)),
+    );
 
-    return res.status(200).json({
-      message: "Search rooms successfully",
-      total: rooms.length,
-      data: rooms,
-    });
+    return res.status(200).json(availableRooms);
   } catch (error) {
-    return res.status(500).json({
-      message: error.message,
-    });
+    return res.status(500).json({ error: error.message });
   }
 }
 
-export async function getRoomsByHotel(req, res) {
-  try {
-    const hotelId = req.params.hotelId;
-
-    if (!mongoose.Types.ObjectId.isValid(hotelId)) {
-      return res.status(400).json({ message: "hotelId không hợp lệ" });
-    }
-
-    const rooms = await Rooms.find({
-      hotelId: new mongoose.Types.ObjectId(hotelId),
-    }).populate("hotelId", "name rating locationNote");
-
-    return res.status(200).json(rooms);
-  } catch (error) {
-    return res.status(500).json({
-      message: error.message,
-    });
-  }
-}
-
-// lấy phòng theo id
+// GET /api/rooms/:id - chi tiết phòng
 export async function getRoomsById(req, res) {
   try {
-    const room = await Rooms.findById(req.params.id).populate("hotelId");
+    const room = await Rooms.findById(req.params.id);
 
     if (!room) {
       return res.status(404).json({ error: "Không tìm thấy phòng" });
@@ -104,12 +79,12 @@ export async function getRoomsById(req, res) {
   }
 }
 
-// thêm phòng
+// POST /api/rooms - thêm phòng
 export async function addRooms(req, res) {
   try {
     const newRoom = await Rooms.create({
       ...req.body,
-      image: req.file ? req.file.filename : "", // 🔥 thêm dòng này
+      image: req.file ? req.file.filename : req.body.image || "",
     });
 
     return res.status(201).json(newRoom);
@@ -118,14 +93,13 @@ export async function addRooms(req, res) {
   }
 }
 
-// cập nhật phòng
+// PUT /api/rooms/:id - cập nhật phòng
 export async function updateRooms(req, res) {
   try {
     const updateData = {
       ...req.body,
     };
 
-    // 🔥 nếu có upload ảnh mới thì update ảnh
     if (req.file) {
       updateData.image = req.file.filename;
     }
@@ -144,7 +118,7 @@ export async function updateRooms(req, res) {
   }
 }
 
-// xóa phòng
+// DELETE /api/rooms/:id - xóa phòng
 export async function deleteRooms(req, res) {
   try {
     const room = await Rooms.findByIdAndDelete(req.params.id);
