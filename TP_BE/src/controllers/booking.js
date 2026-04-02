@@ -3,20 +3,21 @@ import Booking from "../models/Booking.js";
 import Rooms from "../models/rooms.js";
 import User from "../models/User.js";
 import { parseStayDates } from "../utils/bookingAvailability.js";
+import {
+  BOOKING_SCHEDULE_BLOCKING_STATUSES,
+  ROOM_OCCUPYING_BOOKING_STATUSES,
+} from "../utils/bookingSchedule.js";
 
 function nightsBetween(start, end) {
   const ms = end.getTime() - start.getTime();
   return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 }
 
-/** Phòng được coi là đang giữ khi booking đã xác nhận hoặc khách đang ở */
-const OCCUPYING_STATUSES = ["confirmed", "checked_in"];
-
 async function syncRoomStatus(roomId) {
   if (!roomId) return;
   const hasActiveBooking = await Booking.exists({
     assigned_room_id: roomId,
-    status: { $in: OCCUPYING_STATUSES },
+    status: { $in: ROOM_OCCUPYING_BOOKING_STATUSES },
   });
 
   await Rooms.findByIdAndUpdate(roomId, {
@@ -50,7 +51,7 @@ async function getAssignableRoomsForBookingDoc(booking) {
 
   const busyConfirmed = await Booking.find({
     assigned_room_id: { $in: sameTypeRoomIds },
-    status: { $in: OCCUPYING_STATUSES },
+    status: { $in: ROOM_OCCUPYING_BOOKING_STATUSES },
     check_in_date: { $lt: booking.check_out_date },
     check_out_date: { $gt: booking.check_in_date },
     _id: { $ne: booking._id },
@@ -113,7 +114,7 @@ export const createBooking = async (req, res) => {
 
     const overlapCount = await Booking.countDocuments({
       room_id: { $in: sameTypeRoomIds },
-      status: { $in: ["pending", "confirmed", "checked_in"] },
+      status: { $in: BOOKING_SCHEDULE_BLOCKING_STATUSES },
       check_in_date: { $lt: end },
       check_out_date: { $gt: start },
     });
@@ -268,6 +269,7 @@ export const checkOutBooking = async (req, res) => {
       });
     }
     const assignedId = booking.assigned_room_id;
+    // completed: không còn chiếm lịch; phòng vật lý có thể đặt lại (syncRoomStatus).
     booking.status = "completed";
     await booking.save();
     if (assignedId) await syncRoomStatus(assignedId);
