@@ -7,6 +7,24 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString("vi-VN");
 }
 
+/** Nhãn trạng thái nghiệp vụ (đồng bộ backend) */
+function statusLabelVi(status) {
+  switch (status) {
+    case "pending":
+      return "Chờ xác nhận";
+    case "confirmed":
+      return "Đã xác nhận";
+    case "checked_in":
+      return "Đang ở (đã check-in)";
+    case "completed":
+      return "Đã trả phòng (check-out)";
+    case "cancelled":
+      return "Đã hủy";
+    default:
+      return status || "—";
+  }
+}
+
 export default function BookingAdmin() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +121,75 @@ export default function BookingAdmin() {
     }
   };
 
+  const doCheckIn = async (id) => {
+    if (!window.confirm("Xác nhận khách đã nhận phòng (check-in)?")) return;
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `http://localhost:3000/api/bookings/${id}/check-in`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      alert("Check-in thành công — khách đang ở.");
+      loadBookings();
+    } catch (err) {
+      alert(err.response?.data?.message || "Check-in thất bại");
+    }
+  };
+
+  const doCheckOut = async (id) => {
+    if (!window.confirm("Xác nhận khách đã trả phòng (check-out)?")) return;
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `http://localhost:3000/api/bookings/${id}/check-out`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      alert("Check-out thành công — booking hoàn tất, khách có thể đánh giá.");
+      loadBookings();
+    } catch (err) {
+      alert(err.response?.data?.message || "Check-out thất bại");
+    }
+  };
+
+  /** Bước 1–4: chờ xác nhận → đã xác nhận → đang ở → đã trả phòng */
+  function stayFlowStep(status) {
+    const steps = [
+      { key: "s1", label: "Chờ xác nhận" },
+      { key: "s2", label: "Đã xác nhận" },
+      { key: "s3", label: "Check-in" },
+      { key: "s4", label: "Check-out" },
+    ];
+    if (status === "cancelled") {
+      return (
+        <div className="booking-admin-flow booking-admin-flow--cancelled">
+          <span>Đơn đã hủy — không áp dụng luồng lưu trú</span>
+        </div>
+      );
+    }
+    let currentIdx = -1;
+    if (status === "pending") currentIdx = 0;
+    else if (status === "confirmed") currentIdx = 1;
+    else if (status === "checked_in") currentIdx = 2;
+    else if (status === "completed") currentIdx = 3;
+
+    return (
+      <div className="booking-admin-flow" aria-label="Luồng check-in check-out">
+        {steps.map((s, i) => (
+          <div
+            key={s.key}
+            className={`booking-admin-flow-step ${i <= currentIdx ? "done" : ""} ${i === currentIdx ? "current" : ""}`}
+          >
+            <span className="booking-admin-flow-dot" />
+            <span className="booking-admin-flow-label">{s.label}</span>
+            {i < steps.length - 1 ? <span className="booking-admin-flow-line" /> : null}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (loading) return <p>Đang tải booking...</p>;
   if (error) return <p style={{ color: "crimson" }}>{error}</p>;
 
@@ -110,11 +197,12 @@ export default function BookingAdmin() {
     <div className="booking-admin-page">
       <h2>Quản lý booking</h2>
       <p className="booking-admin-subtitle">
-        Xác nhận hoặc hủy booking, theo dõi trạng thái theo thời gian thực.
+        Theo dõi check-in / check-out, xác nhận phòng và trạng thái đánh giá của khách.
       </p>
       <div className="booking-admin-grid">
         {bookings.map((b) => (
           <div key={b._id} className="booking-admin-card">
+            {stayFlowStep(b.status)}
             <p>
               <strong>Khách:</strong> {b.user_id?.name || "—"} ({b.user_id?.email || "—"})
             </p>
@@ -133,43 +221,69 @@ export default function BookingAdmin() {
             <p>
               <strong>Tổng tiền:</strong> {(b.total_price || 0).toLocaleString("vi-VN")} đ
             </p>
-            <p>
+            <p className="booking-admin-status-row">
               <strong>Trạng thái:</strong>{" "}
-              <span className={`booking-admin-status ${b.status}`}>{b.status}</span>
+              <span className={`booking-admin-status ${b.status}`}>
+                {statusLabelVi(b.status)}
+              </span>
+              {b.status === "completed" ? (
+                <span
+                  className={`booking-admin-review-badge ${b.isReviewed ? "reviewed" : "pending-review"}`}
+                >
+                  {b.isReviewed ? "Khách đã đánh giá" : "Chưa đánh giá"}
+                </span>
+              ) : null}
             </p>
             <div className="booking-admin-actions">
-              <button className="btn-confirm" onClick={() => loadAssignableRooms(b._id)}>
-                Chọn phòng
-              </button>
-              {Array.isArray(assignableRoomsByBooking[b._id]) &&
-              assignableRoomsByBooking[b._id].length > 0 ? (
-                <select
-                  value={selectedRoomByBooking[b._id] || ""}
-                  onChange={(e) =>
-                    setSelectedRoomByBooking((prev) => ({
-                      ...prev,
-                      [b._id]: e.target.value,
-                    }))
-                  }
-                >
-                  {assignableRoomsByBooking[b._id].map((room) => (
-                    <option key={room._id} value={room._id}>
-                      {(room.name || "Phòng")} {room.room_no ? `(${room.room_no})` : ""}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-              <button
-                className="btn-confirm"
-                onClick={() => updateStatus(b._id, "confirmed")}
-                disabled={!selectedRoomByBooking[b._id] && !b.assigned_room_id?._id}
-              >
-                Xác nhận
-              </button>
-              <button className="btn-cancel" onClick={() => updateStatus(b._id, "cancelled")}>
-                Hủy
-              </button>
-              <button className="btn-remove" onClick={() => removeBooking(b._id)}>
+              {(b.status === "pending" || b.status === "confirmed") && (
+                <>
+                  <button className="btn-confirm" type="button" onClick={() => loadAssignableRooms(b._id)}>
+                    Chọn phòng
+                  </button>
+                  {Array.isArray(assignableRoomsByBooking[b._id]) &&
+                  assignableRoomsByBooking[b._id].length > 0 ? (
+                    <select
+                      value={selectedRoomByBooking[b._id] || ""}
+                      onChange={(e) =>
+                        setSelectedRoomByBooking((prev) => ({
+                          ...prev,
+                          [b._id]: e.target.value,
+                        }))
+                      }
+                    >
+                      {assignableRoomsByBooking[b._id].map((room) => (
+                        <option key={room._id} value={room._id}>
+                          {(room.name || "Phòng")} {room.room_no ? `(${room.room_no})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn-confirm"
+                    onClick={() => updateStatus(b._id, "confirmed")}
+                    disabled={!selectedRoomByBooking[b._id] && !b.assigned_room_id?._id}
+                  >
+                    Xác nhận đặt phòng
+                  </button>
+                </>
+              )}
+              {b.status === "confirmed" && (
+                <button type="button" className="btn-checkin" onClick={() => doCheckIn(b._id)}>
+                  Check-in khách
+                </button>
+              )}
+              {b.status === "checked_in" && (
+                <button type="button" className="btn-checkout" onClick={() => doCheckOut(b._id)}>
+                  Check-out (trả phòng)
+                </button>
+              )}
+              {b.status !== "completed" && (
+                <button type="button" className="btn-cancel" onClick={() => updateStatus(b._id, "cancelled")}>
+                  Hủy booking
+                </button>
+              )}
+              <button type="button" className="btn-remove" onClick={() => removeBooking(b._id)}>
                 Xóa
               </button>
             </div>

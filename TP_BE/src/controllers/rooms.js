@@ -1,6 +1,7 @@
 import Rooms from "../models/rooms.js";
 import Booking from "../models/Booking.js";
 import { parseStayDates } from "../utils/bookingAvailability.js";
+import { BOOKING_SCHEDULE_BLOCKING_STATUSES } from "../utils/bookingSchedule.js";
 
 // GET /api/rooms - danh sách phòng
 export async function getAllRooms(req, res) {
@@ -43,17 +44,27 @@ export async function searchRooms(req, res) {
     }
 
     const candidateRoomIds = candidateRooms.map((r) => r._id);
+    const candidateIdStrSet = new Set(candidateRoomIds.map((id) => String(id)));
 
     const busyBookings = await Booking.find({
-      room_id: { $in: candidateRoomIds },
-      status: { $in: ["pending", "confirmed"] },
+      status: { $in: BOOKING_SCHEDULE_BLOCKING_STATUSES },
       check_in_date: { $lt: end },
       check_out_date: { $gt: start },
+      $or: [
+        { room_id: { $in: candidateRoomIds } },
+        { assigned_room_id: { $in: candidateRoomIds } },
+      ],
     })
-      .select("room_id")
+      .select("room_id assigned_room_id")
       .lean();
 
-    const busyRoomIdSet = new Set(busyBookings.map((b) => String(b.room_id)));
+    const busyRoomIdSet = new Set();
+    for (const b of busyBookings) {
+      const rid = b.room_id != null ? String(b.room_id) : null;
+      const aid = b.assigned_room_id != null ? String(b.assigned_room_id) : null;
+      if (rid && candidateIdStrSet.has(rid)) busyRoomIdSet.add(rid);
+      if (aid && candidateIdStrSet.has(aid)) busyRoomIdSet.add(aid);
+    }
     const availableRooms = candidateRooms.filter(
       (room) => !busyRoomIdSet.has(String(room._id)),
     );
