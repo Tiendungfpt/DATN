@@ -222,8 +222,8 @@ function BookingHistory() {
                             {(booking.assigned_room_id?.name || booking.room_id?.name) ? (
                               <span className="badge bg-light text-dark border px-4 py-2 fs-6 fw-medium">
                                 {(booking.assigned_room_id?.name || booking.room_id?.name)}
-                                {(booking.assigned_room_id?.room_no || booking.room_id?.room_no)
-                                  ? ` - ${(booking.assigned_room_id?.room_no || booking.room_id?.room_no)}`
+                                {booking.status === "confirmed" && booking.assigned_room_id?.room_no
+                                  ? ` - ${booking.assigned_room_id.room_no}`
                                   : ""}
                               </span>
                             ) : (
@@ -232,7 +232,7 @@ function BookingHistory() {
                               </span>
                             )}
                         </div>
-                        {!booking.assigned_room_id && (
+                        {!(booking.status === "confirmed" && booking.assigned_room_id) && (
                           <small className="text-muted d-block mt-2">
                             Booking đang chờ admin xếp phòng cụ thể.
                           </small>
