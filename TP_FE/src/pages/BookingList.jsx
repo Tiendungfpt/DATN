@@ -19,8 +19,9 @@ function roomLabel(b) {
 }
 
 function roomNoLabel(b) {
-  const room = b.assigned_room_id || b.room_id;
-  if (room && typeof room === "object" && room.room_no) return room.room_no;
+  const room = b.assigned_room_id;
+  const canShowSpecificRoom = b.status === "confirmed" && room;
+  if (canShowSpecificRoom && typeof room === "object" && room.room_no) return room.room_no;
   return "";
 }
 
@@ -142,7 +143,7 @@ function BookingList() {
                   {roomNoLabel(b) && (
                     <p className="booking-room-id">Số phòng: {roomNoLabel(b)}</p>
                   )}
-                  {!b.assigned_room_id && (
+                  {!(b.status === "confirmed" && b.assigned_room_id) && (
                     <p className="booking-room-id">Đang chờ xếp phòng cụ thể</p>
                   )}
                   <p className="booking-room-id">Mã đơn: {b._id}</p>
