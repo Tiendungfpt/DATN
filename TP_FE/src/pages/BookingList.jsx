@@ -20,8 +20,11 @@ function roomLabel(b) {
 
 function roomNoLabel(b) {
   const room = b.assigned_room_id;
-  const canShowSpecificRoom = b.status === "confirmed" && room;
-  if (canShowSpecificRoom && typeof room === "object" && room.room_no) return room.room_no;
+  const canShowSpecificRoom =
+    room &&
+    typeof room === "object" &&
+    ["confirmed", "checked_in", "completed"].includes(b.status);
+  if (canShowSpecificRoom && room.room_no) return room.room_no;
   return "";
 }
 
@@ -35,8 +38,10 @@ function roomImage(b) {
 }
 
 function statusLabel(status) {
-  if (status === "confirmed") return "Đã xác nhận";
   if (status === "pending") return "Chờ xác nhận";
+  if (status === "confirmed") return "Đã xác nhận";
+  if (status === "checked_in") return "Đang ở";
+  if (status === "completed") return "Đã trả phòng";
   if (status === "cancelled") return "Đã hủy";
   return status || "—";
 }
@@ -143,7 +148,8 @@ function BookingList() {
                   {roomNoLabel(b) && (
                     <p className="booking-room-id">Số phòng: {roomNoLabel(b)}</p>
                   )}
-                  {!(b.status === "confirmed" && b.assigned_room_id) && (
+                  {(!b.assigned_room_id &&
+                    (b.status === "pending" || b.status === "confirmed")) && (
                     <p className="booking-room-id">Đang chờ xếp phòng cụ thể</p>
                   )}
                   <p className="booking-room-id">Mã đơn: {b._id}</p>
@@ -171,7 +177,7 @@ function BookingList() {
               </p>
             </div>
 
-            {b.status !== "cancelled" && (
+            {(b.status === "pending" || b.status === "confirmed") && (
               <button
                 type="button"
                 className="booking-cancel-btn"

@@ -109,6 +109,16 @@
   color: #991b1b;
 }
 
+.booking-status-checked_in {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.booking-status-completed {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
 .booking-card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

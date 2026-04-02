@@ -46,7 +46,7 @@ export async function searchRooms(req, res) {
 
     const busyBookings = await Booking.find({
       room_id: { $in: candidateRoomIds },
-      status: { $in: ["pending", "confirmed"] },
+      status: { $in: ["pending", "confirmed", "checked_in"] },
       check_in_date: { $lt: end },
       check_out_date: { $gt: start },
     })

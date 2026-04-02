@@ -9,11 +9,14 @@ function nightsBetween(start, end) {
   return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 }
 
+/** Phòng được coi là đang giữ khi booking đã xác nhận hoặc khách đang ở */
+const OCCUPYING_STATUSES = ["confirmed", "checked_in"];
+
 async function syncRoomStatus(roomId) {
   if (!roomId) return;
   const hasActiveBooking = await Booking.exists({
     assigned_room_id: roomId,
-    status: "confirmed",
+    status: { $in: OCCUPYING_STATUSES },
   });
 
   await Rooms.findByIdAndUpdate(roomId, {
@@ -47,7 +50,7 @@ async function getAssignableRoomsForBookingDoc(booking) {
 
   const busyConfirmed = await Booking.find({
     assigned_room_id: { $in: sameTypeRoomIds },
-    status: "confirmed",
+    status: { $in: OCCUPYING_STATUSES },
     check_in_date: { $lt: booking.check_out_date },
     check_out_date: { $gt: booking.check_in_date },
     _id: { $ne: booking._id },
@@ -110,7 +113,7 @@ export const createBooking = async (req, res) => {
 
     const overlapCount = await Booking.countDocuments({
       room_id: { $in: sameTypeRoomIds },
-      status: { $in: ["pending", "confirmed"] },
+      status: { $in: ["pending", "confirmed", "checked_in"] },
       check_in_date: { $lt: end },
       check_out_date: { $gt: start },
     });
@@ -154,6 +157,11 @@ export const createBooking = async (req, res) => {
   }
 };
 
+function attachCanReview(booking) {
+  const isCanReview = booking.status === "completed" && !booking.isReviewed;
+  return { ...booking, isCanReview };
+}
+
 /** GET /api/bookings/user */
 export const getMyBookings = async (req, res) => {
   try {
@@ -163,7 +171,7 @@ export const getMyBookings = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    return res.json(bookings);
+    return res.json(bookings.map((b) => attachCanReview(b)));
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -179,7 +187,7 @@ export const getAllBookingsAdmin = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    return res.json(bookings);
+    return res.json(bookings.map((b) => attachCanReview(b)));
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -207,7 +215,73 @@ export const getBookingById = async (req, res) => {
       }
     }
 
-    return res.json(booking);
+    return res.json(attachCanReview(booking));
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const checkInBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: "Không tìm thấy booking" });
+    }
+    if (booking.status !== "confirmed") {
+      return res.status(400).json({
+        message: "Chỉ có thể check-in khi booking đã được xác nhận (confirmed)",
+      });
+    }
+    if (!booking.assigned_room_id) {
+      return res.status(400).json({
+        message: "Booking chưa có phòng cụ thể, không thể check-in",
+      });
+    }
+    booking.status = "checked_in";
+    await booking.save();
+    await syncRoomStatus(booking.assigned_room_id);
+
+    const populated = await Booking.findById(booking._id)
+      .populate("user_id", "name email")
+      .populate("room_id", "name image price capacity status room_no")
+      .populate("assigned_room_id", "name image price capacity status room_no")
+      .lean();
+
+    return res.json({
+      message: "Check-in thành công",
+      booking: populated,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const checkOutBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: "Không tìm thấy booking" });
+    }
+    if (booking.status !== "checked_in") {
+      return res.status(400).json({
+        message: "Chỉ có thể check-out khi khách đang ở (checked_in)",
+      });
+    }
+    const assignedId = booking.assigned_room_id;
+    booking.status = "completed";
+    await booking.save();
+    if (assignedId) await syncRoomStatus(assignedId);
+
+    const populated = await Booking.findById(booking._id)
+      .populate("user_id", "name email")
+      .populate("room_id", "name image price capacity status room_no")
+      .populate("assigned_room_id", "name image price capacity status room_no")
+      .lean();
+
+    return res.json({
+      message: "Check-out thành công — booking đã hoàn tất (completed)",
+      booking: attachCanReview(populated),
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -225,9 +299,21 @@ export const updateBooking = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy" });
     }
 
+    if (booking.status === "completed") {
+      return res.status(400).json({
+        message: "Booking đã hoàn tất (completed), không thể cập nhật qua API này",
+      });
+    }
+
     const nextStatus = req.body?.status || booking.status;
 
     if (nextStatus === "confirmed") {
+      if (!["pending", "confirmed"].includes(booking.status)) {
+        return res.status(400).json({
+          message:
+            "Chỉ có thể xác nhận (confirmed) khi booking đang pending hoặc đã confirmed",
+        });
+      }
       const selectedAssignedRoomId =
         req.body?.assigned_room_id || booking.assigned_room_id;
       if (!selectedAssignedRoomId || !mongoose.isValidObjectId(selectedAssignedRoomId)) {
@@ -277,7 +363,7 @@ export const updateBooking = async (req, res) => {
 
     return res.json({
       message: "Cập nhật booking thành công",
-      booking: populated,
+      booking: attachCanReview(populated),
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -321,6 +407,11 @@ export const cancelBooking = async (req, res) => {
     if (String(booking.user_id) !== String(req.userId)) {
       return res.status(403).json({ message: "Không có quyền" });
     }
+    if (booking.status === "checked_in" || booking.status === "completed") {
+      return res.status(400).json({
+        message: "Không thể hủy booking khi đã check-in hoặc đã hoàn tất",
+      });
+    }
     booking.status = "cancelled";
     const prevAssigned = booking.assigned_room_id;
     booking.assigned_room_id = null;
@@ -358,6 +449,11 @@ export const paymentBooking = async (req, res) => {
       return res.status(400).json({ message: "Booking đã hủy, không thể thanh toán" });
     }
     if (booking.status !== "pending") {
+      if (booking.status === "confirmed" || booking.status === "checked_in" || booking.status === "completed") {
+        return res.status(400).json({
+          message: "Booking không còn ở trạng thái chờ thanh toán",
+        });
+      }
       booking.status = "pending";
       await booking.save();
     }

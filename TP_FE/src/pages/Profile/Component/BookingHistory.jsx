@@ -56,7 +56,7 @@ function BookingHistory() {
     }
   };
 
-  const getStatusBadge = (status, paymentStatus) => {
+  const getStatusBadge = (status) => {
     if (status === "cancelled") {
       return (
         <span className="badge bg-danger px-4 py-2 fs-6 rounded-3 fw-medium">
@@ -64,21 +64,37 @@ function BookingHistory() {
         </span>
       );
     }
-    if (status === "confirmed") {
-      return paymentStatus === "paid" ? (
-        <span className="badge bg-success px-4 py-2 fs-6 rounded-3 fw-medium d-flex align-items-center gap-1">
-          <i className="bi bi-check-circle-fill"></i>
-          Đã xác nhận & Thanh toán
+    if (status === "pending") {
+      return (
+        <span className="badge bg-warning text-dark px-4 py-2 fs-6 rounded-3 fw-medium">
+          Chờ xác nhận
         </span>
-      ) : (
+      );
+    }
+    if (status === "confirmed") {
+      return (
         <span className="badge bg-success px-4 py-2 fs-6 rounded-3 fw-medium">
           Đã xác nhận
         </span>
       );
     }
+    if (status === "checked_in") {
+      return (
+        <span className="badge bg-primary px-4 py-2 fs-6 rounded-3 fw-medium">
+          Đang ở (đã check-in)
+        </span>
+      );
+    }
+    if (status === "completed") {
+      return (
+        <span className="badge bg-dark px-4 py-2 fs-6 rounded-3 fw-medium">
+          Đã trả phòng
+        </span>
+      );
+    }
     return (
-      <span className="badge bg-warning text-dark px-4 py-2 fs-6 rounded-3 fw-medium">
-        Chờ xác nhận
+      <span className="badge bg-secondary px-4 py-2 fs-6 rounded-3 fw-medium">
+        {status || "—"}
       </span>
     );
   };
@@ -148,9 +164,22 @@ function BookingHistory() {
           const checkOut = new Date(booking.check_out_date);
           const nights = Math.ceil((checkOut - checkIn) / (1000 * 3600 * 24));
 
-          const isPending = booking.status === "pending";
           const isCancelled = booking.status === "cancelled";
-          const isPaid = booking.status === "confirmed";
+          const canCancelUser =
+            booking.status === "pending" || booking.status === "confirmed";
+          const showPaidHint =
+            booking.status === "confirmed" ||
+            booking.status === "checked_in" ||
+            booking.status === "completed";
+
+          const showRoomNo =
+            booking.assigned_room_id?.room_no &&
+            ["confirmed", "checked_in", "completed"].includes(booking.status);
+
+          const waitingForRoomAssign =
+            !booking.assigned_room_id &&
+            !isCancelled &&
+            ["pending", "confirmed"].includes(booking.status);
 
           return (
             <div key={booking._id} className="col-12">
@@ -163,8 +192,8 @@ function BookingHistory() {
                         <span className="badge bg-primary-subtle text-primary px-4 py-2 fs-6 rounded-3 fw-medium">
                           {nights} đêm
                         </span>
-                        {getStatusBadge(booking.status, isPaid ? "paid" : "unpaid")}
-                        {isPaid && (
+                        {getStatusBadge(booking.status)}
+                        {showPaidHint && (
                           <span className="badge bg-info-subtle text-info px-4 py-2 fs-6 rounded-3 fw-medium d-flex align-items-center gap-1">
                             <i className="bi bi-credit-card"></i> Đã thanh toán
                           </span>
@@ -222,9 +251,7 @@ function BookingHistory() {
                             {(booking.assigned_room_id?.name || booking.room_id?.name) ? (
                               <span className="badge bg-light text-dark border px-4 py-2 fs-6 fw-medium">
                                 {(booking.assigned_room_id?.name || booking.room_id?.name)}
-                                {booking.status === "confirmed" && booking.assigned_room_id?.room_no
-                                  ? ` - ${booking.assigned_room_id.room_no}`
-                                  : ""}
+                                {showRoomNo ? ` - ${booking.assigned_room_id.room_no}` : ""}
                               </span>
                             ) : (
                               <span className="text-muted">
@@ -232,7 +259,7 @@ function BookingHistory() {
                               </span>
                             )}
                         </div>
-                        {!(booking.status === "confirmed" && booking.assigned_room_id) && (
+                        {waitingForRoomAssign && (
                           <small className="text-muted d-block mt-2">
                             Booking đang chờ admin xếp phòng cụ thể.
                           </small>
@@ -250,7 +277,7 @@ function BookingHistory() {
                         <small className="text-muted">({nights} đêm)</small>
                       </div>
 
-                      {isPending && !isCancelled && (
+                      {canCancelUser && !isCancelled && (
                         <button
                           onClick={() => handleCancel(booking._id)}
                           className="btn btn-outline-danger btn-lg px-5 py-3 rounded-4 w-100 w-lg-auto fw-medium transition-all hover-scale"
@@ -267,10 +294,24 @@ function BookingHistory() {
                         </div>
                       )}
 
-                      {booking.status === "confirmed" && isPaid && (
+                      {booking.status === "checked_in" && (
+                        <div className="text-primary fw-semibold fs-5 py-3">
+                          <i className="bi bi-house-door-fill me-2"></i>
+                          Bạn đang lưu trú
+                        </div>
+                      )}
+
+                      {booking.status === "completed" && (
                         <div className="text-success fw-semibold fs-5 py-3">
                           <i className="bi bi-check-circle-fill me-2"></i>
-                          Hoàn tất
+                          Đã trả phòng
+                        </div>
+                      )}
+
+                      {booking.status === "confirmed" && (
+                        <div className="text-success fw-semibold fs-5 py-3">
+                          <i className="bi bi-check-circle-fill me-2"></i>
+                          Đã xác nhận — chờ nhận phòng
                         </div>
                       )}
                     </div>
