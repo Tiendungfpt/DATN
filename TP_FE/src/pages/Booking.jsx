@@ -14,6 +14,35 @@ function Booking() {
   const { roomId } = useParams();
   const navigate = useNavigate();
 
+  //his
+  const [reviews, setReviews] = useState([]);
+const [roomSummary, setRoomSummary] = useState({ avg: 0, total: 0 });
+const [visibleCount, setVisibleCount] = useState(4);
+useEffect(() => {
+  if (!roomId) return;
+
+  const fetchReviews = async () => {
+    try {
+      const res = await axios.get(`http://localhost:3000/api/reviews/room/${roomId}`);
+      const data = Array.isArray(res.data) ? res.data : [];
+      setReviews(data);
+
+      // tính trung bình và tổng số đánh giá
+      const total = data.length;
+      const avg =
+        total > 0
+          ? (data.reduce((sum, r) => sum + (r.rating || 0), 0) / total).toFixed(1)
+          : 0;
+
+      setRoomSummary({ avg, total });
+    } catch (err) {
+      console.error("Không tải được đánh giá:", err);
+    }
+  };
+
+  fetchReviews();
+}, [roomId]);
+
   const [room, setRoom] = useState(null);
   const [nights, setNights] = useState(0);
   const [total, setTotal] = useState(0);
@@ -289,6 +318,47 @@ function Booking() {
           </div>
         </div>
       </div>
+
+      
+      {/* ⭐ REVIEW SECTION */}
+<div className="mt-5 p-4 bg-white rounded shadow">
+  <h3 className="fw-bold mb-3 text-center">⭐ Đánh giá từ khách hàng</h3>
+
+  <div className="mb-4 text-center">
+    <h1 className="text-warning fw-bold">{roomSummary.avg} / 5</h1>
+    <p className="text-muted">{roomSummary.total} đánh giá</p>
+  </div>
+
+  {reviews.length === 0 ? (
+    <p className="text-muted text-center">Chưa có đánh giá</p>
+  ) : (
+    reviews.slice(0, visibleCount).map((r) => (
+      <div key={r._id} className="border-top pt-3 mb-3">
+        <p className="fw-bold mb-1">👤 {r.user_id?.name || "Ẩn danh"}</p>
+        <p className="text-warning mb-1">⭐ {r.rating} / 5</p>
+        <p className="text-muted mb-0">{r.comment || "Không có nhận xét"}</p>
+      </div>
+    ))
+  )}
+
+  <div className="text-center mt-3">
+    {visibleCount < reviews.length ? (
+      <button
+        className="btn btn-outline-primary"
+        onClick={() => setVisibleCount(visibleCount + 4)}
+      >
+        Xem thêm
+      </button>
+    ) : reviews.length > 4 ? (
+      <button
+        className="btn btn-outline-secondary"
+        onClick={() => setVisibleCount(4)}
+      >
+        Thu gọn
+      </button>
+    ) : null}
+  </div>
+</div>
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { getMyBookings, cancelBooking } from "../services/bookingApi";
 import "./style/BookingList.css";
 
+
+
 function formatDate(d) {
   if (!d) return "—";
   try {
@@ -176,16 +178,23 @@ function BookingList() {
                 </span>
               </p>
             </div>
+           {/* Nút đánh giá */}
+{b.status === "completed" && (
+  <Link className="booking-review-btn" to={`/review/${b._id}?roomId=${(b.assigned_room_id?._id || b.room_id?._id || b.room_id)}`}>
+    Đánh giá
+  </Link>
+)}
 
-            {(b.status === "pending" || b.status === "confirmed") && (
-              <button
-                type="button"
-                className="booking-cancel-btn"
-                onClick={() => handleCancel(b._id)}
-              >
-                Hủy đặt phòng
-              </button>
-            )}
+{/* Nút hủy */}
+{(b.status === "pending" || b.status === "confirmed") && (
+  <button
+    type="button"
+    className="booking-cancel-btn"
+    onClick={() => handleCancel(b._id)}
+  >
+    Hủy đặt phòng
+  </button>
+)}
           </div>
         ))
       )}

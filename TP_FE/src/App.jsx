@@ -20,7 +20,7 @@ import RoomDetail from "./pages/RoomDetail";
 import HotelList from "./pages/HotelList";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import UserProfile from "./pages/Profile/UserProfile";
-
+import Review from "./pages/Review";
 function RedirectToDatPhong() {
     const { search } = useLocation();
     return <Navigate to={`/dat-phong${search}`} replace />;
@@ -49,6 +49,8 @@ function Layout() {
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/thong-tin-tai-khoan" element={<UserProfile/>}></Route>
 
+                <Route path="/review/:bookingId" element={<Review />} />
+                
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="rooms" element={<RoomList />} />
                     <Route path="users-pagination" element={<UserList />} />

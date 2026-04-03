@@ -10,12 +10,64 @@ function HotelList() {
     "Phòng Sang Trọng",
     "Family Suite",
   ];
+
+  const [visibleCount, setVisibleCount] = useState(4);
+  const [ratings, setRatings] = useState({});
+  const [allReviews, setAllReviews] = useState([]);
+const [globalSummary, setGlobalSummary] = useState({ avg: 0, total: 0 });
+  
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchParams] = useSearchParams();
   const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+  const fetchAllReviews = async () => {
+    try {
+      const res = await axios.get("http://localhost:3000/api/reviews");
+      const data = Array.isArray(res.data) ? res.data : [];
 
+      setAllReviews(data);
+
+      // tính trung bình toàn hệ thống
+      const total = data.length;
+      const avg =
+        total > 0
+          ? (data.reduce((sum, r) => sum + (r.rating || 0), 0) / total).toFixed(1)
+          : 0;
+
+      setGlobalSummary({ avg, total });
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  fetchAllReviews();
+}, []);
+useEffect(() => {
+  const fetchRatings = async () => {
+    const ratingData = {};
+
+    await Promise.all(
+      rooms.map(async (room) => {
+        try {
+          const res = await axios.get(
+            `http://localhost:3000/api/reviews/room/${room._id}/summary`
+          );
+          ratingData[room._id] = res.data;
+        } catch {
+          ratingData[room._id] = { avg: 0, total: 0 };
+        }
+      })
+    );
+
+    setRatings(ratingData);
+  };
+
+  if (rooms.length > 0) {
+    fetchRatings();
+  }
+}, [rooms]);
   const getCapacityLabel = (room) => {
     const byCapacity = Number(room?.capacity);
     if (Number.isFinite(byCapacity) && byCapacity > 0) {
@@ -172,6 +224,14 @@ function HotelList() {
 
                 <div className="card-body d-flex flex-column p-4">
                   <h5 className="card-title fw-bold mb-2">{room.name}</h5>
+                   {/* ⭐ HIỂN THỊ ĐÁNH GIÁ */}
+  <div className="mb-2">
+    ⭐ {ratings[room._id]?.avg ?? 0} / 5
+    <br />
+    <small className="text-muted">
+      ({ratings[room._id]?.total ?? 0} đánh giá)
+    </small>
+  </div>
                   <p className="text-muted mb-4">
                     <i className="bi bi-people-fill text-primary me-1"></i>
                     Sức chứa: {getCapacityLabel(room)}
@@ -201,6 +261,71 @@ function HotelList() {
           </div>
         ))}
       </div>
+      {/* ⭐ REVIEW SECTION */}
+<div className="mt-5 p-4 bg-white rounded shadow">
+  <h3 className="fw-bold mb-3">⭐ Đánh giá từ khách hàng</h3>
+
+  {/* Tổng quan */}
+ <div className="mt-5 p-4 bg-white rounded shadow">
+  <h3 className="fw-bold mb-3 text-center">
+    ⭐ Đánh giá từ khách hàng
+  </h3>
+
+  <div className="mb-4 text-center">
+    <h1 className="text-warning fw-bold">
+      {globalSummary.avg} / 5
+    </h1>
+    <p className="text-muted">
+      {globalSummary.total} đánh giá
+    </p>
+  </div>
+
+  <div className="row">
+    
+    
+  </div>
+</div>
+
+  {/* Danh sách review */}
+  {allReviews.length === 0 ? (
+    <p className="text-muted text-center">Chưa có đánh giá</p>
+  ) : (
+    allReviews.slice(0, visibleCount).map((r) => (
+      <div key={r._id} className="border-top pt-3 mb-3">
+        <p className="fw-bold mb-1">
+          👤 {r.user_id?.name || "Ẩn danh"}
+        </p>
+
+        <p className="text-primary mb-1">
+          🏨 {r.room_id?.name || "Phòng"}
+        </p>
+
+        <p className="text-warning mb-1">⭐ {r.rating} / 5</p>
+        <p className="text-muted mb-0">
+          {r.comment || "Không có nhận xét"}
+        </p>
+      </div>
+    ))
+  )}
+  {/* 👉 ĐẶT NÚT Ở ĐÂY */}
+<div className="text-center mt-3">
+  {visibleCount < allReviews.length ? (
+    <button
+      className="btn btn-outline-primary"
+      onClick={() => setVisibleCount(visibleCount + 4)}
+    >
+      Xem thêm
+    </button>
+  ) : (
+    <button
+      className="btn btn-outline-secondary"
+      onClick={() => setVisibleCount(4)}
+    >
+      Thu gọn
+    </button>
+  )}
+</div>
+</div>
 
       {rooms.length === 0 && (
         <div className="text-center py-5">

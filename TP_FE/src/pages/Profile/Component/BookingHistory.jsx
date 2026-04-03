@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 function BookingHistory() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const token = localStorage.getItem("token");
 
@@ -164,7 +166,7 @@ function BookingHistory() {
           const checkOut = new Date(booking.check_out_date);
           const nights = Math.ceil((checkOut - checkIn) / (1000 * 3600 * 24));
 
-          const isCancelled = booking.status === "cancelled";
+ const isCancelled = booking.status === "cancelled";
           const canCancelUser =
             booking.status === "pending" || booking.status === "confirmed";
           const showPaidHint =
@@ -302,11 +304,20 @@ function BookingHistory() {
                       )}
 
                       {booking.status === "completed" && (
-                        <div className="text-success fw-semibold fs-5 py-3">
-                          <i className="bi bi-check-circle-fill me-2"></i>
-                          Đã trả phòng
-                        </div>
-                      )}
+  <>
+    <div className="text-success fw-semibold fs-5 py-3">
+      <i className="bi bi-check-circle-fill me-2"></i>
+      Đã trả phòng
+    </div>
+
+   <a
+  href={`/phong/${booking.room_id?._id}`}
+  className="btn btn-warning mt-2 w-100"
+>
+  ⭐Xem đánh giá
+</a>
+  </>
+)}
 
                       {booking.status === "confirmed" && (
                         <div className="text-success fw-semibold fs-5 py-3">
