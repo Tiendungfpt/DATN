@@ -41,7 +41,13 @@ class MoMoController {
       const roomName = booking.room_id?.name || "Khách sạn";
 
       const orderId = `BOOK_${booking._id}_${Date.now()}`;
-      const amount = Math.round(booking.total_price || 0);
+      const amount =
+  booking.total_price ||
+  booking.total ||
+  booking.room_id?.price ||
+  0;
+
+const finalAmount = Math.round(amount);
       if (amount <= 0) {
         return res.status(400).json({
           success: false,
@@ -64,7 +70,7 @@ class MoMoController {
 
       const rawSignature =
         `accessKey=${this.accessKey}` +
-        `&amount=${amount}` +
+        `&amount=${finalAmount}` +
         `&extraData=` +
         `&ipnUrl=${ipnUrl}` +
         `&orderId=${orderId}` +
@@ -84,7 +90,7 @@ class MoMoController {
         partnerName: "Hotel Booking",
         storeId: "HotelStore",
         requestId,
-        amount: amount.toString(),
+        amount: finalAmount.toString(),
         orderId,
         orderInfo,
         redirectUrl,
@@ -114,9 +120,9 @@ class MoMoController {
     } catch (error) {
       console.error("MoMo Error:", error.response?.data || error.message);
       return res.status(500).json({
-        success: false,
-        message: "Lỗi server",
-      });
+  success: false,
+  message: error.response?.data?.message || error.message,
+});
     }
   };
 

@@ -179,22 +179,38 @@ function BookingList() {
               </p>
             </div>
            {/* Nút đánh giá */}
-{b.status === "completed" && (
-  <Link className="booking-review-btn" to={`/review/${b._id}?roomId=${(b.assigned_room_id?._id || b.room_id?._id || b.room_id)}`}>
-    Đánh giá
-  </Link>
-)}
+<div className="booking-actions">
+  {/* Đánh giá */}
+  {b.status === "completed" && (
+    <Link
+      className="booking-review-btn"
+      to={`/review/${b._id}?roomId=${(b.assigned_room_id?._id || b.room_id?._id || b.room_id)}`}
+    >
+      ⭐ Đánh giá
+    </Link>
+  )}
 
-{/* Nút hủy */}
-{(b.status === "pending" || b.status === "confirmed") && (
-  <button
-    type="button"
-    className="booking-cancel-btn"
-    onClick={() => handleCancel(b._id)}
-  >
-    Hủy đặt phòng
-  </button>
-)}
+  {/* Xem đánh giá */}
+  {(b.status === "completed" || b.status === "checked_in") && (
+    <Link
+      className="booking-view-review-btn"
+      to={`/phong/${b.room_id?._id}`}
+    >
+      👀 Xem đánh giá
+    </Link>
+  )}
+
+  {/* Hủy */}
+  {(b.status === "pending" || b.status === "confirmed") && (
+    <button
+      type="button"
+      className="booking-cancel-btn"
+      onClick={() => handleCancel(b._id)}
+    >
+      Hủy đặt phòng
+    </button>
+  )}
+</div>
           </div>
         ))
       )}

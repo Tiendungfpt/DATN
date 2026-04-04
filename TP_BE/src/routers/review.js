@@ -12,7 +12,7 @@ reviewRouter.get("/", async (req, res) => {
   try {
     const reviews = await Review.find()
       .populate("user_id", "name")
-       .populate("room_id", "name") 
+      .populate("room_id", "name room_no") // ✅ QUAN TRỌNG
       .sort({ created_at: -1 });
 
     res.json(reviews);
@@ -51,7 +51,8 @@ reviewRouter.get("/room/:roomId", async (req, res) => {
 
     const reviews = await Review.find({ room_id: roomId })
       .populate("user_id", "name")
-      .sort({ created_at: -1 });
+      .populate("room_id", "name room_no") 
+       .sort({ createdAt: -1 });
 
     res.json(reviews);
   } catch (err) {

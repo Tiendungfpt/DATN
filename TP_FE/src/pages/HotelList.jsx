@@ -11,7 +11,7 @@ function HotelList() {
     "Family Suite",
   ];
 
-  const [visibleCount, setVisibleCount] = useState(4);
+  const [visibleCount, setVisibleCount] = useState(2);
   const [ratings, setRatings] = useState({});
   const [allReviews, setAllReviews] = useState([]);
 const [globalSummary, setGlobalSummary] = useState({ avg: 0, total: 0 });
@@ -128,15 +128,17 @@ useEffect(() => {
             .toLowerCase();
 
         const selected = [];
-        featuredRoomNames.forEach((name) => {
-          const found = roomList.find(
-            (r) => normalizeName(r.name) === normalizeName(name),
-          );
-          if (found) selected.push(found);
-        });
+
+featuredRoomNames.forEach((name) => {
+  const foundRooms = roomList.filter(
+    (r) => normalizeName(r.name) === normalizeName(name)
+  );
+
+  selected.push(...foundRooms); // 👈 quan trọng
+});
 
         // User site chỉ hiển thị tối đa 5 loại phòng cố định.
-        setRooms(selected.slice(0, 5));
+        setRooms(selected);
         setLoading(false);
       })
       .catch((err) => {
@@ -286,19 +288,22 @@ useEffect(() => {
   </div>
 </div>
 
-  {/* Danh sách review */}
+  {/* Danh sách đánh giá */}
   {allReviews.length === 0 ? (
     <p className="text-muted text-center">Chưa có đánh giá</p>
   ) : (
-    allReviews.slice(0, visibleCount).map((r) => (
+    allReviews
+  .filter((r) => rooms.some(room => room._id === r.room_id?._id))
+  .slice(0, visibleCount)
+  .map((r) => (
       <div key={r._id} className="border-top pt-3 mb-3">
         <p className="fw-bold mb-1">
           👤 {r.user_id?.name || "Ẩn danh"}
         </p>
 
-        <p className="text-primary mb-1">
-          🏨 {r.room_id?.name || "Phòng"}
-        </p>
+<p className="text-primary mb-1">
+ 🏨 {r.room_id?.room_no} - {r.room_id?.name}
+</p>
 
         <p className="text-warning mb-1">⭐ {r.rating} / 5</p>
         <p className="text-muted mb-0">
@@ -312,14 +317,14 @@ useEffect(() => {
   {visibleCount < allReviews.length ? (
     <button
       className="btn btn-outline-primary"
-      onClick={() => setVisibleCount(visibleCount + 4)}
+      onClick={() => setVisibleCount(visibleCount + 2)}
     >
       Xem thêm
     </button>
   ) : (
     <button
       className="btn btn-outline-secondary"
-      onClick={() => setVisibleCount(4)}
+      onClick={() => setVisibleCount(2)}
     >
       Thu gọn
     </button>

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 
+import { Link } from "react-router-dom";
 function BookingHistory() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  
 
   const token = localStorage.getItem("token");
 
@@ -303,21 +303,31 @@ function BookingHistory() {
                         </div>
                       )}
 
-                      {booking.status === "completed" && (
-  <>
-    <div className="text-success fw-semibold fs-5 py-3">
-      <i className="bi bi-check-circle-fill me-2"></i>
-      Đã trả phòng
-    </div>
-
-   <a
-  href={`/phong/${booking.room_id?._id}`}
-  className="btn btn-warning mt-2 w-100"
->
-  ⭐Xem đánh giá
-</a>
-  </>
+                     {/* ✅ Trạng thái vẫn giữ nguyên */}
+{booking.status === "completed" && (
+  <div className="text-success fw-semibold fs-5 py-3">
+    <i className="bi bi-check-circle-fill me-2"></i>
+    Đã trả phòng
+  </div>
 )}
+
+{/* ⭐ Đánh giá (chỉ khi completed) */}
+{booking.status === "completed" && (
+  <Link
+    to={`/review/${booking._id}?roomId=${(booking.assigned_room_id?._id || booking.room_id?._id)}`}
+    className="btn btn-primary mt-2"
+  >
+    ⭐ Đánh giá
+  </Link>
+)}
+
+{/* 👀 Xem đánh giá (LUÔN HIỂN THỊ) */}
+<Link
+  to={`/phong/${booking.assigned_room_id?._id || booking.room_id?._id}`}
+  className="btn btn-primary mt-2"
+>
+  👀 Xem đánh giá
+</Link>
 
                       {booking.status === "confirmed" && (
                         <div className="text-success fw-semibold fs-5 py-3">

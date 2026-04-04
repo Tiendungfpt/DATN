@@ -84,7 +84,24 @@ console.log("TOKEN SEND:", localStorage.getItem("token"));
         rows={5}
         style={styles.textarea}
       />
-
+ {/* 🔙 Nút quay lại */}
+  <button
+    onClick={() => navigate(-1)} // hoặc navigate("/booking-list") nếu muốn luôn về danh sách
+    style={{
+      width: "100%",
+      padding: "14px",
+      borderRadius: "10px",
+      border: "none",
+      background: "#6c757d",
+      color: "#fff",
+      fontWeight: "700",
+      fontSize: "16px",
+      cursor: "pointer",
+      marginBottom: "12px",
+    }}
+  >
+    ← Quay lại
+  </button>
       {/* button */}
       <button
         onClick={handleSubmit}

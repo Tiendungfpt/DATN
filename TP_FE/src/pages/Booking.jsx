@@ -321,7 +321,11 @@ useEffect(() => {
 
       
       {/* ⭐ REVIEW SECTION */}
-<div className="mt-5 p-4 bg-white rounded shadow">
+<div className="mt-5 p-4 bg-white rounded shadow"
+  style={{
+    maxWidth: "1100px",
+    margin: "40px auto",
+  }}>
   <h3 className="fw-bold mb-3 text-center">⭐ Đánh giá từ khách hàng</h3>
 
   <div className="mb-4 text-center">
@@ -334,7 +338,13 @@ useEffect(() => {
   ) : (
     reviews.slice(0, visibleCount).map((r) => (
       <div key={r._id} className="border-top pt-3 mb-3">
-        <p className="fw-bold mb-1">👤 {r.user_id?.name || "Ẩn danh"}</p>
+        <p className="fw-bold mb-1">
+  👤 {r.user_id?.name || "Ẩn danh"} 
+</p>
+
+<p className="text-muted mb-1">
+  🏨 Phòng: {r.room_id?.room_no || "Không rõ"}
+</p>
         <p className="text-warning mb-1">⭐ {r.rating} / 5</p>
         <p className="text-muted mb-0">{r.comment || "Không có nhận xét"}</p>
       </div>
@@ -360,7 +370,9 @@ useEffect(() => {
   </div>
 </div>
     </div>
+    
   );
 }
+
 
 export default Booking;

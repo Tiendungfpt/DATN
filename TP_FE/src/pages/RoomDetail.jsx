@@ -61,6 +61,7 @@ function RoomDetail() {
 
     return (
         <div style={styles.container}>
+          
             {/* Hero Section */}
             <div style={styles.hero}>
                 <img
@@ -149,6 +150,13 @@ function RoomDetail() {
                         )}
 
                         <p style={styles.guarantee}>Đảm bảo giá tốt nhất</p>
+                        {/* 👇 NÚT QUAY LẠI */}
+<button
+    style={styles.backButton}
+    onClick={() => navigate(-1)}
+>
+    ← Quay lại
+</button>
                     </div>
                 </div>
             </div>
@@ -157,6 +165,19 @@ function RoomDetail() {
 }
 
 const styles = {
+    backButton: {
+    width: "100%",
+    padding: "12px",
+    background: "#e2e8f0",
+    color: "#1e2937",
+    border: "none",
+    borderRadius: "10px",
+    fontSize: "15px",
+    fontWeight: "600",
+    cursor: "pointer",
+    marginTop: "10px",
+    transition: "0.2s"
+},
     container: {
         fontFamily: "'Segoe UI', system-ui, sans-serif",
         backgroundColor: "#f8fafc",
