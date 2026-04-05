@@ -161,6 +161,29 @@
   font-weight: 600;
   cursor: pointer;
 }
+.booking-review-btn{
+  display: inline-block;
+   margin-top: 12px;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid #0a87f5;
+  color: #0a87f5;
+  background: #fff;
+  border-radius: 9px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.booking-view-review-btn {
+  display: inline-block;
+   margin-top: 12px;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid #0a87f5;
+  color: #0a87f5;
+  background: #fff;
+  border-radius: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 10px;
+}
 
 .booking-empty {
   text-align: center;

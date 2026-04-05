@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+
 function RoomsList() {
     const navigate = useNavigate();
 
@@ -9,7 +10,42 @@ function RoomsList() {
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
 
+    const [ratings, setRatings] = useState({});
+
     const placeholderImage = "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const res = await axios.get("http://localhost:3000/api/rooms");
+      const data = Array.isArray(res.data) ? res.data : [];
+      setRooms(data);
+
+      const ratingData = {};
+
+      await Promise.all(
+        data.map(async (room) => {
+          try {
+            const r = await axios.get(
+              `http://localhost:3000/api/reviews/room/${room._id}/summary`
+            );
+            ratingData[room._id] = r.data;
+          } catch {
+            ratingData[room._id] = { avg: 0, total: 0 };
+          }
+        })
+      );
+
+      setRatings(ratingData);
+    } catch {
+      setRooms([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, []);
+
     useEffect(() => {
         try {
             const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -19,19 +55,7 @@ function RoomsList() {
         }
     }, []);
 
-    useEffect(() => {
-        axios
-            .get("http://localhost:3000/api/rooms")
-            .then((res) => {
-                const data = Array.isArray(res.data) ? res.data : [];
-                setRooms(data);
-            })
-            .catch((err) => {
-                console.error("Error fetching rooms:", err);
-                setRooms([]);
-            })
-            .finally(() => setLoading(false));
-    }, []);
+    
 
     if (loading) {
         return <div style={styles.loading}>Đang tải danh sách phòng...</div>;
@@ -77,7 +101,13 @@ function RoomsList() {
 
                         <div style={styles.cardContent}>
                             <h3 style={styles.roomName}>{room.name}</h3>
-                            
+   <div style={{ marginBottom: "10px" }}>
+  ⭐ {ratings[room._id]?.avg || 0} / 5
+  <br />
+  <small>
+    ({ratings[room._id]?.total || 0} đánh giá)
+  </small>
+</div>                         
                             <p style={styles.capacity}>
                                 🛏️ {room.capacity} người
                             </p>

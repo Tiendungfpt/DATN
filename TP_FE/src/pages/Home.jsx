@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 
 export default function Home() {
+  
   const fallbackRoomImage =
     "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
 
@@ -18,6 +19,32 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [ratings, setRatings] = useState({});
+  useEffect(() => {
+  const fetchRatings = async () => {
+    const ratingData = {};
+
+    await Promise.all(
+      rooms.map(async (room) => {
+        try {
+          const res = await fetch(
+            `http://localhost:3000/api/reviews/room/${room._id}/summary`
+          );
+          const data = await res.json();
+          ratingData[room._id] = data;
+        } catch {
+          ratingData[room._id] = { avg: 0, total: 0 };
+        }
+      })
+    );
+
+    setRatings(ratingData);
+  };
+
+  if (rooms.length > 0) {
+    fetchRatings();
+  }
+}, [rooms]);
 
   useEffect(() => {
     try {
@@ -161,6 +188,14 @@ export default function Home() {
                     />
                     <div className="card-body d-flex flex-column">
                       <h5 className="fw-bold">{room.name}</h5>
+                      {/* ⭐ HIỂN THỊ ĐÁNH GIÁ */}
+<div className="mb-2">
+  ⭐ {ratings[room._id]?.avg ?? 0} / 5
+  <br />
+  <small className="text-muted">
+    ({ratings[room._id]?.total ?? 0} đánh giá)
+  </small>
+</div>
                       <p className="text-muted mb-2">
                         Sức chứa: {room.capacity ?? room.maxGuests ?? "Đang cập nhật"} người
                       </p>

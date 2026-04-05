@@ -4,6 +4,26 @@ import axios from "axios";
 
 function RoomDetail() {
     const { id } = useParams();
+    console.log("Room ID:", id);
+    const [reviews, setReviews] = useState([]);
+    const [summary, setSummary] = useState({ avg: 0, total: 0 });
+
+   useEffect(() => {
+    if (!id) return;
+
+    axios.get(`http://localhost:3000/api/reviews/room/${id}`)
+        .then(res => {
+            setReviews(res.data);
+            console.log("reviews API:", res.data); // 👈 thêm ở đây
+        })
+        .catch(err => console.log(err));
+
+    axios.get(`http://localhost:3000/api/reviews/room/${id}/summary`)
+        .then(res => setSummary(res.data))
+        .catch(err => console.log(err));
+
+}, [id]);
+    
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
@@ -41,6 +61,7 @@ function RoomDetail() {
 
     return (
         <div style={styles.container}>
+          
             {/* Hero Section */}
             <div style={styles.hero}>
                 <img
@@ -78,6 +99,30 @@ function RoomDetail() {
                                 <div key={i} style={styles.amenity}>✔ {item}</div>
                             ))}
                         </div>
+<h3 style={styles.sectionTitle}>⭐ Đánh giá phòng</h3>
+
+<p style={{ fontSize: "18px", marginBottom: "10px" }}>
+  ⭐ <strong>{summary.avg}</strong> / 5 ({summary.total} đánh giá)
+</p>
+
+{reviews.length === 0 && (
+  <p style={{ color: "#64748b" }}>Chưa có đánh giá</p>
+)}
+
+{/* 👇 LIST REVIEW ĐẶT Ở ĐÂY */}
+{reviews.map((r) => (
+  <div
+    key={r._id}
+    style={{
+      borderBottom: "1px solid #eee",
+      padding: "10px 0"
+    }}
+  >
+    <strong>{r.user_id?.name}</strong>
+    <p style={{ margin: 0 }}>⭐ {r.rating}</p>
+    <p style={{ color: "#475569" }}>{r.comment}</p>
+  </div>
+))}
                     </div>
                 </div>
 
@@ -105,6 +150,13 @@ function RoomDetail() {
                         )}
 
                         <p style={styles.guarantee}>Đảm bảo giá tốt nhất</p>
+                        {/* 👇 NÚT QUAY LẠI */}
+<button
+    style={styles.backButton}
+    onClick={() => navigate(-1)}
+>
+    ← Quay lại
+</button>
                     </div>
                 </div>
             </div>
@@ -113,6 +165,19 @@ function RoomDetail() {
 }
 
 const styles = {
+    backButton: {
+    width: "100%",
+    padding: "12px",
+    background: "#e2e8f0",
+    color: "#1e2937",
+    border: "none",
+    borderRadius: "10px",
+    fontSize: "15px",
+    fontWeight: "600",
+    cursor: "pointer",
+    marginTop: "10px",
+    transition: "0.2s"
+},
     container: {
         fontFamily: "'Segoe UI', system-ui, sans-serif",
         backgroundColor: "#f8fafc",

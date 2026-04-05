@@ -40,6 +40,16 @@ export const createReview = async (req, res) => {
     }
 
     const existing = await Review.findOne({ booking_id: booking._id });
+    const existingRoomReview = await Review.findOne({
+  user_id: userId,
+  room_id: booking.room_id,
+});
+
+if (existingRoomReview) {
+  return res.status(409).json({
+    message: "Bạn đã đánh giá phòng này rồi",
+  });
+}
     if (existing) {
       return res.status(409).json({ message: "Đã tồn tại đánh giá cho booking này" });
     }
@@ -69,6 +79,7 @@ export const createReview = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({ message: "Booking này đã có đánh giá" });
     }
+    
     return res.status(500).json({ message: error.message });
   }
 };
