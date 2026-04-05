@@ -6,6 +6,8 @@ import { checkAdmin } from "../middlewares/checkAdmin.js";
 import { updateUserRole } from "../controllers/adminController.js";
 import {
   getRevenue,
+  getRevenueByMonth,
+  getRevenueByWeek,
   getTopRooms,
   getDashboard,
   getUsers,
@@ -46,6 +48,8 @@ adminRouter.delete("/rooms/:id", checkAuth, checkAdmin, deleteRoom);
 adminRouter.get("/bookings", checkAuth, checkAdmin, getBookings);
 adminRouter.delete("/bookings/:id", checkAuth, checkAdmin, deleteBooking);
 
+adminRouter.get("/revenue/by-month", checkAuth, checkAdmin, getRevenueByMonth);
+adminRouter.get("/revenue/by-week", checkAuth, checkAdmin, getRevenueByWeek);
 adminRouter.get("/revenue", checkAuth, checkAdmin, getRevenue);
 adminRouter.get("/top-rooms", checkAuth, checkAdmin, getTopRooms);
 adminRouter.get("/booking-stats", checkAuth, checkAdmin, getBookingStats);

@@ -8,6 +8,19 @@ export default function Sidebar() {
             <p className="sidebar-subtitle">Quản trị hệ thống đặt phòng</p>
 
             <ul className="sidebar-menu">
+                <li className="menu-group">Tổng quan</li>
+                <li>
+                    <NavLink
+                        to="/admin"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
+                        🏠 Trang chủ admin
+                    </NavLink>
+                </li>
+
                 <li className="menu-group">Quản lý phòng</li>
 
                 <li>
@@ -43,7 +56,6 @@ export default function Sidebar() {
                         📋 Danh sách booking
                     </NavLink>
                 </li>
-
                 <li>
                     <NavLink
                         to="/admin/rooms/create"

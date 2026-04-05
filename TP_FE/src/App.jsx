@@ -5,6 +5,7 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import Contact from "./pages/Contact";
 import AdminLayout from "./admin/AdminLayout";
+import AdminDashboard from "./admin/pages/AdminDashboard";
 import UserList from "./admin/pages/UserList";
 import RoomList from "./admin/pages/RoomList";
 import RoomCreat from "./admin/pages/RoomCreat";
@@ -48,6 +49,7 @@ function Layout() {
                 <Route path="/review/:bookingId" element={<Review />} />
                 
                 <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<AdminDashboard />} />
                     <Route path="rooms" element={<RoomList />} />
                     <Route path="users-pagination" element={<UserList />} />
                     <Route path="bookings" element={<BookingAdmin />} />

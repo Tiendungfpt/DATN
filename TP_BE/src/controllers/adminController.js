@@ -1,6 +1,21 @@
 import User from "../models/User.js";
 import Rooms from "../models/rooms.js";
 import Booking from "../models/Booking.js";
+import {
+  subWeeks,
+  startOfISOWeek,
+  endOfISOWeek,
+  format,
+  getISOWeek,
+  getISOWeekYear,
+} from "date-fns";
+
+/** Giống GET /admin/revenue: không tính booking đã hủy */
+const REVENUE_STATUS_MATCH = { status: { $ne: "cancelled" } };
+
+function revenueDateField(basisQuery) {
+  return basisQuery === "checkoutDate" ? "check_out_date" : "createdAt";
+}
 
 function normalizeImageValue(imageValue) {
   const raw = String(imageValue || "").trim();
@@ -189,7 +204,7 @@ export const deleteBooking = async (req, res) => {
 export const getRevenue = async (req, res) => {
   try {
     const revenue = await Booking.aggregate([
-      { $match: { status: { $ne: "cancelled" } } },
+      { $match: REVENUE_STATUS_MATCH },
       {
         $group: {
           _id: null,
@@ -210,12 +225,146 @@ export const getRevenue = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/admin/revenue/by-month?year=2026&basis=bookingDate|checkoutDate
+ * Doanh thu theo từng tháng trong năm (đủ 12 tháng, tháng không có dữ liệu = 0).
+ * basis: bookingDate = theo ngày tạo booking (mặc định), checkoutDate = theo ngày trả phòng.
+ */
+export const getRevenueByMonth = async (req, res) => {
+  try {
+    const parsedYear = parseInt(req.query.year, 10);
+    const year = Number.isFinite(parsedYear) ? parsedYear : new Date().getFullYear();
+    const field = revenueDateField(req.query.basis);
+
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year + 1, 0, 1);
+
+    const agg = await Booking.aggregate([
+      {
+        $match: {
+          ...REVENUE_STATUS_MATCH,
+          [field]: { $gte: yearStart, $lt: yearEnd },
+        },
+      },
+      {
+        $group: {
+          _id: { $month: `$${field}` },
+          revenue: { $sum: "$total_price" },
+          bookingCount: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const byMonth = new Map(agg.map((row) => [row._id, row]));
+    const buckets = [];
+    for (let m = 1; m <= 12; m++) {
+      const row = byMonth.get(m);
+      buckets.push({
+        month: m,
+        label: `Tháng ${m}/${year}`,
+        revenue: row?.revenue ?? 0,
+        bookingCount: row?.bookingCount ?? 0,
+      });
+    }
+
+    const totalYearRevenue = buckets.reduce((s, b) => s + b.revenue, 0);
+    const totalYearBookings = buckets.reduce((s, b) => s + b.bookingCount, 0);
+
+    res.json({
+      year,
+      basis: field === "check_out_date" ? "checkoutDate" : "bookingDate",
+      currency: "VND",
+      buckets,
+      totalYearRevenue,
+      totalYearBookings,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * GET /api/admin/revenue/by-week?weeks=12&basis=bookingDate|checkoutDate
+ * Doanh thu theo tuần ISO (Thứ 2 → Chủ nhật), mặc định 12 tuần gần nhất.
+ */
+export const getRevenueByWeek = async (req, res) => {
+  try {
+    const weeks = Math.min(Math.max(parseInt(req.query.weeks, 10) || 12, 1), 52);
+    const field = revenueDateField(req.query.basis);
+
+    const now = new Date();
+    const rangeStart = subWeeks(startOfISOWeek(now, { weekStartsOn: 1 }), weeks + 1);
+
+    const agg = await Booking.aggregate([
+      {
+        $match: {
+          ...REVENUE_STATUS_MATCH,
+          [field]: { $gte: rangeStart },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            y: { $isoWeekYear: `$${field}` },
+            w: { $isoWeek: `$${field}` },
+          },
+          revenue: { $sum: "$total_price" },
+          bookingCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const keyOf = (y, w) => `${y}-W${String(w).padStart(2, "0")}`;
+    const fromAgg = new Map(
+      agg.map((row) => [
+        keyOf(row._id.y, row._id.w),
+        { revenue: row.revenue, bookingCount: row.bookingCount },
+      ]),
+    );
+
+    const buckets = [];
+    for (let i = weeks - 1; i >= 0; i--) {
+      const d = subWeeks(now, i);
+      const start = startOfISOWeek(d, { weekStartsOn: 1 });
+      const end = endOfISOWeek(d, { weekStartsOn: 1 });
+      const y = getISOWeekYear(start);
+      const w = getISOWeek(start, { weekStartsOn: 1 });
+      const k = keyOf(y, w);
+      const row = fromAgg.get(k);
+      buckets.push({
+        isoYear: y,
+        isoWeek: w,
+        weekStart: format(start, "yyyy-MM-dd"),
+        weekEnd: format(end, "yyyy-MM-dd"),
+        label: `${format(start, "dd/MM")} – ${format(end, "dd/MM/yyyy")}`,
+        revenue: row?.revenue ?? 0,
+        bookingCount: row?.bookingCount ?? 0,
+      });
+    }
+
+    const totalRevenue = buckets.reduce((s, b) => s + b.revenue, 0);
+    const totalBookings = buckets.reduce((s, b) => s + b.bookingCount, 0);
+
+    res.json({
+      weeks,
+      basis: field === "check_out_date" ? "checkoutDate" : "bookingDate",
+      currency: "VND",
+      buckets,
+      totalRevenue,
+      totalBookings,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // ================= TOP ROOMS =================
 
 export const getTopRooms = async (req, res) => {
   try {
     const topRooms = await Booking.aggregate([
-      { $match: { status: { $ne: "cancelled" } } },
+      { $match: REVENUE_STATUS_MATCH },
       {
         $group: {
           _id: "$room_id",
