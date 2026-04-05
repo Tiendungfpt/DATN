@@ -2,6 +2,40 @@ import Rooms from "../models/rooms.js";
 import Booking from "../models/Booking.js";
 import { parseStayDates } from "../utils/bookingAvailability.js";
 import { BOOKING_SCHEDULE_BLOCKING_STATUSES } from "../utils/bookingSchedule.js";
+/**
+ * GET /api/rooms/featured — trang chủ: mỗi loại (`room_type`) một phòng đại diện, lấy trực tiếp từ MongoDB.
+ * Gom theo `room_type`, chọn bản ghi có `room_no` nhỏ nhất (ổn định, khớp layout A101 → E501).
+ * Tối đa 5 loại (đủ cho dataset 5 room_type).
+ */
+export async function getFeaturedRoomsForHome(req, res) {
+  try {
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || 5, 1),
+      20,
+    );
+    const pipeline = [
+      {
+        $match: {
+          room_type: { $exists: true, $type: "string", $ne: "" },
+        },
+      },
+      { $sort: { room_no: 1 } },
+      {
+        $group: {
+          _id: "$room_type",
+          doc: { $first: "$$ROOT" },
+        },
+      },
+      { $replaceRoot: { newRoot: "$doc" } },
+      { $sort: { room_no: 1 } },
+      { $limit: limit },
+    ];
+    const featured = await Rooms.aggregate(pipeline);
+    return res.status(200).json(featured);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
 
 // GET /api/rooms - danh sách phòng
 export async function getAllRooms(req, res) {

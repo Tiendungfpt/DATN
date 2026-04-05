@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useSearchParams } from "react-router-dom";
+import {
+  FEATURED_ROOM_SLOTS,
+  normalizeRoomTypeName,
+  reviewRoomMatchesFeaturedSection,
+  roomMatchesFeaturedSlot,
+} from "../constants/featuredRoomTypes";
 
 function HotelList() {
-  const featuredRoomNames = [
-    "Phòng Tiêu Chuẩn",
-    "Phòng Cao cấp-2 giường đơn",
-    "Phòng Cao cấp-1 giường Queen",
-    "Phòng Sang Trọng",
-    "Family Suite",
-  ];
-
   const [visibleCount, setVisibleCount] = useState(2);
   const [ratings, setRatings] = useState({});
   const [allReviews, setAllReviews] = useState([]);
@@ -21,6 +19,10 @@ const [globalSummary, setGlobalSummary] = useState({ avg: 0, total: 0 });
   const [error, setError] = useState(null);
   const [searchParams] = useSearchParams();
   const [isAdmin, setIsAdmin] = useState(false);
+  /** Số phòng vật lý theo từng loại (normalized name) — chỉ dùng cho admin. */
+  const [physicalCountByTypeKey, setPhysicalCountByTypeKey] = useState({});
+  /** Tổng bản ghi phòng API trả về (trước khi gộp loại) — chỉ hiện admin. */
+  const [totalPhysicalFromApi, setTotalPhysicalFromApi] = useState(0);
   useEffect(() => {
   const fetchAllReviews = async () => {
     try {
@@ -120,24 +122,22 @@ useEffect(() => {
       .then((res) => {
         const roomList = Array.isArray(res.data) ? res.data : [];
 
-        const normalizeName = (value) =>
-          String(value || "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-zA-Z0-9]/g, "")
-            .toLowerCase();
+        const counts = {};
+        FEATURED_ROOM_SLOTS.forEach((slot) => {
+          const key = normalizeRoomTypeName(slot.name);
+          counts[key] = roomList.filter((r) =>
+            roomMatchesFeaturedSlot(r, slot),
+          ).length;
+        });
 
         const selected = [];
+        FEATURED_ROOM_SLOTS.forEach((slot) => {
+          const found = roomList.find((r) => roomMatchesFeaturedSlot(r, slot));
+          if (found) selected.push(found);
+        });
 
-featuredRoomNames.forEach((name) => {
-  const foundRooms = roomList.filter(
-    (r) => normalizeName(r.name) === normalizeName(name)
-  );
-
-  selected.push(...foundRooms); // 👈 quan trọng
-});
-
-        // User site chỉ hiển thị tối đa 5 loại phòng cố định.
+        setPhysicalCountByTypeKey(counts);
+        setTotalPhysicalFromApi(roomList.length);
         setRooms(selected);
         setLoading(false);
       })
@@ -180,11 +180,18 @@ featuredRoomNames.forEach((name) => {
           <h1 className="fw-bold display-5">Danh sách phòng</h1>
           <p className="text-muted fs-5">
             {searchParams.get("check_in_date")
-              ? "Kết quả phòng phù hợp theo ngày và sức chứa"
-              : "Chọn phòng phù hợp và đặt ngay"}
+              ? "Kết quả theo ngày và sức chứa — mỗi thẻ là một loại phòng"
+              : "Khám phá các loại phòng nổi bật — đặt theo loại, hệ thống sắp phòng cụ thể khi xác nhận"}
           </p>
         </div>
-        <span className="text-muted">{rooms.length} phòng</span>
+        {isAdmin ? (
+          <div className="text-end text-muted small">
+            <div className="fw-semibold text-dark">
+              Tổng {totalPhysicalFromApi} phòng (dữ liệu API)
+            </div>
+            <div>{rooms.length} loại đang hiển thị</div>
+          </div>
+        ) : null}
       </div>
 
       <div className="row g-4">
@@ -213,19 +220,35 @@ featuredRoomNames.forEach((name) => {
                     }}
                   />
 
-                  <div className="position-absolute top-0 end-0 m-3">
-                    <span
-                      className={`badge px-3 py-2 fw-bold shadow-sm ${
-                        room.status === "available" ? "bg-success" : "bg-danger"
-                      }`}
-                    >
-                      {room.status === "available" ? "Còn trống" : "Đã đặt"}
-                    </span>
-                  </div>
+                  {isAdmin && (
+                    <div className="position-absolute top-0 end-0 m-3">
+                      <span
+                        className={`badge px-3 py-2 fw-bold shadow-sm ${
+                          room.status === "available"
+                            ? "bg-success"
+                            : "bg-danger"
+                        }`}
+                      >
+                        {room.status === "available" ? "Còn trống" : "Đã đặt"}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="card-body d-flex flex-column p-4">
                   <h5 className="card-title fw-bold mb-2">{room.name}</h5>
+                  {isAdmin && (
+                    <p className="small text-muted mb-2">
+                      Loại này:{" "}
+                      <strong>
+                        {physicalCountByTypeKey[
+                          normalizeRoomTypeName(room.name)
+                        ] ?? 0}{" "}
+                        phòng
+                      </strong>{" "}
+                      trong kết quả API
+                    </p>
+                  )}
                    {/* ⭐ HIỂN THỊ ĐÁNH GIÁ */}
   <div className="mb-2">
     ⭐ {ratings[room._id]?.avg ?? 0} / 5
@@ -293,7 +316,7 @@ featuredRoomNames.forEach((name) => {
     <p className="text-muted text-center">Chưa có đánh giá</p>
   ) : (
     allReviews
-  .filter((r) => rooms.some(room => room._id === r.room_id?._id))
+  .filter((r) => reviewRoomMatchesFeaturedSection(r.room_id))
   .slice(0, visibleCount)
   .map((r) => (
       <div key={r._id} className="border-top pt-3 mb-3">
@@ -302,7 +325,11 @@ featuredRoomNames.forEach((name) => {
         </p>
 
 <p className="text-primary mb-1">
- 🏨 {r.room_id?.room_no} - {r.room_id?.name}
+ 🏨{" "}
+                  {isAdmin && r.room_id?.room_no
+                    ? `${r.room_id.room_no} - `
+                    : ""}
+                  {r.room_id?.name || "—"}
 </p>
 
         <p className="text-warning mb-1">⭐ {r.rating} / 5</p>

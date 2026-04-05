@@ -1,19 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
-
 export default function Home() {
-  
   const fallbackRoomImage =
     "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
-
-  const featuredRoomNames = [
-    "Phòng Tiêu Chuẩn",
-    "Phòng Cao cấp-2 giường đơn",
-    "Phòng Cao cấp-1 giường Queen",
-    "Phòng Sang Trọng",
-    "Family Suite",
-  ];
 
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,32 +48,14 @@ export default function Home() {
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        const res = await fetch("http://localhost:3000/api/rooms");
+        const res = await fetch("http://localhost:3000/api/rooms/featured");
 
         if (!res.ok) throw new Error(`Lỗi server: ${res.status}`);
 
         const data = await res.json();
+        const list = Array.isArray(data) ? data : data?.data || data?.result || [];
 
-        const roomList = Array.isArray(data)
-          ? data
-          : data?.data || data?.result || [];
-
-        const normalizeName = (value) =>
-          String(value || "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-zA-Z0-9]/g, "")
-            .toLowerCase();
-
-        const selected = [];
-        featuredRoomNames.forEach((name) => {
-          const found = roomList.find(
-            (r) => normalizeName(r.name) === normalizeName(name),
-          );
-          if (found) selected.push(found);
-        });
-
-        setRooms(selected.slice(0, 5));
+        setRooms(list);
       } catch (err) {
         console.error("Lỗi khi lấy dữ liệu:", err);
         setError(err.message);
@@ -155,7 +127,9 @@ export default function Home() {
             <div>
               <h3 className="fw-bold mb-1">Ưu đãi nổi bật</h3>
               <p className="text-muted">
-                Khám phá 5 loại phòng nổi bật
+                {rooms.length > 0
+                  ? `${rooms.length} loại phòng nổi bật`
+                  : "Khám phá các loại phòng nổi bật"}
               </p>
             </div>
             <Link to="/khach-san" className="text-primary fw-medium text-decoration-none">

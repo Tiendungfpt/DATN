@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 
@@ -21,10 +21,6 @@ import HotelList from "./pages/HotelList";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import UserProfile from "./pages/Profile/UserProfile";
 import Review from "./pages/Review";
-function RedirectToDatPhong() {
-    const { search } = useLocation();
-    return <Navigate to={`/dat-phong${search}`} replace />;
-}
 
 function Layout() {
     const location = useLocation();

@@ -1,6 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import {
+  FEATURED_ROOM_SLOTS,
+  normalizeRoomTypeName,
+  roomMatchesFeaturedSlot,
+} from "../constants/featuredRoomTypes";
 
 
 function RoomsList() {
@@ -9,6 +14,8 @@ function RoomsList() {
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [physicalCountByTypeKey, setPhysicalCountByTypeKey] = useState({});
+    const [totalPhysicalFromApi, setTotalPhysicalFromApi] = useState(0);
 
     const [ratings, setRatings] = useState({});
 
@@ -18,12 +25,29 @@ useEffect(() => {
     try {
       const res = await axios.get("http://localhost:3000/api/rooms");
       const data = Array.isArray(res.data) ? res.data : [];
-      setRooms(data);
+
+      const counts = {};
+      FEATURED_ROOM_SLOTS.forEach((slot) => {
+        const key = normalizeRoomTypeName(slot.name);
+        counts[key] = data.filter((r) =>
+          roomMatchesFeaturedSlot(r, slot),
+        ).length;
+      });
+
+      const selected = [];
+      FEATURED_ROOM_SLOTS.forEach((slot) => {
+        const found = data.find((r) => roomMatchesFeaturedSlot(r, slot));
+        if (found) selected.push(found);
+      });
+
+      setPhysicalCountByTypeKey(counts);
+      setTotalPhysicalFromApi(data.length);
+      setRooms(selected);
 
       const ratingData = {};
 
       await Promise.all(
-        data.map(async (room) => {
+        selected.map(async (room) => {
           try {
             const r = await axios.get(
               `http://localhost:3000/api/reviews/room/${room._id}/summary`
@@ -69,7 +93,9 @@ useEffect(() => {
                     Danh sách phòng
                 </h1>
                 <p style={styles.subtitle}>
-                    {rooms.length} phòng • Chọn phòng phù hợp với bạn
+                    {isAdmin
+                      ? `Tổng ${totalPhysicalFromApi} phòng (API) · ${rooms.length} loại hiển thị`
+                      : "Các loại phòng nổi bật — chọn loại phù hợp với bạn"}
                 </p>
             </div>
 
@@ -91,16 +117,29 @@ useEffect(() => {
                                     e.target.src = placeholderImage;
                                 }}
                             />
+                            {isAdmin && (
                             <div style={{
                                 ...styles.statusBadge,
                                 backgroundColor: room.status === "available" ? "#10b981" : "#ef4444"
                             }}>
                                 {room.status === "available" ? "Còn trống" : "Đã đặt"}
                             </div>
+                            )}
                         </div>
 
                         <div style={styles.cardContent}>
                             <h3 style={styles.roomName}>{room.name}</h3>
+                            {isAdmin && (
+                              <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "8px" }}>
+                                Loại này:{" "}
+                                <strong>
+                                  {physicalCountByTypeKey[
+                                    normalizeRoomTypeName(room.name)
+                                  ] ?? 0}{" "}
+                                  phòng
+                                </strong>
+                              </p>
+                            )}
    <div style={{ marginBottom: "10px" }}>
   ⭐ {ratings[room._id]?.avg || 0} / 5
   <br />
