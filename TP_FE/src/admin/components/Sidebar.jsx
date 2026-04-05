@@ -8,7 +8,18 @@ export default function Sidebar() {
             <p className="sidebar-subtitle">Quản trị hệ thống đặt phòng</p>
 
             <ul className="sidebar-menu">
-                <li className="menu-group">Quản lý phòng</li>
+                <li>
+                    <NavLink
+                        to="/admin/dashboard"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
+                        🏨 Tổng quan
+                    </NavLink>
+                </li>
+                <li className="menu-group">Quản lý </li>
 
                 <li>
                     <NavLink

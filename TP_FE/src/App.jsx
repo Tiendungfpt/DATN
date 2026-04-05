@@ -21,6 +21,7 @@ import HotelList from "./pages/HotelList";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import UserProfile from "./pages/Profile/UserProfile";
 import Review from "./pages/Review";
+import AdminDashboard from "./admin/pages/DashboardAdmin";
 
 function Layout() {
     const location = useLocation();
@@ -43,11 +44,12 @@ function Layout() {
                 <Route path="/phong/:id" element={<RoomDetail />} />
                 <Route path="/khach-san/:id" element={<HotelList />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
-                <Route path="/thong-tin-tai-khoan" element={<UserProfile/>}></Route>
+                <Route path="/thong-tin-tai-khoan" element={<UserProfile />}></Route>
 
                 <Route path="/review/:bookingId" element={<Review />} />
-                
+
                 <Route path="/admin" element={<AdminLayout />}>
+                    <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="rooms" element={<RoomList />} />
                     <Route path="users-pagination" element={<UserList />} />
                     <Route path="bookings" element={<BookingAdmin />} />
