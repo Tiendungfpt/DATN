@@ -5,6 +5,19 @@ import DatePicker from "react-datepicker";
 import { registerLocale, setDefaultLocale } from "react-datepicker";
 import { vi } from "date-fns/locale/vi";
 import "react-datepicker/dist/react-datepicker.css";
+import {
+  FaCar,
+  FaBroom,
+  FaWandMagicSparkles,
+  FaDumbbell,
+  FaCamera,
+  FaEnvelope,
+  FaBriefcase,
+  FaCheck,
+  FaSoap,
+  FaSpa,
+  FaUtensils,
+} from "react-icons/fa6";
 import "./style/Booking.css";
 
 registerLocale("vi", vi);
@@ -38,6 +51,25 @@ function Booking() {
   const [checkInDate, setCheckInDate] = useState(null);
   const [checkOutDate, setCheckOutDate] = useState(null);
   const [roomQuantity, setRoomQuantity] = useState(1);
+
+  const [serviceOptions] = useState([
+    { _id: "pickup", name: "Thuê xe máy", icon: FaCar, price: 50000 },
+    { _id: "room_cleaning", name: "Vệ sinh phòng", icon: FaBroom, price: 75000 },
+    { _id: "laundry", name: "Giặt là", icon: FaSoap, price: 60000 },
+    { _id: "spa", name: "Spa & Massage", icon: FaSpa, price: 200000 },
+    { _id: "gym", name: "Phòng tập", icon: FaDumbbell, price: 150000 },
+    { _id: "camera", name: "Chụp ảnh", icon: FaCamera, price: 150000 },
+    { _id: "mail", name: "Ăn sáng", icon: FaUtensils, price: 50000 },
+    { _id: "office_rental", name: "Cho thuê phòng họp", icon: FaBriefcase, price: 200000 },
+  ]);
+  const [selectedServices, setSelectedServices] = useState([]);
+
+  const serviceFee = selectedServices.reduce((sum, serviceId) => {
+    const item = serviceOptions.find((s) => s._id === serviceId);
+    return sum + (item ? item.price : 0);
+  }, 0);
+
+  const totalWithService = total + serviceFee;
 
   useEffect(() => {
     if (!roomId) return;
@@ -87,6 +119,8 @@ function Booking() {
       check_in_date: checkInDate.toISOString().split("T")[0],
       check_out_date: checkOutDate.toISOString().split("T")[0],
       room_quantity: roomQuantity,
+      services: selectedServices,
+      service_fee: serviceFee,
     };
 
     try {
@@ -180,6 +214,48 @@ function Booking() {
               <span className="per-night">/ đêm</span>
             </div>
           </div>
+
+          <div className="services-section">
+            <label>Dịch vụ kèm theo</label>
+            <p className="subtext">Chọn dịch vụ nếu bạn muốn thêm.</p>
+            <div className="services-grid">
+              {serviceOptions.map((service) => {
+                const isSelected = selectedServices.includes(service._id);
+                const IconComponent = service.icon;
+                return (
+                  <div
+                    key={service._id}
+                    className={`service-card ${isSelected ? "active" : ""}`}
+                    onClick={() => {
+                      const next = [...selectedServices];
+                      if (isSelected) {
+                        const idx = next.indexOf(service._id);
+                        if (idx >= 0) next.splice(idx, 1);
+                      } else {
+                        next.push(service._id);
+                      }
+                      setSelectedServices(next);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="service-icon">
+                      <IconComponent size={28} />
+                    </div>
+                    <div className="service-content">
+                      <div className="service-label">{service.name}</div>
+                      <div className="service-price">+{service.price.toLocaleString("vi-VN")} ₫</div>
+                    </div>
+                    {isSelected && (
+                      <div className="service-check">
+                        <FaCheck size={18} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <div className="booking-right">
@@ -255,10 +331,14 @@ function Booking() {
                   <span>Số phòng:</span>
                   <span>{roomQuantity}</span>
                 </div>
+                <div className="summary-row">
+                  <span>Phí dịch vụ đã chọn:</span>
+                  <span>{serviceFee.toLocaleString("vi-VN")} ₫</span>
+                </div>
                 <div className="total-row">
                   <span>Tổng tiền:</span>
                   <span className="total-price">
-                    {total.toLocaleString("vi-VN")} ₫
+                    {totalWithService.toLocaleString("vi-VN")} ₫
                   </span>
                 </div>
               </div>
@@ -267,7 +347,7 @@ function Booking() {
                 type="submit"
                 className="book-button momo-pay-button"
                 disabled={
-                  !total ||
+                  !totalWithService ||
                   loading ||
                   !checkInDate ||
                   !checkOutDate ||

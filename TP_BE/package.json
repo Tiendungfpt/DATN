@@ -32,8 +32,9 @@
     "multer": "^2.1.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.28.4",
-    "@babel/node": "^7.28.0",
+    "@babel/cli": "^7.28.6",
+    "@babel/core": "^7.29.0",
+    "@babel/node": "^7.29.0",
     "@babel/preset-env": "^7.28.3",
     "nodemon": "^3.1.10"
   }
