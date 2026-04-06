@@ -49,18 +49,19 @@ export const getDashboardStats = async (req, res) => {
     }
 
     // ===== BOOKING QUERY (OVERLAP) =====
+    // Booking schema uses snake_case fields in this project.
+    const validRevenueStatuses = ["confirmed", "checked_in", "completed"];
+
     const currentBookings = await Booking.find({
-      status: "confirmed",
-      paymentStatus: "paid",
-      checkInDate: { $lte: endDate },
-      checkOutDate: { $gte: startDate },
+      status: { $in: validRevenueStatuses },
+      check_in_date: { $lte: endDate },
+      check_out_date: { $gte: startDate },
     });
 
     const prevBookings = await Booking.find({
-      status: "confirmed",
-      paymentStatus: "paid",
-      checkInDate: { $lte: prevEnd },
-      checkOutDate: { $gte: prevStart },
+      status: { $in: validRevenueStatuses },
+      check_in_date: { $lte: prevEnd },
+      check_out_date: { $gte: prevStart },
     });
 
     // ===== TOTAL DATA =====
@@ -73,8 +74,8 @@ export const getDashboardStats = async (req, res) => {
       let roomNights = 0;
 
       bookings.forEach((b) => {
-        const checkIn = new Date(b.checkInDate);
-        const checkOut = new Date(b.checkOutDate);
+        const checkIn = new Date(b.check_in_date);
+        const checkOut = new Date(b.check_out_date);
 
         // Giới hạn trong period
         const actualStart = checkIn < start ? start : checkIn;
@@ -90,10 +91,10 @@ export const getDashboardStats = async (req, res) => {
           Math.ceil((actualEnd - actualStart) / (1000 * 60 * 60 * 24))
         );
 
-        const pricePerNight = (b.totalPrice || 0) / totalNights;
+        const pricePerNight = (b.total_price || 0) / totalNights;
 
         revenue += usedNights * pricePerNight;
-        roomNights += usedNights * (b.rooms?.length || 1);
+        roomNights += usedNights * (b.room_quantity || 1);
       });
 
       const days =

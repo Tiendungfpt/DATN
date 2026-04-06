@@ -72,7 +72,14 @@ async function getAssignableRoomsForBookingDoc(booking) {
 export const createBooking = async (req, res) => {
   try {
     const userId = req.userId;
-    const { room_id, check_in_date, check_out_date, room_quantity } = req.body;
+    const {
+      room_id,
+      check_in_date,
+      check_out_date,
+      room_quantity,
+      services = [],
+      service_fee = 0,
+    } = req.body;
 
     const currentUser = await User.findById(userId).select("role").lean();
     if (!currentUser) {
@@ -132,7 +139,12 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const totalPrice = nightsBetween(start, end) * room.price * quantity;
+    const roomOnlyPrice = nightsBetween(start, end) * room.price * quantity;
+    const normalizedServiceFee = Math.max(0, Number(service_fee) || 0);
+    const totalPrice = roomOnlyPrice + normalizedServiceFee;
+    const normalizedServices = Array.isArray(services)
+      ? services.filter((item) => typeof item === "string")
+      : [];
 
     const booking = await Booking.create({
       user_id: userId,
@@ -140,6 +152,8 @@ export const createBooking = async (req, res) => {
       check_in_date: start,
       check_out_date: end,
       room_quantity: quantity,
+      services: normalizedServices,
+      service_fee: normalizedServiceFee,
       total_price: totalPrice,
       status: "pending",
     });

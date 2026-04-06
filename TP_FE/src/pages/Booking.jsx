@@ -173,16 +173,27 @@ useEffect(() => {
         throw new Error("Không lấy được bookingId để thanh toán");
       }
 
-      const momoRes = await axios.post("http://localhost:3000/api/momo/create", {
-        bookingId,
-      });
+      try {
+        const momoRes = await axios.post("http://localhost:3000/api/momo/create", {
+          bookingId,
+        });
 
-      if (momoRes?.data?.success && momoRes?.data?.payUrl) {
-        window.location.href = momoRes.data.payUrl;
-        return;
+        if (momoRes?.data?.success && momoRes?.data?.payUrl) {
+          window.location.href = momoRes.data.payUrl;
+          return;
+        }
+
+        throw new Error(momoRes?.data?.message || "Không tạo được link thanh toán MoMo");
+      } catch (momoErr) {
+        const momoMsg =
+          momoErr.response?.data?.message ||
+          momoErr.message ||
+          "Không thể kết nối cổng thanh toán";
+        alert(
+          `Đặt phòng thành công nhưng chưa tạo được link thanh toán.\n${momoMsg}\nBạn có thể kiểm tra đơn trong lịch sử đặt phòng và thử lại sau.`,
+        );
+        navigate("/thong-tin-tai-khoan?tab=history");
       }
-
-      throw new Error(momoRes?.data?.message || "Không tạo được link thanh toán MoMo");
     } catch (err) {
       console.error("❌ Lỗi đặt phòng/thanh toán:", err);
       const errorMsg =
@@ -392,7 +403,7 @@ useEffect(() => {
 
               <p className="guarantee">
                 Lịch sử đặt phòng của bạn tại{" "}
-                <Link to="/booking-list">trang Booking</Link>
+                <Link to="/thong-tin-tai-khoan?tab=history">Lịch sử đặt phòng</Link>
               </p>
             </form>
           </div>

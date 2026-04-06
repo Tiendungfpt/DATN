@@ -42,8 +42,8 @@ console.log("TOKEN SEND:", localStorage.getItem("token"));
 
       alert("Đánh giá thành công 🎉");
 
-      // quay lại danh sách booking
-      navigate("/booking-list");
+      // quay lại lịch sử đặt phòng
+      navigate("/thong-tin-tai-khoan?tab=history");
     } catch (err) {
       alert(err.response?.data?.message || "Lỗi gửi đánh giá");
     } finally {
@@ -86,7 +86,7 @@ console.log("TOKEN SEND:", localStorage.getItem("token"));
       />
  {/* 🔙 Nút quay lại */}
   <button
-    onClick={() => navigate(-1)} // hoặc navigate("/booking-list") nếu muốn luôn về danh sách
+    onClick={() => navigate(-1)}
     style={{
       width: "100%",
       padding: "14px",

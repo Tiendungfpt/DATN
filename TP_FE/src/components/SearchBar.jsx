@@ -7,10 +7,15 @@ export default function SearchBar() {
   const [checkOut, setCheckOut] = useState("");
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
+  const today = new Date().toISOString().split("T")[0];
 
   const handleSearch = () => {
     if (!checkIn || !checkOut) {
       alert("Vui lòng chọn ngày nhận và trả phòng.");
+      return;
+    }
+    if (checkIn < today) {
+      alert("Ngày nhận phòng không được là ngày trong quá khứ.");
       return;
     }
     if (new Date(checkIn) >= new Date(checkOut)) {
@@ -40,6 +45,7 @@ export default function SearchBar() {
                 type="date"
                 className="form-control"
                 value={checkIn}
+                min={today}
                 onChange={(e) => setCheckIn(e.target.value)}
               />
             </div>
@@ -52,6 +58,7 @@ export default function SearchBar() {
                 type="date"
                 className="form-control"
                 value={checkOut}
+                min={checkIn || today}
                 onChange={(e) => setCheckOut(e.target.value)}
               />
             </div>

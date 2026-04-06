@@ -20,6 +20,11 @@ const bookingSchema = new mongoose.Schema(
     check_in_date: { type: Date, required: true },
     check_out_date: { type: Date, required: true },
     room_quantity: { type: Number, required: true, min: 1, default: 1 },
+    services: {
+      type: [String],
+      default: [],
+    },
+    service_fee: { type: Number, min: 0, default: 0 },
     total_price: { type: Number, required: true, min: 0 },
     status: {
       type: String,

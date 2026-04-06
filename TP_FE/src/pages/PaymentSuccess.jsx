@@ -113,7 +113,7 @@ function PaymentSuccess() {
                   </button>
 
                   <button 
-                    onClick={() => navigate("/booking-list")}
+                    onClick={() => navigate("/thong-tin-tai-khoan?tab=history")}
                     className="btn btn-outline-secondary btn-lg py-3 fw-semibold"
                   >
                     <i className="bi bi-clock-history me-2"></i>

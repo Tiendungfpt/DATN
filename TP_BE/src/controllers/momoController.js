@@ -101,7 +101,28 @@ const finalAmount = Math.round(amount);
         signature,
       };
 
-      const response = await axios.post(this.createEndpoint, requestBody);
+      let response;
+      let lastError;
+      const retryDelays = [0, 1200, 2500];
+
+      for (const delayMs of retryDelays) {
+        if (delayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+        try {
+          response = await axios.post(this.createEndpoint, requestBody, {
+            timeout: 25000,
+          });
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error("Không thể kết nối cổng thanh toán MoMo");
+      }
 
       const result = response.data;
 
@@ -119,10 +140,18 @@ const finalAmount = Math.round(amount);
       }
     } catch (error) {
       console.error("MoMo Error:", error.response?.data || error.message);
-      return res.status(500).json({
-  success: false,
-  message: error.response?.data?.message || error.message,
-});
+      const upstreamStatus = Number(error?.response?.status || 0);
+      const timedOut =
+        error?.code === "ECONNABORTED" ||
+        upstreamStatus === 504 ||
+        /timeout/i.test(String(error?.message || ""));
+
+      return res.status(timedOut ? 504 : 500).json({
+        success: false,
+        message: timedOut
+          ? "Cổng thanh toán đang bận hoặc hết thời gian phản hồi, vui lòng thử lại sau."
+          : error.response?.data?.message || error.message,
+      });
     }
   };
 

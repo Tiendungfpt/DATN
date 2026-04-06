@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function AdminDashboard() {
     const navigate = useNavigate();
+    const [period, setPeriod] = useState("week");
 
     const [stats, setStats] = useState({
         rooms: 0,
@@ -17,10 +18,8 @@ export default function AdminDashboard() {
         const fetchStats = async () => {
             try {
                 const res = await axios.get(
-                    "http://localhost:3000/api/dashboard"
+                    `http://localhost:3000/api/dashboard?period=${period}`
                 );
-
-                console.log("API response:", res.data);
 
                 setStats({
                     rooms: res.data.totals?.rooms || 0,
@@ -29,17 +28,25 @@ export default function AdminDashboard() {
                     revenue: res.data.stats?.revenue || 0,
                 });
             } catch (error) {
-                console.error("Lỗi gọi API:", error);
+                console.error("Lỗi gọi API dashboard:", error);
             }
         };
 
         fetchStats();
-    }, []);
+    }, [period]);
+
+    const periodLabel = {
+        today: "hôm nay",
+        week: "tuần này",
+        month: "tháng này",
+    };
 
     return (
         <div className="dashboard">
             <h2>Tổng quan</h2>
-            <p className="subtitle">Số liệu thống kê nhanh từ hệ thống</p>
+            <p className="subtitle">
+                Số liệu thống kê nhanh ({periodLabel[period]})
+            </p>
 
             <div className="cards">
                 <div className="card" onClick={() => navigate("/admin/rooms")}>
@@ -62,6 +69,26 @@ export default function AdminDashboard() {
                 <div className="card">
                     <h4>💰 Doanh thu</h4>
                     <h1>{stats.revenue} đ</h1>
+                    <div className="period-filter">
+                        <button
+                            className={period === "today" ? "active" : ""}
+                            onClick={() => setPeriod("today")}
+                        >
+                            Hôm nay
+                        </button>
+                        <button
+                            className={period === "week" ? "active" : ""}
+                            onClick={() => setPeriod("week")}
+                        >
+                            Tuần
+                        </button>
+                        <button
+                            className={period === "month" ? "active" : ""}
+                            onClick={() => setPeriod("month")}
+                        >
+                            Tháng
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

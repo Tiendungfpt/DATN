@@ -10,6 +10,14 @@ function BookingHistory() {
 
   const token = localStorage.getItem("token");
 
+  const getRoomImageSrc = (booking) => {
+    const image = booking?.assigned_room_id?.image || booking?.room_id?.image;
+    if (!image) return null;
+    return image.startsWith("http")
+      ? image
+      : `http://localhost:3000/uploads/${image}`;
+  };
+
   useEffect(() => {
     const fetchBookings = async () => {
       try {
@@ -190,6 +198,23 @@ function BookingHistory() {
                   <div className="row g-4 align-items-start">
                     {/* Left - Information */}
                     <div className="col-lg-8">
+                      <div className="mb-4">
+                        <img
+                          src={
+                            getRoomImageSrc(booking) ||
+                            "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=1200&auto=format&fit=crop"
+                          }
+                          alt={booking?.assigned_room_id?.name || booking?.room_id?.name || "Phòng đã đặt"}
+                          className="rounded-4 border"
+                          style={{
+                            width: "100%",
+                            maxWidth: "360px",
+                            height: "200px",
+                            objectFit: "cover",
+                          }}
+                        />
+                      </div>
+
                       <div className="d-flex flex-wrap gap-2 mb-4">
                         <span className="badge bg-primary-subtle text-primary px-4 py-2 fs-6 rounded-3 fw-medium">
                           {nights} đêm
