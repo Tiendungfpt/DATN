@@ -7,24 +7,45 @@ const reviewSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
     booking_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Booking",
       required: true,
       unique: true,
     },
+
     room_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Room",
       required: true,
     },
+
     rating: {
       type: Number,
       required: true,
       min: 1,
       max: 5,
     },
+
     comment: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // =========================
+    // ⭐ ADD THESE (ADMIN CONTROL)
+    // =========================
+
+    // admin ẩn review
+    isHidden: {
+      type: Boolean,
+      default: false,
+    },
+
+    // phản hồi của admin
+    adminReply: {
       type: String,
       default: "",
       trim: true,
@@ -33,7 +54,7 @@ const reviewSchema = new mongoose.Schema(
   {
     timestamps: { createdAt: "created_at", updatedAt: false },
     versionKey: false,
-  },
+  }
 );
 
 export default mongoose.model("Review", reviewSchema);
