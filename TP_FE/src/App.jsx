@@ -21,6 +21,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import UserProfile from "./pages/Profile/UserProfile";
 import Review from "./pages/Review";
 import AdminDashboard from "./admin/pages/DashboardAdmin";
+import AdminReviews from "./admin/pages/AdminReview";
 
 function Layout() {
     const location = useLocation();
@@ -53,6 +54,7 @@ function Layout() {
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="rooms" element={<RoomList />} />
+                    <Route path="reviews" element={<AdminReviews />} />
                     <Route path="users-pagination" element={<UserList />} />
                     <Route path="bookings" element={<BookingAdmin />} />
                     <Route path="rooms/create" element={<RoomCreat />} />

@@ -54,6 +54,17 @@ export default function Sidebar() {
                         📋 Danh sách booking
                     </NavLink>
                 </li>
+                <li>
+                    <NavLink
+                        to="/admin/reviews"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
+                        📋 Danh sách Review
+                    </NavLink>
+                </li>
 
                 <li>
                     <NavLink

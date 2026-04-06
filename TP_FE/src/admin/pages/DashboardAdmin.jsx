@@ -61,9 +61,10 @@ export default function AdminDashboard() {
                     <p className="link">Xem booking →</p>
                 </div>
 
-                <div className="card">
+                <div className="card" onClick={() => navigate("/admin/users-pagination")}>
                     <h4>👤 Tổng số người dùng</h4>
                     <h1>{stats.users}</h1>
+                    <p className="link">Xem người dùng →</p>
                 </div>
 
                 <div className="card">

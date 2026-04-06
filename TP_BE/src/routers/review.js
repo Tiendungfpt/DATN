@@ -1,32 +1,60 @@
 import { Router } from "express";
 import { checkAuth } from "../middlewares/checkAuth.js";
-import { createReview } from "../controllers/review.js";
+import { checkAdmin } from "../middlewares/checkAdmin.js";
 import Review from "../models/Review.js";
+
+import {
+  createReview,
+  getAllReviewsAdmin,
+  toggleReviewVisibility,
+  replyReview,
+} from "../controllers/review.js";
 
 const reviewRouter = Router();
 
-// ✅ Tạo review
+
+// ================= USER =================
+
+// tạo review
 reviewRouter.post("/", checkAuth, createReview);
-// ✅ Lấy tất cả review (CHO TRANG HOME / HOTEL LIST)
-reviewRouter.get("/", async (req, res) => {
+
+
+// ✅ LẤY REVIEW THEO ROOM (PUBLIC - CLIENT PAGE)
+reviewRouter.get("/room/:roomId", async (req, res) => {
   try {
-    const reviews = await Review.find()
+    const { roomId } = req.params;
+
+    const reviews = await Review.find({
+      room_id: roomId,
+      isHidden: false,
+    })
       .populate("user_id", "name")
-      .populate("room_id", "name room_no") // ✅ QUAN TRỌNG
+      .populate({
+        path: "room_id",
+        select: "name room_no type",
+      })
+      .populate(
+        "booking_id",
+        "check_in_date check_out_date"
+      )
       .sort({ created_at: -1 });
 
     res.json(reviews);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Lỗi server" });
   }
 });
 
-// ✅ Lấy số sao trung bình (để TRÊN)
+// ✅ SUMMARY REVIEW (AVG STAR)
 reviewRouter.get("/room/:roomId/summary", async (req, res) => {
   try {
     const { roomId } = req.params;
 
-    const reviews = await Review.find({ room_id: roomId });
+    const reviews = await Review.find({
+      room_id: roomId,
+      isHidden: false,
+    });
 
     const total = reviews.length;
 
@@ -44,21 +72,26 @@ reviewRouter.get("/room/:roomId/summary", async (req, res) => {
   }
 });
 
-// ✅ Lấy review theo room (để SAU)
-reviewRouter.get("/room/:roomId", async (req, res) => {
-  try {
-    const { roomId } = req.params;
 
-    const reviews = await Review.find({ room_id: roomId })
-      .populate("user_id", "name")
-      .populate("room_id", "name room_no") 
-       .sort({ createdAt: -1 });
+// ================= ADMIN =================
 
-    res.json(reviews);
-  } catch (err) {
-    res.status(500).json({ message: "Lỗi server" });
-  }
-});
+// lấy tất cả review (admin)
+reviewRouter.get("/admin", checkAuth, checkAdmin, getAllReviewsAdmin);
 
+// ẩn / hiện review
+reviewRouter.patch(
+  "/:id/toggle",
+  checkAuth,
+  checkAdmin,
+  toggleReviewVisibility
+);
+
+// phản hồi review
+reviewRouter.patch(
+  "/:id/reply",
+  checkAuth,
+  checkAdmin,
+  replyReview
+);
 
 export default reviewRouter;

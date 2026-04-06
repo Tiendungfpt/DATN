@@ -4,91 +4,89 @@ import { Link, useSearchParams } from "react-router-dom";
 import {
   FEATURED_ROOM_SLOTS,
   normalizeRoomTypeName,
-  reviewRoomMatchesFeaturedSection,
   roomMatchesFeaturedSlot,
 } from "../constants/featuredRoomTypes";
 
 function HotelList() {
-  const [visibleCount, setVisibleCount] = useState(2);
+  const [visibleCount, setVisibleCount] = useState(3);
+
   const [ratings, setRatings] = useState({});
   const [allReviews, setAllReviews] = useState([]);
-const [globalSummary, setGlobalSummary] = useState({ avg: 0, total: 0 });
-  
+  const [globalSummary, setGlobalSummary] = useState({ avg: 0, total: 0 });
+
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchParams] = useSearchParams();
   const [isAdmin, setIsAdmin] = useState(false);
-  /** Số phòng vật lý theo từng loại (normalized name) — chỉ dùng cho admin. */
-  const [physicalCountByTypeKey, setPhysicalCountByTypeKey] = useState({});
-  /** Tổng bản ghi phòng API trả về (trước khi gộp loại) — chỉ hiện admin. */
-  const [totalPhysicalFromApi, setTotalPhysicalFromApi] = useState(0);
+
+  // ================= FETCH REVIEWS =================
   useEffect(() => {
-  const fetchAllReviews = async () => {
-    try {
-      const res = await axios.get("http://localhost:3000/api/reviews");
-      const data = Array.isArray(res.data) ? res.data : [];
+    const fetchGlobalSummary = async () => {
+      try {
+        const reviewList = [];
 
-      setAllReviews(data);
+        await Promise.all(
+          rooms.map(async (room) => {
+            try {
+              const reviews = await axios.get(
+                `http://localhost:3000/api/reviews/room/${room._id}`
+              );
+              reviewList.push(...reviews.data);
+            } catch { }
+          })
+        );
 
-      // tính trung bình toàn hệ thống
-      const total = data.length;
-      const avg =
-        total > 0
-          ? (data.reduce((sum, r) => sum + (r.rating || 0), 0) / total).toFixed(1)
-          : 0;
+        // ✅ remove duplicate nếu có
+        const uniqueReviews = Array.from(
+          new Map(reviewList.map((r) => [r._id, r])).values()
+        );
 
-      setGlobalSummary({ avg, total });
-    } catch (err) {
-      console.log(err);
-    }
-  };
+        // ✅ tính lại summary đúng với list
+        const total = uniqueReviews.length;
+        const avg =
+          total > 0
+            ? (
+              uniqueReviews.reduce((sum, r) => sum + r.rating, 0) /
+              total
+            ).toFixed(1)
+            : 0;
 
-  fetchAllReviews();
-}, []);
-useEffect(() => {
-  const fetchRatings = async () => {
-    const ratingData = {};
+        setAllReviews(uniqueReviews);
+        setGlobalSummary({ avg, total });
+      } catch (err) {
+        console.log(err);
+      }
+    };
 
-    await Promise.all(
-      rooms.map(async (room) => {
-        try {
-          const res = await axios.get(
-            `http://localhost:3000/api/reviews/room/${room._id}/summary`
-          );
-          ratingData[room._id] = res.data;
-        } catch {
-          ratingData[room._id] = { avg: 0, total: 0 };
-        }
-      })
-    );
+    if (rooms.length > 0) fetchGlobalSummary();
+  }, [rooms]);
 
-    setRatings(ratingData);
-  };
+  // ================= RATINGS =================
+  useEffect(() => {
+    const fetchRatings = async () => {
+      const ratingData = {};
 
-  if (rooms.length > 0) {
-    fetchRatings();
-  }
-}, [rooms]);
-  const getCapacityLabel = (room) => {
-    const byCapacity = Number(room?.capacity);
-    if (Number.isFinite(byCapacity) && byCapacity > 0) {
-      return `${byCapacity} người`;
-    }
+      await Promise.all(
+        rooms.map(async (room) => {
+          try {
+            const res = await axios.get(
+              `http://localhost:3000/api/reviews/room/${room._id}/summary`
+            );
+            ratingData[room._id] = res.data;
+          } catch {
+            ratingData[room._id] = { avg: 0, total: 0 };
+          }
+        })
+      );
 
-    const byMaxGuests = Number(room?.maxGuests);
-    if (Number.isFinite(byMaxGuests) && byMaxGuests > 0) {
-      return `${byMaxGuests} người`;
-    }
+      setRatings(ratingData);
+    };
 
-    const text = String(room?.maxGuests || "").trim();
-    const matched = text.match(/\d+/);
-    if (matched) {
-      return `${matched[0]} người`;
-    }
-    return text || "Đang cập nhật";
-  };
+    if (rooms.length > 0) fetchRatings();
+  }, [rooms]);
 
+  // ================= ADMIN CHECK =================
   useEffect(() => {
     try {
       const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -98,6 +96,7 @@ useEffect(() => {
     }
   }, []);
 
+  // ================= FETCH ROOMS =================
   useEffect(() => {
     const checkIn = searchParams.get("check_in_date");
     const checkOut = searchParams.get("check_out_date");
@@ -112,87 +111,57 @@ useEffect(() => {
         {
           params: isSearching
             ? {
-                check_in_date: checkIn,
-                check_out_date: checkOut,
-                capacity,
-              }
+              check_in_date: checkIn,
+              check_out_date: checkOut,
+              capacity,
+            }
             : undefined,
-        },
+        }
       )
       .then((res) => {
         const roomList = Array.isArray(res.data) ? res.data : [];
 
-        const counts = {};
-        FEATURED_ROOM_SLOTS.forEach((slot) => {
-          const key = normalizeRoomTypeName(slot.name);
-          counts[key] = roomList.filter((r) =>
-            roomMatchesFeaturedSlot(r, slot),
-          ).length;
-        });
-
         const selected = [];
         FEATURED_ROOM_SLOTS.forEach((slot) => {
-          const found = roomList.find((r) => roomMatchesFeaturedSlot(r, slot));
+          const found = roomList.find((r) =>
+            roomMatchesFeaturedSlot(r, slot)
+          );
           if (found) selected.push(found);
         });
 
-        setPhysicalCountByTypeKey(counts);
-        setTotalPhysicalFromApi(roomList.length);
         setRooms(selected);
         setLoading(false);
       })
-      .catch((err) => {
-        console.error(err);
-        setError("Không thể tải danh sách phòng. Vui lòng thử lại sau.");
+      .catch(() => {
+        setError("Không thể tải danh sách phòng.");
         setLoading(false);
       });
   }, [searchParams]);
 
+  // ✅ dùng toàn bộ review (KHÔNG FILTER)
+  const featuredReviews = allReviews;
+
+  // ✅ reset về 3 khi data thay đổi
+  useEffect(() => {
+    setVisibleCount(3);
+  }, [featuredReviews.length]);
+
   const defaultImage =
     "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
 
-  if (loading) {
+  if (loading)
     return (
-      <div
-        className="d-flex justify-content-center align-items-center py-5"
-        style={{ minHeight: "70vh" }}
-      >
-        <div
-          className="spinner-border text-primary"
-          style={{ width: "3rem", height: "3rem" }}
-        ></div>
+      <div className="text-center py-5">
+        <div className="spinner-border text-primary"></div>
       </div>
     );
-  }
 
-  if (error) {
-    return (
-      <div className="alert alert-danger text-center mx-5 my-5 py-4 fs-5">
-        ❌ {error}
-      </div>
-    );
-  }
+  if (error)
+    return <div className="alert alert-danger text-center">{error}</div>;
 
   return (
     <div className="container py-5">
-      <div className="d-flex justify-content-between align-items-center mb-5">
-        <div>
-          <h1 className="fw-bold display-5">Danh sách phòng</h1>
-          <p className="text-muted fs-5">
-            {searchParams.get("check_in_date")
-              ? "Kết quả theo ngày và sức chứa — mỗi thẻ là một loại phòng"
-              : "Khám phá các loại phòng nổi bật — đặt theo loại, hệ thống sắp phòng cụ thể khi xác nhận"}
-          </p>
-        </div>
-        {isAdmin ? (
-          <div className="text-end text-muted small">
-            <div className="fw-semibold text-dark">
-              Tổng {totalPhysicalFromApi} phòng (dữ liệu API)
-            </div>
-            <div>{rooms.length} loại đang hiển thị</div>
-          </div>
-        ) : null}
-      </div>
+      <h1 className="fw-bold mb-4">Danh sách phòng</h1>
 
       <div className="row g-4">
         {rooms.map((room) => (
@@ -200,170 +169,99 @@ useEffect(() => {
             <Link
               to={isAdmin ? "#" : `/booking/${room._id}`}
               className="text-decoration-none"
-              onClick={(e) => {
-                if (isAdmin) e.preventDefault();
-              }}
+              onClick={(e) => isAdmin && e.preventDefault()}
             >
-              <div className="card h-100 shadow border-0 overflow-hidden hotel-card hover-lift">
-                <div className="position-relative">
-                  <img
-                    src={
-                      room.image?.startsWith("http")
-                        ? room.image
-                        : `http://localhost:3000/uploads/${room.image}`
-                    }
-                    className="card-img-top"
-                    alt={room.name}
-                    style={{ height: "260px", objectFit: "cover" }}
-                    onError={(e) => {
-                      e.target.src = defaultImage;
-                    }}
-                  />
+              <div className="card h-100 shadow border-0">
+                <img
+                  src={
+                    room.image?.startsWith("http")
+                      ? room.image
+                      : `http://localhost:3000/uploads/${room.image}`
+                  }
+                  className="card-img-top"
+                  style={{ height: 260, objectFit: "cover" }}
+                  onError={(e) => (e.target.src = defaultImage)}
+                  alt=""
+                />
 
-                  {isAdmin && (
-                    <div className="position-absolute top-0 end-0 m-3">
-                      <span
-                        className={`badge px-3 py-2 fw-bold shadow-sm ${
-                          room.status === "available"
-                            ? "bg-success"
-                            : "bg-danger"
-                        }`}
-                      >
-                        {room.status === "available" ? "Còn trống" : "Đã đặt"}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                <div className="card-body">
+                  <h5 className="fw-bold">{room.name}</h5>
 
-                <div className="card-body d-flex flex-column p-4">
-                  <h5 className="card-title fw-bold mb-2">{room.name}</h5>
-                  {isAdmin && (
-                    <p className="small text-muted mb-2">
-                      Loại này:{" "}
-                      <strong>
-                        {physicalCountByTypeKey[
-                          normalizeRoomTypeName(room.name)
-                        ] ?? 0}{" "}
-                        phòng
-                      </strong>{" "}
-                      trong kết quả API
-                    </p>
-                  )}
-                   {/* ⭐ HIỂN THỊ ĐÁNH GIÁ */}
-  <div className="mb-2">
-    ⭐ {ratings[room._id]?.avg ?? 0} / 5
-    <br />
-    <small className="text-muted">
-      ({ratings[room._id]?.total ?? 0} đánh giá)
-    </small>
-  </div>
-                  <p className="text-muted mb-4">
-                    <i className="bi bi-people-fill text-primary me-1"></i>
-                    Sức chứa: {getCapacityLabel(room)}
-                  </p>
-
-                  <div className="mt-auto">
-                    <div className="border-top pt-3">
-                      <div className="d-flex justify-content-between align-items-end">
-                        <div>
-                          <small className="text-muted d-block">Giá / đêm</small>
-                          <h5 className="text-primary fw-bold mb-0 fs-4">
-                            {(room.price || 0).toLocaleString("vi-VN")}đ
-                          </h5>
-                        </div>
-
-                        {!isAdmin && (
-                          <button className="btn btn-primary px-4 py-2 fw-medium">
-                            Đặt phòng
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                  <div className="mb-2">
+                    ⭐ {ratings[room._id]?.avg ?? 0} / 5
+                    <br />
+                    <small>
+                      ({ratings[room._id]?.total ?? 0} đánh giá)
+                    </small>
                   </div>
+
+                  <h5 className="text-primary">
+                    {(room.price || 0).toLocaleString("vi-VN")}đ
+                  </h5>
                 </div>
               </div>
             </Link>
           </div>
         ))}
       </div>
-      {/* ⭐ REVIEW SECTION */}
-<div className="mt-5 p-4 bg-white rounded shadow">
-  <h3 className="fw-bold mb-3">⭐ Đánh giá từ khách hàng</h3>
 
-  {/* Tổng quan */}
- <div className="mt-5 p-4 bg-white rounded shadow">
-  <h3 className="fw-bold mb-3 text-center">
-    ⭐ Đánh giá từ khách hàng
-  </h3>
+      {/* REVIEW */}
+      <div className="mt-5 p-4 bg-white rounded shadow">
+        <h3 className="fw-bold text-center mb-3">
+          ⭐ Đánh giá từ khách hàng
+        </h3>
 
-  <div className="mb-4 text-center">
-    <h1 className="text-warning fw-bold">
-      {globalSummary.avg} / 5
-    </h1>
-    <p className="text-muted">
-      {globalSummary.total} đánh giá
-    </p>
-  </div>
-
-  <div className="row">
-    
-    
-  </div>
-</div>
-
-  {/* Danh sách đánh giá */}
-  {allReviews.length === 0 ? (
-    <p className="text-muted text-center">Chưa có đánh giá</p>
-  ) : (
-    allReviews
-  .filter((r) => reviewRoomMatchesFeaturedSection(r.room_id))
-  .slice(0, visibleCount)
-  .map((r) => (
-      <div key={r._id} className="border-top pt-3 mb-3">
-        <p className="fw-bold mb-1">
-          👤 {r.user_id?.name || "Ẩn danh"}
-        </p>
-
-<p className="text-primary mb-1">
- 🏨{" "}
-                  {isAdmin && r.room_id?.room_no
-                    ? `${r.room_id.room_no} - `
-                    : ""}
-                  {r.room_id?.name || "—"}
-</p>
-
-        <p className="text-warning mb-1">⭐ {r.rating} / 5</p>
-        <p className="text-muted mb-0">
-          {r.comment || "Không có nhận xét"}
-        </p>
-      </div>
-    ))
-  )}
-  {/* 👉 ĐẶT NÚT Ở ĐÂY */}
-<div className="text-center mt-3">
-  {visibleCount < allReviews.length ? (
-    <button
-      className="btn btn-outline-primary"
-      onClick={() => setVisibleCount(visibleCount + 2)}
-    >
-      Xem thêm
-    </button>
-  ) : (
-    <button
-      className="btn btn-outline-secondary"
-      onClick={() => setVisibleCount(2)}
-    >
-      Thu gọn
-    </button>
-  )}
-</div>
-</div>
-
-      {rooms.length === 0 && (
-        <div className="text-center py-5">
-          <h4 className="text-muted">Hiện chưa có phòng nào.</h4>
+        <div className="text-center mb-4">
+          <h1 className="text-warning">{globalSummary.avg} / 5</h1>
+          <p className="text-muted">{globalSummary.total} đánh giá</p>
         </div>
-      )}
+
+        {featuredReviews.length === 0 ? (
+          <p className="text-center text-muted">Chưa có đánh giá</p>
+        ) : (
+          featuredReviews.slice(0, visibleCount).map((r) => (
+            <div key={r._id} className="border-top pt-3 mb-3">
+              <p className="fw-bold">
+                👤 {r.user_id?.name || "Ẩn danh"}
+              </p>
+
+              <p className="text-primary">
+                🏨 {r.room_id?.room_no} -{" "}
+                {r.room_id?.name || "—"}
+              </p>
+
+              <p className="text-warning">⭐ {r.rating} / 5</p>
+
+              <p className="text-muted">
+                {r.comment || "Không có nhận xét"}
+              </p>
+            </div>
+          ))
+        )}
+
+        {/* BUTTON */}
+        {featuredReviews.length > 2 && (
+          <div className="text-center">
+            {visibleCount < featuredReviews.length ? (
+              <button
+                className="btn btn-outline-primary"
+                onClick={() =>
+                  setVisibleCount(featuredReviews.length)
+                }
+              >
+                Xem thêm
+              </button>
+            ) : (
+              <button
+                className="btn btn-outline-secondary"
+                onClick={() => setVisibleCount(2)}
+              >
+                Thu gọn
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
