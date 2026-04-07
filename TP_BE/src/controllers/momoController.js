@@ -224,6 +224,11 @@ const finalAmount = Math.round(amount);
           )}`,
         );
       } else {
+        // Thanh toán thất bại => hủy booking để không giữ đơn treo.
+        if (booking.status === "pending") {
+          booking.status = "cancelled";
+          await booking.save();
+        }
         return res.redirect(
           `${process.env.FRONTEND_URL}/payment-failed?message=${encodeURIComponent(
             message || "Thanh toán thất bại",
@@ -273,6 +278,9 @@ const finalAmount = Math.round(amount);
 
       if (Number(resultCode) === 0) {
         booking.status = "pending";
+        await booking.save();
+      } else if (booking.status === "pending") {
+        booking.status = "cancelled";
         await booking.save();
       }
 
