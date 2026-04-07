@@ -1,4 +1,5 @@
-Tên	                NGUYEN VAN A
-Số thẻ	            9704 0000 0000 0018
-Hạn ghi trên thẻ	03/07
-OTP                 OTP
+// Tên	                NGUYEN VAN A
+// Số thẻ	            9704 0000 0000 0018
+// Hạn ghi trên thẻ	03/07
+// OTP                 OTP
+// 5200 0000 0000 1096, 05/26, CVC 111, tên NGUYEN VAN A.

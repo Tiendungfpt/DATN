@@ -5,5 +5,6 @@ const momoRoutes = Router();
 
 momoRoutes.post("/create", momoController.createPayment);        
 momoRoutes.get("/callback", momoController.callback);            
+momoRoutes.post("/ipn", momoController.ipn);
 
 export default momoRoutes;

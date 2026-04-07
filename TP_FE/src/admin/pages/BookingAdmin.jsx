@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { NavLink, Outlet } from "react-router-dom";
 import "../components/BookingAdmin.css";
 
 function formatDate(d) {
@@ -190,6 +191,106 @@ export default function BookingAdmin() {
     );
   }
 
+  const groupedBookings = useMemo(
+    () => ({
+      pending: bookings.filter((b) => b.status === "pending" || b.status === "confirmed"),
+      checked_in: bookings.filter((b) => b.status === "checked_in"),
+      completed: bookings.filter((b) => b.status === "completed"),
+      other: bookings.filter(
+        (b) => !["pending", "confirmed", "checked_in", "completed"].includes(b.status),
+      ),
+    }),
+    [bookings],
+  );
+
+  const renderBookingCard = (b) => (
+    <div key={b._id} className="booking-admin-card">
+      {stayFlowStep(b.status)}
+      <p>
+        <strong>Khách:</strong> {b.user_id?.name || "—"} ({b.user_id?.email || "—"})
+      </p>
+      <p>
+        <strong>Loại phòng:</strong> {b.room_id?.name || "—"}
+      </p>
+      <p>
+        <strong>Phòng cụ thể:</strong>{" "}
+        {b.assigned_room_id?.name
+          ? `${b.assigned_room_id.name}${b.assigned_room_id.room_no ? ` (${b.assigned_room_id.room_no})` : ""}`
+          : "Chưa xếp"}
+      </p>
+      <p>
+        <strong>Ngày:</strong> {formatDate(b.check_in_date)} - {formatDate(b.check_out_date)}
+      </p>
+      <p>
+        <strong>Tổng tiền:</strong> {(b.total_price || 0).toLocaleString("vi-VN")} đ
+      </p>
+      <p className="booking-admin-status-row">
+        <strong>Trạng thái:</strong>{" "}
+        <span className={`booking-admin-status ${b.status}`}>{statusLabelVi(b.status)}</span>
+        {b.status === "completed" ? (
+          <span
+            className={`booking-admin-review-badge ${b.isReviewed ? "reviewed" : "pending-review"}`}
+          >
+            {b.isReviewed ? "Khách đã đánh giá" : "Chưa đánh giá"}
+          </span>
+        ) : null}
+      </p>
+      <div className="booking-admin-actions">
+        {(b.status === "pending" || b.status === "confirmed") && (
+          <>
+            <button className="btn-confirm" type="button" onClick={() => loadAssignableRooms(b._id)}>
+              Chọn phòng
+            </button>
+            {Array.isArray(assignableRoomsByBooking[b._id]) &&
+            assignableRoomsByBooking[b._id].length > 0 ? (
+              <select
+                value={selectedRoomByBooking[b._id] || ""}
+                onChange={(e) =>
+                  setSelectedRoomByBooking((prev) => ({
+                    ...prev,
+                    [b._id]: e.target.value,
+                  }))
+                }
+              >
+                {assignableRoomsByBooking[b._id].map((room) => (
+                  <option key={room._id} value={room._id}>
+                    {(room.name || "Phòng")} {room.room_no ? `(${room.room_no})` : ""}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <button
+              type="button"
+              className="btn-confirm"
+              onClick={() => updateStatus(b._id, "confirmed")}
+              disabled={!selectedRoomByBooking[b._id] && !b.assigned_room_id?._id}
+            >
+              Xác nhận đặt phòng
+            </button>
+          </>
+        )}
+        {b.status === "confirmed" && (
+          <button type="button" className="btn-checkin" onClick={() => doCheckIn(b._id)}>
+            Check-in khách
+          </button>
+        )}
+        {b.status === "checked_in" && (
+          <button type="button" className="btn-checkout" onClick={() => doCheckOut(b._id)}>
+            Check-out (trả phòng)
+          </button>
+        )}
+        {b.status !== "completed" && (
+          <button type="button" className="btn-cancel" onClick={() => updateStatus(b._id, "cancelled")}>
+            Hủy booking
+          </button>
+        )}
+        <button type="button" className="btn-remove" onClick={() => removeBooking(b._id)}>
+          Xóa
+        </button>
+      </div>
+    </div>
+  );
+
   if (loading) return <p>Đang tải booking...</p>;
   if (error) return <p style={{ color: "crimson" }}>{error}</p>;
 
@@ -199,97 +300,33 @@ export default function BookingAdmin() {
       <p className="booking-admin-subtitle">
         Theo dõi check-in / check-out, xác nhận phòng và trạng thái đánh giá của khách.
       </p>
-      <div className="booking-admin-grid">
-        {bookings.map((b) => (
-          <div key={b._id} className="booking-admin-card">
-            {stayFlowStep(b.status)}
-            <p>
-              <strong>Khách:</strong> {b.user_id?.name || "—"} ({b.user_id?.email || "—"})
-            </p>
-            <p>
-              <strong>Loại phòng:</strong> {b.room_id?.name || "—"}
-            </p>
-            <p>
-              <strong>Phòng cụ thể:</strong>{" "}
-              {b.assigned_room_id?.name
-                ? `${b.assigned_room_id.name}${b.assigned_room_id.room_no ? ` (${b.assigned_room_id.room_no})` : ""}`
-                : "Chưa xếp"}
-            </p>
-            <p>
-              <strong>Ngày:</strong> {formatDate(b.check_in_date)} - {formatDate(b.check_out_date)}
-            </p>
-            <p>
-              <strong>Tổng tiền:</strong> {(b.total_price || 0).toLocaleString("vi-VN")} đ
-            </p>
-            <p className="booking-admin-status-row">
-              <strong>Trạng thái:</strong>{" "}
-              <span className={`booking-admin-status ${b.status}`}>
-                {statusLabelVi(b.status)}
-              </span>
-              {b.status === "completed" ? (
-                <span
-                  className={`booking-admin-review-badge ${b.isReviewed ? "reviewed" : "pending-review"}`}
-                >
-                  {b.isReviewed ? "Khách đã đánh giá" : "Chưa đánh giá"}
-                </span>
-              ) : null}
-            </p>
-            <div className="booking-admin-actions">
-              {(b.status === "pending" || b.status === "confirmed") && (
-                <>
-                  <button className="btn-confirm" type="button" onClick={() => loadAssignableRooms(b._id)}>
-                    Chọn phòng
-                  </button>
-                  {Array.isArray(assignableRoomsByBooking[b._id]) &&
-                  assignableRoomsByBooking[b._id].length > 0 ? (
-                    <select
-                      value={selectedRoomByBooking[b._id] || ""}
-                      onChange={(e) =>
-                        setSelectedRoomByBooking((prev) => ({
-                          ...prev,
-                          [b._id]: e.target.value,
-                        }))
-                      }
-                    >
-                      {assignableRoomsByBooking[b._id].map((room) => (
-                        <option key={room._id} value={room._id}>
-                          {(room.name || "Phòng")} {room.room_no ? `(${room.room_no})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="btn-confirm"
-                    onClick={() => updateStatus(b._id, "confirmed")}
-                    disabled={!selectedRoomByBooking[b._id] && !b.assigned_room_id?._id}
-                  >
-                    Xác nhận đặt phòng
-                  </button>
-                </>
-              )}
-              {b.status === "confirmed" && (
-                <button type="button" className="btn-checkin" onClick={() => doCheckIn(b._id)}>
-                  Check-in khách
-                </button>
-              )}
-              {b.status === "checked_in" && (
-                <button type="button" className="btn-checkout" onClick={() => doCheckOut(b._id)}>
-                  Check-out (trả phòng)
-                </button>
-              )}
-              {b.status !== "completed" && (
-                <button type="button" className="btn-cancel" onClick={() => updateStatus(b._id, "cancelled")}>
-                  Hủy booking
-                </button>
-              )}
-              <button type="button" className="btn-remove" onClick={() => removeBooking(b._id)}>
-                Xóa
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="booking-admin-tabs">
+        <NavLink to="pending" className={({ isActive }) => (isActive ? "booking-admin-tab active" : "booking-admin-tab")}>
+          Chờ xác nhận
+          <span className="booking-admin-tab-count">{groupedBookings.pending.length}</span>
+        </NavLink>
+        <NavLink
+          to="checked-in"
+          className={({ isActive }) => (isActive ? "booking-admin-tab active" : "booking-admin-tab")}
+        >
+          Đang check-in
+          <span className="booking-admin-tab-count">{groupedBookings.checked_in.length}</span>
+        </NavLink>
+        <NavLink
+          to="completed"
+          className={({ isActive }) => (isActive ? "booking-admin-tab active" : "booking-admin-tab")}
+        >
+          Đã check-out
+          <span className="booking-admin-tab-count">{groupedBookings.completed.length}</span>
+        </NavLink>
       </div>
+
+      <Outlet
+        context={{
+          groupedBookings,
+          renderBookingCard,
+        }}
+      />
     </div>
   );
 }

@@ -92,6 +92,13 @@ useEffect(() => {
     { _id: "office_rental", name: "Cho thuê phòng họp", icon: FaBriefcase, price: 200000 },
   ]);
   const [selectedServices, setSelectedServices] = useState([]);
+  const isDevEnvironment =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
+  const [paymentMethod, setPaymentMethod] = useState(
+    isDevEnvironment ? "payWithCC" : "payWithATM",
+  );
 
   const serviceFee = selectedServices.reduce((sum, serviceId) => {
     const item = serviceOptions.find((s) => s._id === serviceId);
@@ -176,6 +183,7 @@ useEffect(() => {
       try {
         const momoRes = await axios.post("http://localhost:3000/api/momo/create", {
           bookingId,
+          requestType: paymentMethod,
         });
 
         if (momoRes?.data?.success && momoRes?.data?.payUrl) {
@@ -381,6 +389,19 @@ useEffect(() => {
                     {totalWithService.toLocaleString("vi-VN")} ₫
                   </span>
                 </div>
+              </div>
+
+              <div className="date-range-group">
+                <label>Phương thức thanh toán MoMo</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="custom-date-input"
+                  disabled={loading}
+                >
+                  <option value="payWithATM">Thẻ ATM nội địa (Napas)</option>
+                  <option value="payWithCC">Thẻ quốc tế (Visa/Master/JCB)</option>
+                </select>
               </div>
 
               <button

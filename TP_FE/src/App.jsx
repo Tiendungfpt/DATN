@@ -9,6 +9,9 @@ import UserList from "./admin/pages/UserList";
 import RoomList from "./admin/pages/RoomList";
 import RoomCreat from "./admin/pages/RoomCreat";
 import BookingAdmin from "./admin/pages/BookingAdmin";
+import BookingPendingPage from "./admin/pages/BookingPendingPage";
+import BookingCheckedInPage from "./admin/pages/BookingCheckedInPage";
+import BookingCompletedPage from "./admin/pages/BookingCompletedPage";
 import Booking from "./pages/Booking";
 import RoomsEdit from "./admin/pages/RoomEdit";
 
@@ -18,6 +21,7 @@ import RoomsList from "./pages/RoomList";
 import RoomDetail from "./pages/RoomDetail";
 import HotelList from "./pages/HotelList";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFailed from "./pages/PaymentFailed";
 import UserProfile from "./pages/Profile/UserProfile";
 import Review from "./pages/Review";
 import AdminDashboard from "./admin/pages/DashboardAdmin";
@@ -47,6 +51,7 @@ function Layout() {
                 <Route path="/phong/:id" element={<RoomDetail />} />
                 <Route path="/khach-san/:id" element={<HotelList />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
+                <Route path="/payment-failed" element={<PaymentFailed />} />
                 <Route path="/thong-tin-tai-khoan" element={<UserProfile />}></Route>
 
                 <Route path="/review/:bookingId" element={<Review />} />
@@ -56,7 +61,12 @@ function Layout() {
                     <Route path="rooms" element={<RoomList />} />
                     <Route path="reviews" element={<AdminReviews />} />
                     <Route path="users-pagination" element={<UserList />} />
-                    <Route path="bookings" element={<BookingAdmin />} />
+                    <Route path="bookings" element={<BookingAdmin />}>
+                        <Route index element={<Navigate to="pending" replace />} />
+                        <Route path="pending" element={<BookingPendingPage />} />
+                        <Route path="checked-in" element={<BookingCheckedInPage />} />
+                        <Route path="completed" element={<BookingCompletedPage />} />
+                    </Route>
                     <Route path="rooms/create" element={<RoomCreat />} />
                     <Route path="rooms/edit/:id" element={<RoomsEdit />} />
                 </Route>

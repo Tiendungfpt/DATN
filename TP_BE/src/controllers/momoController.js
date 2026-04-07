@@ -13,11 +13,12 @@ class MoMoController {
 
     this.createEndpoint = process.env.MOMO_CREATE_ENDPOINT;
     this.queryEndpoint = process.env.MOMO_QUERY_ENDPOINT;
+    this.requestType = process.env.MOMO_REQUEST_TYPE || "payWithATM";
   }
 
   createPayment = async (req, res) => {
     try {
-      const { bookingId } = req.body;
+      const { bookingId, requestType: requestTypeFromClient } = req.body;
 
       if (!bookingId) {
         return res.status(400).json({
@@ -66,7 +67,17 @@ const finalAmount = Math.round(amount);
       const ipnUrl =
         process.env.MOMO_IPN_URL || "http://localhost:3000/api/momo/ipn";
 
-      const requestType = "payWithATM";
+      const allowedRequestTypes = new Set(["payWithATM", "payWithCC"]);
+      if (
+        requestTypeFromClient &&
+        !allowedRequestTypes.has(String(requestTypeFromClient))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "requestType không hợp lệ. Chỉ hỗ trợ payWithATM hoặc payWithCC",
+        });
+      }
+      const requestType = requestTypeFromClient || this.requestType;
 
       const rawSignature =
         `accessKey=${this.accessKey}` +
@@ -163,7 +174,9 @@ const finalAmount = Math.round(amount);
     try {
       if (!orderId) {
         return res.redirect(
-          `${process.env.FRONTEND_URL}/payment-failed?message=Thiếu orderId`,
+          `${process.env.FRONTEND_URL}/payment-failed?message=Thiếu orderId&resultCode=${encodeURIComponent(
+            String(resultCode ?? ""),
+          )}`,
         );
       }
 
@@ -171,7 +184,9 @@ const finalAmount = Math.round(amount);
       const bookingId = idMatch?.[1];
       if (!bookingId) {
         return res.redirect(
-          `${process.env.FRONTEND_URL}/payment-failed?message=orderId không hợp lệ`,
+          `${process.env.FRONTEND_URL}/payment-failed?message=orderId không hợp lệ&resultCode=${encodeURIComponent(
+            String(resultCode ?? ""),
+          )}`,
         );
       }
 
@@ -179,7 +194,9 @@ const finalAmount = Math.round(amount);
 
       if (!booking) {
         return res.redirect(
-          `${process.env.FRONTEND_URL}/payment-failed?message=Không tìm thấy booking`,
+          `${process.env.FRONTEND_URL}/payment-failed?message=Không tìm thấy booking&resultCode=${encodeURIComponent(
+            String(resultCode ?? ""),
+          )}`,
         );
       }
 
@@ -191,21 +208,72 @@ const finalAmount = Math.round(amount);
         await booking.save();
 
         return res.redirect(
-          `${process.env.FRONTEND_URL}/payment-success?bookingId=${booking._id}`,
+          `${process.env.FRONTEND_URL}/payment-success?bookingId=${booking._id}&orderId=${encodeURIComponent(
+            orderId,
+          )}&resultCode=${encodeURIComponent(String(resultCode ?? 0))}&transId=${encodeURIComponent(
+            String(transId ?? ""),
+          )}`,
         );
       } else {
         return res.redirect(
           `${process.env.FRONTEND_URL}/payment-failed?message=${encodeURIComponent(
             message || "Thanh toán thất bại",
-          )}`,
+          )}&resultCode=${encodeURIComponent(String(resultCode ?? ""))}&orderId=${encodeURIComponent(
+            String(orderId ?? ""),
+          )}&transId=${encodeURIComponent(String(transId ?? ""))}`,
         );
       }
     } catch (error) {
       console.error("Callback Error:", error);
 
       return res.redirect(
-        `${process.env.FRONTEND_URL}/payment-failed?message=Lỗi server`,
+        `${process.env.FRONTEND_URL}/payment-failed?message=Lỗi server&resultCode=${encodeURIComponent(
+          String(resultCode ?? ""),
+        )}`,
       );
+    }
+  };
+
+  ipn = async (req, res) => {
+    try {
+      const { orderId, resultCode } = req.body || {};
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Thiếu orderId",
+        });
+      }
+
+      const idMatch = String(orderId).match(/^BOOK_([a-fA-F0-9]{24})_/);
+      const bookingId = idMatch?.[1];
+      if (!bookingId) {
+        return res.status(400).json({
+          success: false,
+          message: "orderId không hợp lệ",
+        });
+      }
+
+      const booking = await Booking.findById(bookingId);
+      if (!booking) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy booking",
+        });
+      }
+
+      if (Number(resultCode) === 0) {
+        booking.status = "pending";
+        await booking.save();
+      }
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("MoMo IPN Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Lỗi IPN",
+      });
     }
   };
 }

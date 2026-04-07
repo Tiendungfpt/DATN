@@ -9,6 +9,7 @@ function PaymentSuccess() {
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
 
   useEffect(() => {
     if (!bookingId) {
@@ -29,6 +30,40 @@ function PaymentSuccess() {
       })
       .finally(() => setLoading(false));
   }, [bookingId]);
+
+  const handleDownloadInvoice = async () => {
+    if (!bookingId) return;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Vui lòng đăng nhập để tải hóa đơn.");
+      return;
+    }
+
+    try {
+      setDownloadingInvoice(true);
+      const res = await axios.get(
+        `http://localhost:3000/api/bookings/${bookingId}/invoice`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        },
+      );
+
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `hoa-don-${bookingId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Lỗi tải hóa đơn:", err);
+      alert("Không thể tải hóa đơn PDF. Vui lòng thử lại.");
+    } finally {
+      setDownloadingInvoice(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -104,6 +139,15 @@ function PaymentSuccess() {
                 )}
 
                 <div className="d-grid gap-3">
+                  <button
+                    onClick={handleDownloadInvoice}
+                    className="btn btn-success btn-lg py-3 fw-semibold"
+                    disabled={downloadingInvoice}
+                  >
+                    <i className="bi bi-printer me-2"></i>
+                    {downloadingInvoice ? "Đang tạo hóa đơn PDF..." : "In hóa đơn PDF"}
+                  </button>
+
                   <button 
                     onClick={() => navigate("/")}
                     className="btn btn-primary btn-lg py-3 fw-semibold"

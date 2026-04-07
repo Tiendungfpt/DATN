@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import PDFDocument from "pdfkit";
 import Booking from "../models/Booking.js";
 import Rooms from "../models/rooms.js";
 import User from "../models/User.js";
@@ -177,6 +178,15 @@ function attachCanReview(booking) {
   return { ...booking, isCanReview };
 }
 
+function formatCurrencyVND(value) {
+  return `${Number(value || 0).toLocaleString("vi-VN")} VND`;
+}
+
+function formatDateVi(dateValue) {
+  if (!dateValue) return "";
+  return new Date(dateValue).toLocaleDateString("vi-VN");
+}
+
 /** GET /api/bookings/user */
 export const getMyBookings = async (req, res) => {
   try {
@@ -231,6 +241,210 @@ export const getBookingById = async (req, res) => {
     }
 
     return res.json(attachCanReview(booking));
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const downloadBookingInvoice = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate("user_id", "name email")
+      .populate("room_id", "name price room_no")
+      .populate("assigned_room_id", "name room_no")
+      .lean();
+
+    if (!booking) {
+      return res.status(404).json({ message: "Không tìm thấy booking" });
+    }
+
+    const ownerId = booking.user_id?._id ?? booking.user_id;
+    const isOwner = String(ownerId) === String(req.userId);
+    if (!isOwner) {
+      const u = await User.findById(req.userId).select("role").lean();
+      if (!u || u.role !== "admin") {
+        return res.status(403).json({ message: "Không có quyền tải hóa đơn này" });
+      }
+    }
+
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    const fileName = `hoa-don-${booking._id}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+
+    doc.pipe(res);
+
+    const pageWidth = doc.page.width;
+    const left = 50;
+    const right = pageWidth - 50;
+
+    const roomTotal = Math.max(
+      0,
+      Number(booking.total_price || 0) - Number(booking.service_fee || 0),
+    );
+
+    // Header stripe
+    doc
+      .rect(0, 0, pageWidth, 110)
+      .fill("#0d6efd");
+    doc
+      .fillColor("#ffffff")
+      .font("Helvetica-Bold")
+      .fontSize(24)
+      .text("THINH PHAT HOTEL", left, 30, { align: "left" });
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .text("BOOKING INVOICE", left, 62, { align: "left" });
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .text(`Invoice: INV-${booking._id}`, left, 88, { align: "left" });
+
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .text(`Issued: ${formatDateVi(new Date())}`, left, 88, {
+        align: "right",
+        width: right - left,
+      });
+
+    // Main content wrapper
+    doc
+      .roundedRect(left, 130, right - left, 640, 8)
+      .lineWidth(1)
+      .strokeColor("#e5e7eb")
+      .stroke();
+
+    // Customer block
+    doc
+      .roundedRect(left + 16, 150, (right - left) / 2 - 24, 130, 6)
+      .fillAndStroke("#f8fafc", "#dbeafe");
+    doc
+      .fillColor("#0f172a")
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .text("CUSTOMER", left + 28, 165);
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .text(`Name: ${booking.user_id?.name || "Guest"}`, left + 28, 190)
+      .text(`Email: ${booking.user_id?.email || "N/A"}`, left + 28, 210)
+      .text(`Payment: MoMo`, left + 28, 230);
+
+    // Booking block
+    const bookingBlockX = left + (right - left) / 2 + 8;
+    doc
+      .roundedRect(bookingBlockX, 150, (right - left) / 2 - 24, 130, 6)
+      .fillAndStroke("#f8fafc", "#dbeafe");
+    doc
+      .fillColor("#0f172a")
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .text("BOOKING", bookingBlockX + 12, 165);
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .text(`Booking ID: ${booking._id}`, bookingBlockX + 12, 190, {
+        width: (right - left) / 2 - 42,
+      })
+      .text(`Status: ${booking.status}`, bookingBlockX + 12, 230);
+
+    // Detail table title
+    doc
+      .fillColor("#111827")
+      .font("Helvetica-Bold")
+      .fontSize(13)
+      .text("Booking Details", left + 16, 305);
+
+    // Simple detail rows
+    const detailsStartY = 332;
+    const rowH = 30;
+    const tableLeft = left + 16;
+    const tableRight = right - 16;
+    const labelWidth = 200;
+    const valueWidth = tableRight - tableLeft - labelWidth;
+    const assignedRoomNo = booking.assigned_room_id?.room_no || "";
+    const assignedRoomName = booking.assigned_room_id?.name || "";
+    const roomDisplayName =
+      assignedRoomName || booking.room_id?.name || "N/A";
+    const roomNumberDisplay =
+      assignedRoomNo || "Pending assignment (waiting for admin confirmation)";
+
+    const detailRows = [
+      ["Room", roomDisplayName],
+      ["Room number", roomNumberDisplay],
+      ["Check-in date", formatDateVi(booking.check_in_date)],
+      ["Check-out date", formatDateVi(booking.check_out_date)],
+      ["Room quantity", String(booking.room_quantity || 1)],
+    ];
+
+    detailRows.forEach(([label, value], index) => {
+      const y = detailsStartY + index * rowH;
+      if (index % 2 === 0) {
+        doc.rect(tableLeft, y, tableRight - tableLeft, rowH).fill("#f9fafb");
+      }
+      doc
+        .fillColor("#111827")
+        .font("Helvetica-Bold")
+        .fontSize(10.5)
+        .text(label, tableLeft + 10, y + 9, { width: labelWidth - 16 });
+      doc
+        .font("Helvetica")
+        .text(value, tableLeft + labelWidth + 8, y + 9, { width: valueWidth - 16 });
+      doc
+        .moveTo(tableLeft, y + rowH)
+        .lineTo(tableRight, y + rowH)
+        .strokeColor("#e5e7eb")
+        .lineWidth(0.8)
+        .stroke();
+    });
+
+    // Payment summary
+    const payBoxY = detailsStartY + detailRows.length * rowH + 30;
+    const payBoxH = 150;
+    doc
+      .roundedRect(tableLeft, payBoxY, tableRight - tableLeft, payBoxH, 6)
+      .fillAndStroke("#eff6ff", "#bfdbfe");
+
+    doc
+      .fillColor("#1e3a8a")
+      .font("Helvetica-Bold")
+      .fontSize(13)
+      .text("Payment Summary", tableLeft + 14, payBoxY + 14);
+
+    doc
+      .fillColor("#111827")
+      .font("Helvetica")
+      .fontSize(11)
+      .text(`Room amount: ${formatCurrencyVND(roomTotal)}`, tableLeft + 14, payBoxY + 42)
+      .text(`Service fee: ${formatCurrencyVND(booking.service_fee)}`, tableLeft + 14, payBoxY + 64);
+
+    doc
+      .moveTo(tableLeft + 14, payBoxY + 92)
+      .lineTo(tableRight - 14, payBoxY + 92)
+      .strokeColor("#93c5fd")
+      .lineWidth(1)
+      .stroke();
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(14)
+      .fillColor("#0f172a")
+      .text(`Total: ${formatCurrencyVND(booking.total_price)}`, tableLeft + 14, payBoxY + 104);
+
+    // Footer note
+    doc
+      .fillColor("#6b7280")
+      .font("Helvetica-Oblique")
+      .fontSize(10)
+      .text("Thank you for choosing Thinh Phat Hotel. We look forward to serving you again.", left, 790, {
+        align: "center",
+        width: right - left,
+      });
+
+    doc.end();
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
