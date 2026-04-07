@@ -68,6 +68,17 @@ export default function Sidebar() {
                 </li>
                 <li>
                     <NavLink
+                        to="/admin/bookings/confirmed"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "sub-menu-item active" : "sub-menu-item"
+                        }
+                    >
+                        • Đã xác nhận
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
                         to="/admin/bookings/checked-in"
                         end
                         className={({ isActive }) =>

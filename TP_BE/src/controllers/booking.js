@@ -1,9 +1,11 @@
 import mongoose from "mongoose";
 import PDFDocument from "pdfkit";
+import fs from "fs";
 import Booking from "../models/Booking.js";
 import Rooms from "../models/rooms.js";
 import User from "../models/User.js";
 import { parseStayDates } from "../utils/bookingAvailability.js";
+import { createNotification } from "../utils/notification.js";
 import {
   BOOKING_SCHEDULE_BLOCKING_STATUSES,
   ROOM_OCCUPYING_BOOKING_STATUSES,
@@ -187,6 +189,13 @@ function formatDateVi(dateValue) {
   return new Date(dateValue).toLocaleDateString("vi-VN");
 }
 
+function resolveExistingPath(candidates) {
+  for (const p of candidates) {
+    if (p && fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 /** GET /api/bookings/user */
 export const getMyBookings = async (req, res) => {
   try {
@@ -260,15 +269,62 @@ export const downloadBookingInvoice = async (req, res) => {
 
     const ownerId = booking.user_id?._id ?? booking.user_id;
     const isOwner = String(ownerId) === String(req.userId);
+    let isAdmin = false;
     if (!isOwner) {
       const u = await User.findById(req.userId).select("role").lean();
       if (!u || u.role !== "admin") {
         return res.status(403).json({ message: "Không có quyền tải hóa đơn này" });
       }
+      isAdmin = true;
+    }
+
+    if (isOwner && !booking.invoice_issued_at) {
+      return res.status(403).json({
+        message: "Hóa đơn chưa được admin phát hành",
+      });
+    }
+
+    if (isAdmin) {
+      const wasIssued = Boolean(booking.invoice_issued_at);
+      await Booking.findByIdAndUpdate(booking._id, {
+        invoice_issued_at: new Date(),
+        invoice_issued_by: req.userId,
+      });
+      if (!wasIssued) {
+        await createNotification({
+          userId: ownerId,
+          bookingId: booking._id,
+          type: "invoice_issued",
+          title: "Hóa đơn đã được phát hành",
+          message: `Admin đã phát hành hóa đơn cho booking #${String(booking._id).slice(-6).toUpperCase()}. Bạn có thể tải trong lịch sử đặt phòng.`,
+          eventKey: `invoice_issued_${booking._id}`,
+        });
+      }
     }
 
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     const fileName = `hoa-don-${booking._id}.pdf`;
+
+    const regularFontPath = resolveExistingPath([
+      "C:/Windows/Fonts/arial.ttf",
+      "C:/Windows/Fonts/tahoma.ttf",
+    ]);
+    const boldFontPath = resolveExistingPath([
+      "C:/Windows/Fonts/arialbd.ttf",
+      "C:/Windows/Fonts/tahomabd.ttf",
+    ]);
+    const italicFontPath = resolveExistingPath([
+      "C:/Windows/Fonts/ariali.ttf",
+      "C:/Windows/Fonts/tahoma.ttf",
+    ]);
+
+    const fontRegular = regularFontPath ? "invoice-regular" : "Helvetica";
+    const fontBold = boldFontPath ? "invoice-bold" : "Helvetica-Bold";
+    const fontItalic = italicFontPath ? "invoice-italic" : "Helvetica-Oblique";
+
+    if (regularFontPath) doc.registerFont(fontRegular, regularFontPath);
+    if (boldFontPath) doc.registerFont(fontBold, boldFontPath);
+    if (italicFontPath) doc.registerFont(fontItalic, italicFontPath);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
@@ -290,20 +346,20 @@ export const downloadBookingInvoice = async (req, res) => {
       .fill("#0d6efd");
     doc
       .fillColor("#ffffff")
-      .font("Helvetica-Bold")
+      .font(fontBold)
       .fontSize(24)
       .text("THINH PHAT HOTEL", left, 30, { align: "left" });
     doc
-      .font("Helvetica")
+      .font(fontRegular)
       .fontSize(12)
       .text("BOOKING INVOICE", left, 62, { align: "left" });
     doc
-      .font("Helvetica")
+      .font(fontRegular)
       .fontSize(11)
       .text(`Invoice: INV-${booking._id}`, left, 88, { align: "left" });
 
     doc
-      .font("Helvetica")
+      .font(fontRegular)
       .fontSize(11)
       .text(`Issued: ${formatDateVi(new Date())}`, left, 88, {
         align: "right",
@@ -323,11 +379,11 @@ export const downloadBookingInvoice = async (req, res) => {
       .fillAndStroke("#f8fafc", "#dbeafe");
     doc
       .fillColor("#0f172a")
-      .font("Helvetica-Bold")
+      .font(fontBold)
       .fontSize(12)
       .text("CUSTOMER", left + 28, 165);
     doc
-      .font("Helvetica")
+      .font(fontRegular)
       .fontSize(11)
       .text(`Name: ${booking.user_id?.name || "Guest"}`, left + 28, 190)
       .text(`Email: ${booking.user_id?.email || "N/A"}`, left + 28, 210)
@@ -340,11 +396,11 @@ export const downloadBookingInvoice = async (req, res) => {
       .fillAndStroke("#f8fafc", "#dbeafe");
     doc
       .fillColor("#0f172a")
-      .font("Helvetica-Bold")
+      .font(fontBold)
       .fontSize(12)
       .text("BOOKING", bookingBlockX + 12, 165);
     doc
-      .font("Helvetica")
+      .font(fontRegular)
       .fontSize(11)
       .text(`Booking ID: ${booking._id}`, bookingBlockX + 12, 190, {
         width: (right - left) / 2 - 42,
@@ -354,7 +410,7 @@ export const downloadBookingInvoice = async (req, res) => {
     // Detail table title
     doc
       .fillColor("#111827")
-      .font("Helvetica-Bold")
+      .font(fontBold)
       .fontSize(13)
       .text("Booking Details", left + 16, 305);
 
@@ -387,11 +443,11 @@ export const downloadBookingInvoice = async (req, res) => {
       }
       doc
         .fillColor("#111827")
-        .font("Helvetica-Bold")
+        .font(fontBold)
         .fontSize(10.5)
         .text(label, tableLeft + 10, y + 9, { width: labelWidth - 16 });
       doc
-        .font("Helvetica")
+        .font(fontRegular)
         .text(value, tableLeft + labelWidth + 8, y + 9, { width: valueWidth - 16 });
       doc
         .moveTo(tableLeft, y + rowH)
@@ -410,13 +466,13 @@ export const downloadBookingInvoice = async (req, res) => {
 
     doc
       .fillColor("#1e3a8a")
-      .font("Helvetica-Bold")
+      .font(fontBold)
       .fontSize(13)
       .text("Payment Summary", tableLeft + 14, payBoxY + 14);
 
     doc
       .fillColor("#111827")
-      .font("Helvetica")
+      .font(fontRegular)
       .fontSize(11)
       .text(`Room amount: ${formatCurrencyVND(roomTotal)}`, tableLeft + 14, payBoxY + 42)
       .text(`Service fee: ${formatCurrencyVND(booking.service_fee)}`, tableLeft + 14, payBoxY + 64);
@@ -429,7 +485,7 @@ export const downloadBookingInvoice = async (req, res) => {
       .stroke();
 
     doc
-      .font("Helvetica-Bold")
+      .font(fontBold)
       .fontSize(14)
       .fillColor("#0f172a")
       .text(`Total: ${formatCurrencyVND(booking.total_price)}`, tableLeft + 14, payBoxY + 104);
@@ -437,7 +493,7 @@ export const downloadBookingInvoice = async (req, res) => {
     // Footer note
     doc
       .fillColor("#6b7280")
-      .font("Helvetica-Oblique")
+      .font(fontItalic)
       .fontSize(10)
       .text("Thank you for choosing Thinh Phat Hotel. We look forward to serving you again.", left, 790, {
         align: "center",
@@ -469,6 +525,14 @@ export const checkInBooking = async (req, res) => {
     booking.status = "checked_in";
     await booking.save();
     await syncRoomStatus(booking.assigned_room_id);
+    await createNotification({
+      userId: booking.user_id,
+      bookingId: booking._id,
+      type: "checked_in",
+      title: "Đã check-in",
+      message: `Booking #${String(booking._id).slice(-6).toUpperCase()} đã được check-in.`,
+      eventKey: `checked_in_${booking._id}`,
+    });
 
     const populated = await Booking.findById(booking._id)
       .populate("user_id", "name email")
@@ -501,6 +565,14 @@ export const checkOutBooking = async (req, res) => {
     booking.status = "completed";
     await booking.save();
     if (assignedId) await syncRoomStatus(assignedId);
+    await createNotification({
+      userId: booking.user_id,
+      bookingId: booking._id,
+      type: "checked_out",
+      title: "Đã check-out",
+      message: `Booking #${String(booking._id).slice(-6).toUpperCase()} đã check-out. Cảm ơn bạn đã sử dụng dịch vụ.`,
+      eventKey: `checked_out_${booking._id}`,
+    });
 
     const populated = await Booking.findById(booking._id)
       .populate("user_id", "name email")
@@ -574,6 +646,14 @@ export const updateBooking = async (req, res) => {
         await syncRoomStatus(prevAssigned);
       }
       await syncRoomStatus(selectedAssignedRoomId);
+      await createNotification({
+        userId: booking.user_id,
+        bookingId: booking._id,
+        type: "booking_confirmed",
+        title: "Booking đã được xác nhận",
+        message: `Admin đã xác nhận booking #${String(booking._id).slice(-6).toUpperCase()} và phân phòng cho bạn.`,
+        eventKey: `booking_confirmed_${booking._id}`,
+      });
     } else if (nextStatus === "cancelled") {
       const prevAssigned = booking.assigned_room_id;
       booking.status = "cancelled";

@@ -10,6 +10,7 @@ import RoomList from "./admin/pages/RoomList";
 import RoomCreat from "./admin/pages/RoomCreat";
 import BookingAdmin from "./admin/pages/BookingAdmin";
 import BookingPendingPage from "./admin/pages/BookingPendingPage";
+import BookingConfirmedPage from "./admin/pages/BookingConfirmedPage";
 import BookingCheckedInPage from "./admin/pages/BookingCheckedInPage";
 import BookingCompletedPage from "./admin/pages/BookingCompletedPage";
 import Booking from "./pages/Booking";
@@ -64,6 +65,7 @@ function Layout() {
                     <Route path="bookings" element={<BookingAdmin />}>
                         <Route index element={<Navigate to="pending" replace />} />
                         <Route path="pending" element={<BookingPendingPage />} />
+                        <Route path="confirmed" element={<BookingConfirmedPage />} />
                         <Route path="checked-in" element={<BookingCheckedInPage />} />
                         <Route path="completed" element={<BookingCompletedPage />} />
                     </Route>
