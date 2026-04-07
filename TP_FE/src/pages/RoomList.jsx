@@ -50,7 +50,7 @@ useEffect(() => {
         selected.map(async (room) => {
           try {
             const r = await axios.get(
-              `http://localhost:3000/api/reviews/room/${room._id}/summary`
+              `http://localhost:3000/api/reviews/room/${room._id}/summary?aggregateByType=1`
             );
             ratingData[room._id] = r.data;
           } catch {

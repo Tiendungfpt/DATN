@@ -459,6 +459,11 @@ useEffect(() => {
 </p>
         <p className="text-warning mb-1">⭐ {r.rating} / 5</p>
         <p className="text-muted mb-0">{r.comment || "Không có nhận xét"}</p>
+        {r.adminReply ? (
+          <div className="alert alert-primary py-2 px-3 mt-2 mb-0">
+            <strong>Phản hồi từ khách sạn:</strong> {r.adminReply}
+          </div>
+        ) : null}
       </div>
     ))
   )}

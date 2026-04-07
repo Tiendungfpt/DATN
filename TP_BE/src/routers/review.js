@@ -2,6 +2,7 @@ import { Router } from "express";
 import { checkAuth } from "../middlewares/checkAuth.js";
 import { checkAdmin } from "../middlewares/checkAdmin.js";
 import Review from "../models/Review.js";
+import Room from "../models/rooms.js";
 
 import {
   createReview,
@@ -11,6 +12,14 @@ import {
 } from "../controllers/review.js";
 
 const reviewRouter = Router();
+
+function normalizeRoomTypeName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+}
 
 
 // ================= USER =================
@@ -26,7 +35,7 @@ reviewRouter.get("/room/:roomId", async (req, res) => {
 
     const reviews = await Review.find({
       room_id: roomId,
-      isHidden: false,
+      isHidden: { $ne: true },
     })
       .populate("user_id", "name")
       .populate({
@@ -50,11 +59,37 @@ reviewRouter.get("/room/:roomId", async (req, res) => {
 reviewRouter.get("/room/:roomId/summary", async (req, res) => {
   try {
     const { roomId } = req.params;
+    const aggregateByType = String(req.query?.aggregateByType || "") === "1";
 
-    const reviews = await Review.find({
+    let filter = {
       room_id: roomId,
-      isHidden: false,
-    });
+      isHidden: { $ne: true },
+    };
+
+    if (aggregateByType) {
+      const targetRoom = await Room.findById(roomId).lean();
+      if (!targetRoom) {
+        return res.json({ total: 0, avg: "0.0" });
+      }
+
+      const targetTypeKey = normalizeRoomTypeName(
+        targetRoom.room_type || targetRoom.name,
+      );
+      const rooms = await Room.find().select("_id room_type name").lean();
+      const roomIdsSameType = rooms
+        .filter(
+          (room) =>
+            normalizeRoomTypeName(room.room_type || room.name) === targetTypeKey,
+        )
+        .map((room) => room._id);
+
+      filter = {
+        room_id: { $in: roomIdsSameType },
+        isHidden: { $ne: true },
+      };
+    }
+
+    const reviews = await Review.find(filter);
 
     const total = reviews.length;
 

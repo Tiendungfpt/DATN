@@ -121,6 +121,20 @@ function RoomDetail() {
     <strong>{r.user_id?.name}</strong>
     <p style={{ margin: 0 }}>⭐ {r.rating}</p>
     <p style={{ color: "#475569" }}>{r.comment}</p>
+    {r.adminReply ? (
+      <div
+        style={{
+          marginTop: "6px",
+          padding: "8px 10px",
+          background: "#eff6ff",
+          borderLeft: "3px solid #3b82f6",
+          borderRadius: "6px",
+        }}
+      >
+        <strong style={{ color: "#1d4ed8" }}>Phản hồi từ khách sạn:</strong>
+        <p style={{ margin: "4px 0 0", color: "#1e3a8a" }}>{r.adminReply}</p>
+      </div>
+    ) : null}
   </div>
 ))}
                     </div>

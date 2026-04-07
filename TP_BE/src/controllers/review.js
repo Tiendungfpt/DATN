@@ -159,7 +159,7 @@ export const getAllReviewsAdmin = async (req, res) => {
 export const getAllReviews = async (req, res) => {
   try {
     const reviews = await Review.find({
-      isHidden: false, // admin ẩn thì client không thấy
+      isHidden: { $ne: true }, // admin ẩn thì client không thấy
     })
       .populate("user_id", "name")
       .populate({

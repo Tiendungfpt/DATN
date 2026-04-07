@@ -1,10 +1,12 @@
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import "./Sidebar.css";
 
 export default function Sidebar() {
     return (
         <div className="sidebar">
-            <h2 className="sidebar-title">ADMIN PANEL</h2>
+            <Link to="/" className="sidebar-title-link">
+                <h2 className="sidebar-title">Thịnh Phát Hotel</h2>
+            </Link>
             <p className="sidebar-subtitle">Quản trị hệ thống đặt phòng</p>
 
             <ul className="sidebar-menu">
@@ -51,6 +53,39 @@ export default function Sidebar() {
                         }
                     >
                         📋 Danh sách booking
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
+                        to="/admin/bookings/pending"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "sub-menu-item active" : "sub-menu-item"
+                        }
+                    >
+                        • Phòng chờ xác nhận
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
+                        to="/admin/bookings/checked-in"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "sub-menu-item active" : "sub-menu-item"
+                        }
+                    >
+                        • Đang check-in
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
+                        to="/admin/bookings/completed"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "sub-menu-item active" : "sub-menu-item"
+                        }
+                    >
+                        • Đã check-out
                     </NavLink>
                 </li>
                 <li>
