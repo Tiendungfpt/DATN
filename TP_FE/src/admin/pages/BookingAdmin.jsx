@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { NavLink, Outlet } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import "../components/BookingAdmin.css";
 
 function formatDate(d) {
@@ -300,27 +300,6 @@ export default function BookingAdmin() {
       <p className="booking-admin-subtitle">
         Theo dõi check-in / check-out, xác nhận phòng và trạng thái đánh giá của khách.
       </p>
-      <div className="booking-admin-tabs">
-        <NavLink to="pending" className={({ isActive }) => (isActive ? "booking-admin-tab active" : "booking-admin-tab")}>
-          Chờ xác nhận
-          <span className="booking-admin-tab-count">{groupedBookings.pending.length}</span>
-        </NavLink>
-        <NavLink
-          to="checked-in"
-          className={({ isActive }) => (isActive ? "booking-admin-tab active" : "booking-admin-tab")}
-        >
-          Đang check-in
-          <span className="booking-admin-tab-count">{groupedBookings.checked_in.length}</span>
-        </NavLink>
-        <NavLink
-          to="completed"
-          className={({ isActive }) => (isActive ? "booking-admin-tab active" : "booking-admin-tab")}
-        >
-          Đã check-out
-          <span className="booking-admin-tab-count">{groupedBookings.completed.length}</span>
-        </NavLink>
-      </div>
-
       <Outlet
         context={{
           groupedBookings,

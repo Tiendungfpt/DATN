@@ -8,6 +8,8 @@ import {
   endOfWeek,
   startOfMonth,
   endOfMonth,
+  startOfYear,
+  endOfYear,
   subDays,
 } from "date-fns";
 
@@ -123,6 +125,59 @@ export const getDashboardStats = async (req, res) => {
 
     const format = (n) => Math.round(n).toLocaleString("vi-VN");
 
+    // ===== REVENUE OVERVIEW (TOTAL + MONTHLY + WEEKLY IN CURRENT MONTH) =====
+    const allRevenueBookings = await Booking.find({
+      status: { $in: validRevenueStatuses },
+    }).select("total_price check_in_date");
+
+    const totalRevenueValue = allRevenueBookings.reduce(
+      (sum, b) => sum + Number(b.total_price || 0),
+      0,
+    );
+
+    const yearStart = startOfYear(now);
+    const yearEnd = endOfYear(now);
+    const yearBookings = allRevenueBookings.filter((b) => {
+      const checkIn = new Date(b.check_in_date);
+      return checkIn >= yearStart && checkIn <= yearEnd;
+    });
+
+    const monthlyTotals = Array.from({ length: 12 }, () => 0);
+    yearBookings.forEach((b) => {
+      const month = new Date(b.check_in_date).getMonth(); // 0..11
+      monthlyTotals[month] += Number(b.total_price || 0);
+    });
+
+    const monthlyRevenueChart = monthlyTotals.map((value, idx) => ({
+      month: `T${idx + 1}`,
+      revenue: Math.round(value),
+      revenueFormatted: format(value),
+    }));
+
+    const currentMonthStart = startOfMonth(now);
+    const currentMonthEnd = endOfMonth(now);
+    const currentMonthBookings = allRevenueBookings.filter((b) => {
+      const checkIn = new Date(b.check_in_date);
+      return checkIn >= currentMonthStart && checkIn <= currentMonthEnd;
+    });
+
+    const weeklyBuckets = [0, 0, 0, 0, 0];
+    currentMonthBookings.forEach((b) => {
+      const day = new Date(b.check_in_date).getDate();
+      let weekIdx = 4;
+      if (day <= 7) weekIdx = 0;
+      else if (day <= 14) weekIdx = 1;
+      else if (day <= 21) weekIdx = 2;
+      else if (day <= 28) weekIdx = 3;
+      weeklyBuckets[weekIdx] += Number(b.total_price || 0);
+    });
+
+    const weeklyRevenueCurrentMonth = weeklyBuckets.map((value, idx) => ({
+      week: `Tuần ${idx + 1}`,
+      revenue: Math.round(value),
+      revenueFormatted: format(value),
+    }));
+
     // ===== RESPONSE =====
     res.json({
       success: true,
@@ -135,11 +190,14 @@ export const getDashboardStats = async (req, res) => {
       },
 
       stats: {
-        revenue: format(current.revenue),
+        revenue: Math.round(current.revenue),
+        revenueFormatted: format(current.revenue),
         bookings: current.bookings,
         occupancy: Math.round(current.occupancy),
-        adr: format(current.adr),
-        revpar: format(current.revpar),
+        adr: Math.round(current.adr),
+        adrFormatted: format(current.adr),
+        revpar: Math.round(current.revpar),
+        revparFormatted: format(current.revpar),
       },
 
       growth: {
@@ -151,6 +209,12 @@ export const getDashboardStats = async (req, res) => {
       dateRange: {
         from: startDate,
         to: endDate,
+      },
+      revenueOverview: {
+        totalRevenue: Math.round(totalRevenueValue),
+        totalRevenueFormatted: format(totalRevenueValue),
+        monthlyRevenueChart,
+        weeklyRevenueCurrentMonth,
       },
     });
   } catch (err) {

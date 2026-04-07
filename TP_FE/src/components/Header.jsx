@@ -94,7 +94,7 @@ export default function Header() {
                     <li className="nav-item ms-2">
                       <NavLink
                         className="btn btn-warning px-3 fw-semibold"
-                        to="/admin/rooms"
+                        to="/admin/dashboard"
                       >
                         Admin
                       </NavLink>

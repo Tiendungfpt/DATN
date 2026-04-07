@@ -235,6 +235,11 @@ function HotelList() {
               <p className="text-muted">
                 {r.comment || "Không có nhận xét"}
               </p>
+              {r.adminReply ? (
+                <div className="alert alert-primary py-2 px-3">
+                  <strong>Phản hồi từ khách sạn:</strong> {r.adminReply}
+                </div>
+              ) : null}
             </div>
           ))
         )}
