@@ -46,7 +46,6 @@ export default function Sidebar() {
                 <li>
                     <NavLink
                         to="/admin/bookings"
-                        end
                         className={({ isActive }) =>
                             isActive ? "menu-item active" : "menu-item"
                         }
