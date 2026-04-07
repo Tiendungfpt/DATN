@@ -35,6 +35,15 @@ const bookingSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    invoice_issued_at: {
+      type: Date,
+      default: null,
+    },
+    invoice_issued_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   {
     timestamps: true,

@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import ProfileSidebar from "./Component/ProfileSidebar";
 import ProfileInfo from "./Component/ProfileInfo";
 import BookingHistory from "./Component/BookingHistory";
+import NotificationList from "./Component/NotificationList";
 
 function UserProfile() {
   const [user, setUser] = useState(null);
@@ -78,6 +79,7 @@ function UserProfile() {
               <div className="card-body p-5">
                 {activeTab === "profile" && <ProfileInfo user={user} />}
                 {activeTab === "history" && <BookingHistory />}
+                {activeTab === "notifications" && <NotificationList />}
               </div>
             </div>
           </div>

@@ -31,6 +31,14 @@ function ProfileSidebar({ user, activeTab, onTabChange }) {
             <i className="bi bi-clock-history me-3"></i>
             Lịch sử đặt phòng
           </button>
+
+          <button
+            className={`nav-link text-start py-3 px-4 mb-2 rounded-3 fw-semibold ${activeTab === "notifications" ? "active" : ""}`}
+            onClick={() => onTabChange("notifications")}
+          >
+            <i className="bi bi-bell me-3"></i>
+            Thông báo hệ thống
+          </button>
         </div>
       </div>
     </div>

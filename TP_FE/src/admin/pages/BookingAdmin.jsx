@@ -32,6 +32,7 @@ export default function BookingAdmin() {
   const [error, setError] = useState("");
   const [assignableRoomsByBooking, setAssignableRoomsByBooking] = useState({});
   const [selectedRoomByBooking, setSelectedRoomByBooking] = useState({});
+  const [downloadingInvoiceByBooking, setDownloadingInvoiceByBooking] = useState({});
 
   const loadBookings = async () => {
     try {
@@ -154,6 +155,38 @@ export default function BookingAdmin() {
     }
   };
 
+  const downloadInvoiceAsAdmin = async (bookingId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Vui lòng đăng nhập admin để xuất hóa đơn.");
+      return;
+    }
+    try {
+      setDownloadingInvoiceByBooking((prev) => ({ ...prev, [bookingId]: true }));
+      const res = await axios.get(
+        `http://localhost:3000/api/bookings/${bookingId}/invoice`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        },
+      );
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `hoa-don-${bookingId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+      alert("Xuất hóa đơn thành công.");
+      loadBookings();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể xuất hóa đơn PDF");
+    } finally {
+      setDownloadingInvoiceByBooking((prev) => ({ ...prev, [bookingId]: false }));
+    }
+  };
+
   /** Bước 1–4: chờ xác nhận → đã xác nhận → đang ở → đã trả phòng */
   function stayFlowStep(status) {
     const steps = [
@@ -193,7 +226,8 @@ export default function BookingAdmin() {
 
   const groupedBookings = useMemo(
     () => ({
-      pending: bookings.filter((b) => b.status === "pending" || b.status === "confirmed"),
+      pending: bookings.filter((b) => b.status === "pending"),
+      confirmed: bookings.filter((b) => b.status === "confirmed"),
       checked_in: bookings.filter((b) => b.status === "checked_in"),
       completed: bookings.filter((b) => b.status === "completed"),
       other: bookings.filter(
@@ -282,6 +316,16 @@ export default function BookingAdmin() {
         {b.status !== "completed" && (
           <button type="button" className="btn-cancel" onClick={() => updateStatus(b._id, "cancelled")}>
             Hủy booking
+          </button>
+        )}
+        {b.assigned_room_id?._id && ["confirmed", "checked_in", "completed"].includes(b.status) && (
+          <button
+            type="button"
+            className="btn-checkout"
+            onClick={() => downloadInvoiceAsAdmin(b._id)}
+            disabled={Boolean(downloadingInvoiceByBooking[b._id])}
+          >
+            {downloadingInvoiceByBooking[b._id] ? "Đang xuất hóa đơn..." : "Xuất hóa đơn PDF"}
           </button>
         )}
         <button type="button" className="btn-remove" onClick={() => removeBooking(b._id)}>

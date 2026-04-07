@@ -2,6 +2,7 @@ import axios from "axios";
 import crypto from "crypto";
 import Booking from "../models/Booking.js";
 import dotenv from "dotenv";
+import { createNotification } from "../utils/notification.js";
 
 dotenv.config();
 
@@ -206,6 +207,14 @@ const finalAmount = Math.round(amount);
         // Thanh toán thành công nhưng vẫn chờ admin xác nhận.
         booking.status = "pending";
         await booking.save();
+        await createNotification({
+          userId: booking.user_id,
+          bookingId: booking._id,
+          type: "payment_success",
+          title: "Thanh toán thành công",
+          message: `Booking #${String(booking._id).slice(-6).toUpperCase()} đã thanh toán thành công và đang chờ admin xác nhận phòng.`,
+          eventKey: `payment_success_${booking._id}`,
+        });
 
         return res.redirect(
           `${process.env.FRONTEND_URL}/payment-success?bookingId=${booking._id}&orderId=${encodeURIComponent(

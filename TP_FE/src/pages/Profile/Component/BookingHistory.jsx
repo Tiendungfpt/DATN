@@ -10,6 +10,28 @@ function BookingHistory() {
 
   const token = localStorage.getItem("token");
 
+  const handleDownloadInvoice = async (bookingId) => {
+    try {
+      const res = await axios.get(
+        `http://localhost:3000/api/bookings/${bookingId}/invoice`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        },
+      );
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `hoa-don-${bookingId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể tải hóa đơn");
+    }
+  };
+
   const getRoomImageSrc = (booking) => {
     const image = booking?.assigned_room_id?.image || booking?.room_id?.image;
     if (!image) return null;
@@ -358,6 +380,20 @@ function BookingHistory() {
                         <div className="text-success fw-semibold fs-5 py-3">
                           <i className="bi bi-check-circle-fill me-2"></i>
                           Đã xác nhận — chờ nhận phòng
+                        </div>
+                      )}
+
+                      {booking.invoice_issued_at ? (
+                        <button
+                          className="btn btn-outline-success mt-2"
+                          onClick={() => handleDownloadInvoice(booking._id)}
+                        >
+                          <i className="bi bi-receipt me-2"></i>
+                          Tải hóa đơn
+                        </button>
+                      ) : (
+                        <div className="text-muted small mt-2">
+                          Hóa đơn sẽ hiển thị sau khi admin phát hành.
                         </div>
                       )}
                     </div>
