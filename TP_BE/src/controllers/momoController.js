@@ -205,6 +205,7 @@ const finalAmount = Math.round(amount);
 
       if (isSuccess) {
         // Thanh toán thành công nhưng vẫn chờ admin xác nhận.
+        booking.is_paid = true;
         booking.status = "pending";
         await booking.save();
         await createNotification({
@@ -225,6 +226,7 @@ const finalAmount = Math.round(amount);
         );
       } else {
         // Thanh toán thất bại => hủy booking để không giữ đơn treo.
+        booking.is_paid = false;
         if (booking.status === "pending") {
           booking.status = "cancelled";
           await booking.save();
@@ -277,9 +279,11 @@ const finalAmount = Math.round(amount);
       }
 
       if (Number(resultCode) === 0) {
+        booking.is_paid = true;
         booking.status = "pending";
         await booking.save();
       } else if (booking.status === "pending") {
+        booking.is_paid = false;
         booking.status = "cancelled";
         await booking.save();
       }

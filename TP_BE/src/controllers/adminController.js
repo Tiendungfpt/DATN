@@ -163,7 +163,7 @@ export const deleteRoom = async (req, res) => {
 
 export const getBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find()
+    const bookings = await Booking.find({ is_paid: true })
       .populate("user_id", "name email")
       .populate("room_id", "name image price capacity room_no")
       .populate("assigned_room_id", "name image price capacity room_no")

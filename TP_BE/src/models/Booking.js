@@ -26,6 +26,11 @@ const bookingSchema = new mongoose.Schema(
     },
     service_fee: { type: Number, min: 0, default: 0 },
     total_price: { type: Number, required: true, min: 0 },
+    is_paid: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     status: {
       type: String,
       enum: ["pending", "confirmed", "checked_in", "completed", "cancelled"],
