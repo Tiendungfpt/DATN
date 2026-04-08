@@ -1,8 +1,7 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "khoa";
-
 export const checkAuth = (req, res, next) => {
+  const JWT_SECRET = process.env.JWT_SECRET || "khoa";
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
 

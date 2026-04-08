@@ -12,7 +12,13 @@
 
 // export default authRouter;
 import { Router } from "express";
-import { getProfileUser, loginUser, registerUser } from "../controllers/auth.js";
+import {
+  forgotPassword,
+  getProfileUser,
+  loginUser,
+  registerUser,
+  resetPassword,
+} from "../controllers/auth.js";
 import { checkAuth } from "../middlewares/checkAuth.js";
 import { updateRole } from "../controllers/auth.js";
 
@@ -23,6 +29,12 @@ authRouter.post("/register", registerUser);
 
 // POST api/auth/login
 authRouter.post("/login", loginUser);
+
+// POST api/auth/forgot-password
+authRouter.post("/forgot-password", forgotPassword);
+
+// POST api/auth/reset-password/:token
+authRouter.post("/reset-password/:token", resetPassword);
 
 // GET api/auth/profile
 authRouter.get("/profile", checkAuth, getProfileUser);
