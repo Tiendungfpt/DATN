@@ -18,6 +18,8 @@ import RoomsEdit from "./admin/pages/RoomEdit";
 
 import Register from "./auth/register";
 import Login from "./auth/login";
+import ForgotPassword from "./auth/forgotPassword";
+import ResetPassword from "./auth/resetPassword";
 import RoomsList from "./pages/RoomList";
 import RoomDetail from "./pages/RoomDetail";
 import HotelList from "./pages/HotelList";
@@ -40,6 +42,8 @@ function Layout() {
                 <Route path="/" element={<Home />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 <Route path="/dat-phong" element={<RoomsList />} />
                 <Route path="/khach-san" element={<HotelList />} />

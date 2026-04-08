@@ -101,6 +101,11 @@ export default function Login() {
             Đăng ký miễn phí
           </Link>
         </p>
+        <p style={styles.forgotWrap}>
+          <Link to="/forgot-password" style={styles.forgotLink}>
+            Quên mật khẩu?
+          </Link>
+        </p>
       </div>
     </div>
   );
@@ -213,6 +218,15 @@ const styles = {
     marginTop: "30px",
     fontSize: "14.5px",
     opacity: 0.9,
+  },
+  forgotWrap: {
+    marginTop: "10px",
+  },
+  forgotLink: {
+    color: "#fde047",
+    fontWeight: "600",
+    textDecoration: "none",
+    fontSize: "14px",
   },
 
   link: {

@@ -2,6 +2,9 @@ import "./config/mongooseInit.js";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 import postRouter from "./routers/post.js";
 import roomsRouter from "./routers/rooms.js";
