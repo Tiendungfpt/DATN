@@ -16,7 +16,8 @@ export const getDashboard = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const totalRooms = await Rooms.countDocuments();
-    const totalBookings = await Booking.countDocuments();
+    // Đồng bộ với danh sách booking admin: chỉ tính booking đã thanh toán
+    const totalBookings = await Booking.countDocuments({ is_paid: true });
 
     res.json({
       totalUsers,

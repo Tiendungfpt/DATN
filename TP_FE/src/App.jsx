@@ -13,6 +13,7 @@ import BookingPendingPage from "./admin/pages/BookingPendingPage";
 import BookingConfirmedPage from "./admin/pages/BookingConfirmedPage";
 import BookingCheckedInPage from "./admin/pages/BookingCheckedInPage";
 import BookingCompletedPage from "./admin/pages/BookingCompletedPage";
+import BookingAllPage from "./admin/pages/BookingAllPage";
 import Booking from "./pages/Booking";
 import RoomsEdit from "./admin/pages/RoomEdit";
 
@@ -67,7 +68,8 @@ function Layout() {
                     <Route path="reviews" element={<AdminReviews />} />
                     <Route path="users-pagination" element={<UserList />} />
                     <Route path="bookings" element={<BookingAdmin />}>
-                        <Route index element={<Navigate to="pending" replace />} />
+                        <Route index element={<Navigate to="all" replace />} />
+                        <Route path="all" element={<BookingAllPage />} />
                         <Route path="pending" element={<BookingPendingPage />} />
                         <Route path="confirmed" element={<BookingConfirmedPage />} />
                         <Route path="checked-in" element={<BookingCheckedInPage />} />

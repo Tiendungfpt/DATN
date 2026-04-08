@@ -346,6 +346,7 @@ export default function BookingAdmin() {
       </p>
       <Outlet
         context={{
+          bookings,
           groupedBookings,
           renderBookingCard,
         }}

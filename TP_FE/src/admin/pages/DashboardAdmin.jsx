@@ -32,14 +32,21 @@ export default function AdminDashboard() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await axios.get(
-                    "http://localhost:3000/api/dashboard"
+                const token = localStorage.getItem("token");
+
+                // 1) Tổng số liệu (đồng bộ với danh sách admin)
+                const adminRes = await axios.get(
+                    "http://localhost:3000/api/admin/dashboard",
+                    { headers: { Authorization: `Bearer ${token}` } },
                 );
 
+                // 2) Revenue charts (đang dùng endpoint /api/dashboard)
+                const res = await axios.get("http://localhost:3000/api/dashboard");
+
                 setStats({
-                    rooms: res.data.totals?.rooms || 0,
-                    users: res.data.totals?.users || 0,
-                    bookings: res.data.stats?.bookings || 0,
+                    rooms: adminRes.data?.totalRooms || 0,
+                    users: adminRes.data?.totalUsers || 0,
+                    bookings: adminRes.data?.totalBookings || 0,
                 });
                 setRevenueOverview({
                     totalRevenueFormatted: res.data.revenueOverview?.totalRevenueFormatted || "0",
