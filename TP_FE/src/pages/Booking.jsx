@@ -36,7 +36,9 @@ useEffect(() => {
 
   const fetchReviews = async () => {
     try {
-      const res = await axios.get(`http://localhost:3000/api/reviews/room/${roomId}`);
+      const res = await axios.get(
+        `http://localhost:3000/api/reviews/room/${roomId}?aggregateByType=1`
+      );
       const data = Array.isArray(res.data) ? res.data : [];
       setReviews(data);
 

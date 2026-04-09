@@ -18,7 +18,7 @@ export default function Home() {
       rooms.map(async (room) => {
         try {
           const res = await fetch(
-            `http://localhost:3000/api/reviews/room/${room._id}/summary`
+            `http://localhost:3000/api/reviews/room/${room._id}/summary?aggregateByType=1`
           );
           const data = await res.json();
           ratingData[room._id] = data;

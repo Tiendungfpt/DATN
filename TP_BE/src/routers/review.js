@@ -32,11 +32,37 @@ reviewRouter.post("/", checkAuth, createReview);
 reviewRouter.get("/room/:roomId", async (req, res) => {
   try {
     const { roomId } = req.params;
+    const aggregateByType = String(req.query?.aggregateByType || "") === "1";
 
-    const reviews = await Review.find({
+    let filter = {
       room_id: roomId,
       isHidden: { $ne: true },
-    })
+    };
+
+    if (aggregateByType) {
+      const targetRoom = await Room.findById(roomId).lean();
+      if (!targetRoom) {
+        return res.json([]);
+      }
+
+      const targetTypeKey = normalizeRoomTypeName(
+        targetRoom.room_type || targetRoom.name,
+      );
+      const rooms = await Room.find().select("_id room_type name").lean();
+      const roomIdsSameType = rooms
+        .filter(
+          (room) =>
+            normalizeRoomTypeName(room.room_type || room.name) === targetTypeKey,
+        )
+        .map((room) => room._id);
+
+      filter = {
+        room_id: { $in: roomIdsSameType },
+        isHidden: { $ne: true },
+      };
+    }
+
+    const reviews = await Review.find(filter)
       .populate("user_id", "name")
       .populate({
         path: "room_id",

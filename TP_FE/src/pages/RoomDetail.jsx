@@ -11,14 +11,14 @@ function RoomDetail() {
    useEffect(() => {
     if (!id) return;
 
-    axios.get(`http://localhost:3000/api/reviews/room/${id}`)
+    axios.get(`http://localhost:3000/api/reviews/room/${id}?aggregateByType=1`)
         .then(res => {
             setReviews(res.data);
             console.log("reviews API:", res.data); // 👈 thêm ở đây
         })
         .catch(err => console.log(err));
 
-    axios.get(`http://localhost:3000/api/reviews/room/${id}/summary`)
+    axios.get(`http://localhost:3000/api/reviews/room/${id}/summary?aggregateByType=1`)
         .then(res => setSummary(res.data))
         .catch(err => console.log(err));
 
