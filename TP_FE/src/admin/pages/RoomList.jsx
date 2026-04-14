@@ -78,16 +78,14 @@ function RoomsList() {
                                 👤 Tối đa {room.capacity ?? room.maxGuests ?? "—"} người
                             </p>
 
-                            <p className={
-                                room.status === "available"
-                                    ? "status available"
-                                    : "status booked"
-                            }>
+                            <p className={`status ${room.status || "unknown"}`}>
                                 {room.status === "available"
-                                    ? "available"
-                                    : room.status === "booked"
-                                      ? "booked (đã đặt)"
-                                      : room.status}
+                                    ? "Trống"
+                                    : room.status === "occupied"
+                                      ? "Đang có khách"
+                                      : room.status === "maintenance"
+                                        ? "Bảo trì"
+                                        : room.status || "—"}
                             </p>
 
                             <div className="admin-actions">

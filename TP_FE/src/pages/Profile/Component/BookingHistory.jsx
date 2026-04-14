@@ -2,6 +2,20 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 import { Link } from "react-router-dom";
+
+function isStayFinished(status) {
+  return status === "checked_out" || status === "completed";
+}
+
+function primaryRoomId(booking) {
+  const a = booking.assigned_room_ids;
+  if (Array.isArray(a) && a.length > 0) {
+    const f = a[0];
+    return f?._id || f;
+  }
+  return booking.assigned_room_id?._id || booking.room_id?._id;
+}
+
 function BookingHistory() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +47,13 @@ function BookingHistory() {
   };
 
   const getRoomImageSrc = (booking) => {
-    const image = booking?.assigned_room_id?.image || booking?.room_id?.image;
+    const firstAssigned = Array.isArray(booking?.assigned_room_ids)
+      ? booking.assigned_room_ids[0]
+      : null;
+    const image =
+      firstAssigned?.image ||
+      booking?.assigned_room_id?.image ||
+      booking?.room_id?.image;
     if (!image) return null;
     return image.startsWith("http")
       ? image
@@ -117,7 +137,7 @@ function BookingHistory() {
         </span>
       );
     }
-    if (status === "completed") {
+    if (isStayFinished(status)) {
       return (
         <span className="badge bg-dark px-4 py-2 fs-6 rounded-3 fw-medium">
           Đã trả phòng
@@ -202,11 +222,12 @@ function BookingHistory() {
           const showPaidHint =
             booking.status === "confirmed" ||
             booking.status === "checked_in" ||
-            booking.status === "completed";
+            isStayFinished(booking.status);
 
+          const firstAr = booking.assigned_room_ids?.[0];
           const showRoomNo =
-            booking.assigned_room_id?.room_no &&
-            ["confirmed", "checked_in", "completed"].includes(booking.status);
+            (firstAr?.room_no || booking.assigned_room_id?.room_no) &&
+            ["confirmed", "checked_in", "checked_out", "completed"].includes(booking.status);
 
           const waitingForRoomAssign =
             !booking.assigned_room_id &&
@@ -226,7 +247,12 @@ function BookingHistory() {
                             getRoomImageSrc(booking) ||
                             "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=1200&auto=format&fit=crop"
                           }
-                          alt={booking?.assigned_room_id?.name || booking?.room_id?.name || "Phòng đã đặt"}
+                          alt={
+                            booking?.room_type_id?.name ||
+                            booking?.assigned_room_id?.name ||
+                            booking?.room_id?.name ||
+                            "Phòng đã đặt"
+                          }
                           className="rounded-4 border"
                           style={{
                             width: "100%",
@@ -297,10 +323,16 @@ function BookingHistory() {
                           Phòng đã đặt:
                         </strong>
                         <div className="d-flex flex-wrap gap-2">
-                            {(booking.assigned_room_id?.name || booking.room_id?.name) ? (
+                            {booking.room_type_id?.name ||
+                            booking.assigned_room_id?.name ||
+                            booking.room_id?.name ? (
                               <span className="badge bg-light text-dark border px-4 py-2 fs-6 fw-medium">
-                                {(booking.assigned_room_id?.name || booking.room_id?.name)}
-                                {showRoomNo ? ` - ${booking.assigned_room_id.room_no}` : ""}
+                                {booking.room_type_id?.name ||
+                                  booking.assigned_room_id?.name ||
+                                  booking.room_id?.name}
+                                {showRoomNo
+                                  ? ` - ${firstAr?.room_no || booking.assigned_room_id?.room_no}`
+                                  : ""}
                               </span>
                             ) : (
                               <span className="text-muted">
@@ -310,7 +342,7 @@ function BookingHistory() {
                         </div>
                         {waitingForRoomAssign && (
                           <small className="text-muted d-block mt-2">
-                            Booking đang chờ admin xếp phòng cụ thể.
+                            Loại phòng đã chọn; số phòng gán khi check-in.
                           </small>
                         )}
                       </div>
@@ -351,7 +383,7 @@ function BookingHistory() {
                       )}
 
                      {/* ✅ Trạng thái vẫn giữ nguyên */}
-{booking.status === "completed" && (
+{isStayFinished(booking.status) && (
   <div className="text-success fw-semibold fs-5 py-3">
     <i className="bi bi-check-circle-fill me-2"></i>
     Đã trả phòng
@@ -359,22 +391,23 @@ function BookingHistory() {
 )}
 
 {/* ⭐ Đánh giá (chỉ khi completed) */}
-{booking.status === "completed" && (
+{isStayFinished(booking.status) && primaryRoomId(booking) && (
   <Link
-    to={`/review/${booking._id}?roomId=${(booking.assigned_room_id?._id || booking.room_id?._id)}`}
+    to={`/review/${booking._id}?roomId=${primaryRoomId(booking)}`}
     className="btn btn-primary mt-2"
   >
     ⭐ Đánh giá
   </Link>
 )}
 
-{/* 👀 Xem đánh giá (LUÔN HIỂN THỊ) */}
-<Link
-  to={`/phong/${booking.assigned_room_id?._id || booking.room_id?._id}`}
-  className="btn btn-primary mt-2"
->
-  👀 Xem đánh giá
-</Link>
+{primaryRoomId(booking) ? (
+  <Link
+    to={`/phong/${primaryRoomId(booking)}`}
+    className="btn btn-primary mt-2"
+  >
+    Xem phòng
+  </Link>
+) : null}
 
                       {booking.status === "confirmed" && (
                         <div className="text-success fw-semibold fs-5 py-3">
@@ -383,7 +416,7 @@ function BookingHistory() {
                         </div>
                       )}
 
-                      {booking.invoice_issued_at ? (
+                      {isStayFinished(booking.status) && booking.invoice_id ? (
                         <button
                           className="btn btn-outline-success mt-2"
                           onClick={() => handleDownloadInvoice(booking._id)}
@@ -393,7 +426,7 @@ function BookingHistory() {
                         </button>
                       ) : (
                         <div className="text-muted small mt-2">
-                          Hóa đơn sẽ hiển thị sau khi admin phát hành.
+                          Hóa đơn sau khi check-out.
                         </div>
                       )}
                     </div>

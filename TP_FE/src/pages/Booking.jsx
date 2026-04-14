@@ -5,19 +5,6 @@ import DatePicker from "react-datepicker";
 import { registerLocale, setDefaultLocale } from "react-datepicker";
 import { vi } from "date-fns/locale/vi";
 import "react-datepicker/dist/react-datepicker.css";
-import {
-  FaCar,
-  FaBroom,
-  FaWandMagicSparkles,
-  FaDumbbell,
-  FaCamera,
-  FaEnvelope,
-  FaBriefcase,
-  FaCheck,
-  FaSoap,
-  FaSpa,
-  FaUtensils,
-} from "react-icons/fa6";
 import "./style/Booking.css";
 
 registerLocale("vi", vi);
@@ -65,6 +52,9 @@ useEffect(() => {
   const [error, setError] = useState("");
 
   const [currentUser, setCurrentUser] = useState(null);
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
@@ -79,21 +69,18 @@ useEffect(() => {
     }
   }, []);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    setGuestName(String(currentUser.name || "").trim());
+    setGuestEmail(String(currentUser.email || "").trim());
+  }, [currentUser]);
+
   const [checkInDate, setCheckInDate] = useState(null);
   const [checkOutDate, setCheckOutDate] = useState(null);
-  const [roomQuantity, setRoomQuantity] = useState(1);
+  /** Gio hang nhieu loai phong: dong dau = loai tu URL */
+  const [cartLines, setCartLines] = useState([]);
+  const [roomTypes, setRoomTypes] = useState([]);
 
-  const [serviceOptions] = useState([
-    { _id: "pickup", name: "Thuê xe máy", icon: FaCar, price: 50000 },
-    { _id: "room_cleaning", name: "Vệ sinh phòng", icon: FaBroom, price: 75000 },
-    { _id: "laundry", name: "Giặt là", icon: FaSoap, price: 60000 },
-    { _id: "spa", name: "Spa & Massage", icon: FaSpa, price: 200000 },
-    { _id: "gym", name: "Phòng tập", icon: FaDumbbell, price: 150000 },
-    { _id: "camera", name: "Chụp ảnh", icon: FaCamera, price: 150000 },
-    { _id: "mail", name: "Ăn sáng", icon: FaUtensils, price: 50000 },
-    { _id: "office_rental", name: "Cho thuê phòng họp", icon: FaBriefcase, price: 200000 },
-  ]);
-  const [selectedServices, setSelectedServices] = useState([]);
   const isDevEnvironment =
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" ||
@@ -101,13 +88,10 @@ useEffect(() => {
   const [paymentMethod, setPaymentMethod] = useState(
     isDevEnvironment ? "payWithCC" : "payWithATM",
   );
+  const [paymentMode, setPaymentMode] = useState("full");
+  const [depositAmount, setDepositAmount] = useState(0);
 
-  const serviceFee = selectedServices.reduce((sum, serviceId) => {
-    const item = serviceOptions.find((s) => s._id === serviceId);
-    return sum + (item ? item.price : 0);
-  }, 0);
-
-  const totalWithService = total + serviceFee;
+  const prepaidAmount = paymentMode === "full" ? total : depositAmount;
 
   useEffect(() => {
     if (!roomId) return;
@@ -122,17 +106,61 @@ useEffect(() => {
   }, [roomId]);
 
   useEffect(() => {
-    if (checkInDate && checkOutDate && room) {
+    axios
+      .get("http://localhost:3000/api/room-types")
+      .then((res) => setRoomTypes(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setRoomTypes([]));
+  }, []);
+
+  useEffect(() => {
+    const mainId = room?.roomType?._id ?? room?.roomType;
+    if (!mainId) return;
+    const mainStr = String(mainId);
+    setCartLines((prev) => {
+      if (prev.length === 0) {
+        return [{ key: "main", room_type_id: mainStr, quantity: 1 }];
+      }
+      const next = [...prev];
+      next[0] = { ...next[0], room_type_id: mainStr };
+      return next;
+    });
+  }, [room?.roomType, room?._id]);
+
+  useEffect(() => {
+    if (checkInDate && checkOutDate && roomTypes.length > 0 && cartLines.length > 0) {
       const diffDays = Math.ceil(
         Math.abs(checkOutDate - checkInDate) / (1000 * 60 * 60 * 24),
       );
       setNights(diffDays);
-      setTotal(diffDays * room.price * roomQuantity);
+      let sum = 0;
+      for (const line of cartLines) {
+        const rt = roomTypes.find((r) => String(r._id) === String(line.room_type_id));
+        const p = Number(rt?.price) || 0;
+        const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
+        sum += diffDays * p * q;
+      }
+      setTotal(sum);
     } else {
       setNights(0);
       setTotal(0);
     }
-  }, [checkInDate, checkOutDate, room, roomQuantity]);
+  }, [checkInDate, checkOutDate, roomTypes, cartLines]);
+
+  useEffect(() => {
+    // Keep deposit value always valid against current estimated room total.
+    if (paymentMode !== "deposit") {
+      setDepositAmount(0);
+      return;
+    }
+    if (total <= 0) {
+      setDepositAmount(0);
+      return;
+    }
+    setDepositAmount((prev) => {
+      if (prev <= 0 || prev >= total) return Math.floor(total * 0.3);
+      return prev;
+    });
+  }, [paymentMode, total]);
 
   const handleCreateBooking = async (e) => {
     e.preventDefault();
@@ -152,13 +180,42 @@ useEffect(() => {
       return;
     }
 
+    if (paymentMode === "deposit" && (depositAmount <= 0 || depositAmount >= total)) {
+      alert("Số tiền đặt cọc phải lớn hơn 0 và nhỏ hơn tổng tiền phòng.");
+      return;
+    }
+
+    if (!room?.roomType) {
+      alert("Loại phòng chưa được gán cho phòng này. Vui lòng liên hệ khách sạn.");
+      return;
+    }
+    const line_items = cartLines
+      .filter((l) => l.room_type_id && Number(l.quantity) >= 1)
+      .map((l) => ({
+        room_type_id: l.room_type_id,
+        quantity: Math.max(1, Number.parseInt(String(l.quantity), 10) || 1),
+      }));
+    if (line_items.length === 0) {
+      alert("Vui lòng chọn ít nhất một loại phòng và số lượng.");
+      return;
+    }
+    const gn = guestName.trim();
+    const gp = guestPhone.trim();
+    const ge = guestEmail.trim();
+    if (!gn || !gp || !ge) {
+      alert("Vui lòng nhập họ tên, số điện thoại và email.");
+      return;
+    }
+
     const payload = {
-      room_id: roomId,
+      line_items,
+      guest_name: gn,
+      guest_phone: gp,
+      guest_email: ge,
       check_in_date: checkInDate.toISOString().split("T")[0],
       check_out_date: checkOutDate.toISOString().split("T")[0],
-      room_quantity: roomQuantity,
-      services: selectedServices,
-      service_fee: serviceFee,
+      payment_mode: paymentMode,
+      prepaid_amount: prepaidAmount,
     };
 
     try {
@@ -227,6 +284,37 @@ useEffect(() => {
     });
   };
 
+  const mainRoomTypeId = String(room?.roomType?._id ?? room?.roomType ?? "");
+
+  const updateCartLine = (key, patch) => {
+    setCartLines((prev) =>
+      prev.map((l) => (l.key === key ? { ...l, ...patch } : l)),
+    );
+  };
+
+  const addCartLine = () => {
+    const firstOther =
+      roomTypes.find((r) => String(r._id) !== mainRoomTypeId)?._id ||
+      roomTypes[0]?._id;
+    const id = firstOther != null ? String(firstOther) : mainRoomTypeId;
+    setCartLines((prev) => [
+      ...prev,
+      { key: `extra-${Date.now()}`, room_type_id: id, quantity: 1 },
+    ]);
+  };
+
+  const removeCartLine = (key) => {
+    setCartLines((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((l) => l.key !== key);
+    });
+  };
+
+  const totalRoomCount = cartLines.reduce(
+    (s, l) => s + Math.max(1, Number.parseInt(String(l.quantity), 10) || 1),
+    0,
+  );
+
   if (!room) {
     return <div className="booking-loading">Đang tải thông tin phòng...</div>;
   }
@@ -265,47 +353,9 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="services-section">
-            <label>Dịch vụ kèm theo</label>
-            <p className="subtext">Chọn dịch vụ nếu bạn muốn thêm.</p>
-            <div className="services-grid">
-              {serviceOptions.map((service) => {
-                const isSelected = selectedServices.includes(service._id);
-                const IconComponent = service.icon;
-                return (
-                  <div
-                    key={service._id}
-                    className={`service-card ${isSelected ? "active" : ""}`}
-                    onClick={() => {
-                      const next = [...selectedServices];
-                      if (isSelected) {
-                        const idx = next.indexOf(service._id);
-                        if (idx >= 0) next.splice(idx, 1);
-                      } else {
-                        next.push(service._id);
-                      }
-                      setSelectedServices(next);
-                    }}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="service-icon">
-                      <IconComponent size={28} />
-                    </div>
-                    <div className="service-content">
-                      <div className="service-label">{service.name}</div>
-                      <div className="service-price">+{service.price.toLocaleString("vi-VN")} ₫</div>
-                    </div>
-                    {isSelected && (
-                      <div className="service-check">
-                        <FaCheck size={18} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <p className="subtext" style={{ marginTop: 16 }}>
+            Add-on services only after check-in (hotel policy).
+          </p>
         </div>
 
         <div className="booking-right">
@@ -354,16 +404,140 @@ useEffect(() => {
                 </div>
               </div>
 
+              <div className="date-range-group booking-cart">
+                <label>Phòng và số lượng</label>
+                <p className="booking-cart-hint">
+                  Dòng đầu là loại phòng bạn đang xem. Bấm &quot;Thêm loại phòng khác&quot; để gộp
+                  nhiều loại trong một đơn (không cần quay lại trang chủ).
+                </p>
+                {cartLines.map((line, idx) => {
+                  const rt = roomTypes.find(
+                    (r) => String(r._id) === String(line.room_type_id),
+                  );
+                  const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
+                  const unit =
+                    Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
+                  const lineSubtotal = nights * unit * q;
+                  return (
+                    <div
+                      key={line.key}
+                      className={
+                        idx === 0
+                          ? "booking-cart-line booking-cart-line--featured"
+                          : "booking-cart-line"
+                      }
+                    >
+                      <div className="booking-cart-line-top">
+                        {idx === 0 ? (
+                          <div className="booking-cart-line-main">
+                            <span className="booking-cart-badge">Đang xem</span>
+                            <span className="booking-cart-field-label">Loại phòng</span>
+                            <span className="booking-cart-type-name">
+                              {rt?.name || room.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="booking-cart-select-wrap">
+                            <span className="booking-cart-field-label">Loại phòng</span>
+                            <select
+                              className="custom-date-input"
+                              value={String(line.room_type_id || "")}
+                              onChange={(e) =>
+                                updateCartLine(line.key, {
+                                  room_type_id: e.target.value,
+                                })
+                              }
+                              disabled={loading}
+                              aria-label="Chọn loại phòng"
+                            >
+                              <option value="">— Chọn —</option>
+                              {roomTypes.map((r) => (
+                                <option key={r._id} value={String(r._id)}>
+                                  {`${r.name} — ${Number(r.price).toLocaleString("vi-VN")} ₫/đêm`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        <div className="booking-cart-qty">
+                          <span className="booking-cart-field-label">Số phòng</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={line.quantity}
+                            onChange={(e) =>
+                              updateCartLine(line.key, {
+                                quantity: Math.max(
+                                  1,
+                                  Number.parseInt(e.target.value || "1", 10) || 1,
+                                ),
+                              })
+                            }
+                            className="custom-date-input"
+                            disabled={loading}
+                            aria-label="Số lượng phòng"
+                          />
+                        </div>
+                        {idx > 0 && (
+                          <button
+                            type="button"
+                            className="booking-cart-remove"
+                            onClick={() => removeCartLine(line.key)}
+                            disabled={loading}
+                          >
+                            Xóa dòng
+                          </button>
+                        )}
+                      </div>
+                      {nights > 0 && unit > 0 && (
+                        <div className="booking-cart-line-subtotal">
+                          Tạm tính dòng:{" "}
+                          {`${lineSubtotal.toLocaleString("vi-VN")} ₫`}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="booking-cart-add"
+                  onClick={addCartLine}
+                  disabled={loading || roomTypes.length === 0}
+                >
+                  + Thêm loại phòng khác
+                </button>
+              </div>
+
               <div className="date-range-group">
-                <label>Số lượng phòng muốn đặt</label>
+                <label>Họ và tên</label>
                 <input
-                  type="number"
-                  min={1}
-                  value={roomQuantity}
-                  onChange={(e) =>
-                    setRoomQuantity(Math.max(1, Number.parseInt(e.target.value || "1", 10) || 1))
-                  }
+                  type="text"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
                   className="custom-date-input"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div className="date-range-group">
+                <label>Số điện thoại (đối chiếu khi check-in)</label>
+                <input
+                  type="tel"
+                  value={guestPhone}
+                  onChange={(e) => setGuestPhone(e.target.value)}
+                  className="custom-date-input"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div className="date-range-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                  className="custom-date-input"
+                  required
                   disabled={loading}
                 />
               </div>
@@ -373,23 +547,74 @@ useEffect(() => {
                   <span>Số đêm:</span>
                   <strong>{nights} đêm</strong>
                 </div>
+                {cartLines.map((line, idx) => {
+                  const rt = roomTypes.find(
+                    (r) => String(r._id) === String(line.room_type_id),
+                  );
+                  const name = idx === 0 ? rt?.name || room.name : rt?.name || "—";
+                  const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
+                  const p =
+                    Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
+                  const sub = nights * p * q;
+                  return (
+                    <div key={line.key} className="summary-row summary-row--line">
+                      <span>
+                        {name} × {q}:
+                      </span>
+                      <span>{sub.toLocaleString("vi-VN")} ₫</span>
+                    </div>
+                  );
+                })}
                 <div className="summary-row">
-                  <span>Giá mỗi đêm:</span>
-                  <span>{room.price.toLocaleString("vi-VN")} ₫</span>
-                </div>
-                <div className="summary-row">
-                  <span>Số phòng:</span>
-                  <span>{roomQuantity}</span>
-                </div>
-                <div className="summary-row">
-                  <span>Phí dịch vụ đã chọn:</span>
-                  <span>{serviceFee.toLocaleString("vi-VN")} ₫</span>
+                  <span>Tổng số phòng:</span>
+                  <span>{totalRoomCount}</span>
                 </div>
                 <div className="total-row">
-                  <span>Tổng tiền:</span>
+                  <span>Tạm tính tiền phòng:</span>
                   <span className="total-price">
-                    {totalWithService.toLocaleString("vi-VN")} ₫
+                    {total.toLocaleString("vi-VN")} ₫
                   </span>
+                </div>
+              </div>
+
+              <div className="date-range-group">
+                <label>Hình thức thanh toán khi đặt phòng</label>
+                <select
+                  value={paymentMode}
+                  onChange={(e) => setPaymentMode(e.target.value)}
+                  className="custom-date-input"
+                  disabled={loading}
+                >
+                  <option value="full">Thanh toán toàn bộ tiền phòng</option>
+                  <option value="deposit">Đặt cọc một phần</option>
+                </select>
+              </div>
+
+              {paymentMode === "deposit" && (
+                <div className="date-range-group">
+                  <label>Số tiền đặt cọc (VND)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(1, total - 1)}
+                    value={depositAmount}
+                    onChange={(e) => {
+                      const next = Number.parseInt(e.target.value || "0", 10) || 0;
+                      setDepositAmount(next);
+                    }}
+                    className="custom-date-input"
+                    disabled={loading || total <= 0}
+                  />
+                  <small className="text-muted">
+                    Tiền cọc phải &gt; 0 và &lt; {total.toLocaleString("vi-VN")} ₫.
+                  </small>
+                </div>
+              )}
+
+              <div className="summary">
+                <div className="summary-row">
+                  <span>Số tiền thanh toán ngay:</span>
+                  <strong>{prepaidAmount.toLocaleString("vi-VN")} ₫</strong>
                 </div>
               </div>
 
@@ -410,10 +635,12 @@ useEffect(() => {
                 type="submit"
                 className="book-button momo-pay-button"
                 disabled={
-                  !totalWithService ||
+                  !total ||
                   loading ||
                   !checkInDate ||
                   !checkOutDate ||
+                  (paymentMode === "deposit" &&
+                    (depositAmount <= 0 || depositAmount >= total)) ||
                   currentUser?.role === "admin"
                 }
               >

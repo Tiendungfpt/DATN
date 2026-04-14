@@ -13,6 +13,10 @@ import BookingPendingPage from "./admin/pages/BookingPendingPage";
 import BookingConfirmedPage from "./admin/pages/BookingConfirmedPage";
 import BookingCheckedInPage from "./admin/pages/BookingCheckedInPage";
 import BookingCompletedPage from "./admin/pages/BookingCompletedPage";
+import BookingList from "./admin/pages/BookingList";
+import CheckIn from "./admin/pages/CheckIn";
+import CheckOut from "./admin/pages/CheckOut";
+import ServiceManager from "./admin/pages/ServiceManager";
 import BookingAllPage from "./admin/pages/BookingAllPage";
 import Booking from "./pages/Booking";
 import RoomsEdit from "./admin/pages/RoomEdit";
@@ -30,6 +34,7 @@ import UserProfile from "./pages/Profile/UserProfile";
 import Review from "./pages/Review";
 import AdminDashboard from "./admin/pages/DashboardAdmin";
 import AdminReviews from "./admin/pages/AdminReview";
+import RoomTypeManager from "./admin/pages/RoomTypeManager";
 
 function Layout() {
     const location = useLocation();
@@ -65,6 +70,7 @@ function Layout() {
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="rooms" element={<RoomList />} />
+                    <Route path="room-types" element={<RoomTypeManager />} />
                     <Route path="reviews" element={<AdminReviews />} />
                     <Route path="users-pagination" element={<UserList />} />
                     <Route path="bookings" element={<BookingAdmin />}>
@@ -77,6 +83,10 @@ function Layout() {
                     </Route>
                     <Route path="rooms/create" element={<RoomCreat />} />
                     <Route path="rooms/edit/:id" element={<RoomsEdit />} />
+                    <Route path="booking-list" element={<BookingList />} />
+                    <Route path="check-in" element={<CheckIn />} />
+                    <Route path="check-out" element={<CheckOut />} />
+                    <Route path="service-manager" element={<ServiceManager />} />
                 </Route>
             </Routes>
 

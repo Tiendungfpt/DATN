@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 import Booking from "../models/Booking.js";
 import Review from "../models/Review.js";
 
+function resolveReviewRoomId(booking) {
+  const ids = booking.assigned_room_ids;
+  if (Array.isArray(ids) && ids.length > 0 && ids[0]) return ids[0];
+  return booking.room_id;
+}
+
 /**
  * =====================================================
  * USER: CREATE REVIEW
@@ -48,7 +54,7 @@ export const createReview = async (req, res) => {
     }
 
     // chỉ completed mới review
-    if (booking.status !== "completed") {
+    if (!(booking.status === "checked_out" || booking.status === "completed")) {
       return res.status(400).json({
         message: "Chỉ đánh giá sau khi checkout",
       });
@@ -61,10 +67,16 @@ export const createReview = async (req, res) => {
       });
     }
 
-    // chống review trùng phòng
+    const roomForReview = resolveReviewRoomId(booking);
+    if (!roomForReview) {
+      return res.status(400).json({
+        message: "Booking chưa có phòng gán để đánh giá",
+      });
+    }
+
     const existingRoomReview = await Review.findOne({
       user_id: userId,
-      room_id: booking.room_id,
+      room_id: roomForReview,
     });
 
     if (existingRoomReview) {
@@ -73,11 +85,10 @@ export const createReview = async (req, res) => {
       });
     }
 
-    // tạo review
     const review = await Review.create({
       user_id: userId,
       booking_id: booking._id,
-      room_id: booking.room_id,
+      room_id: roomForReview,
       rating: r,
       comment: String(comment || "").trim(),
     });

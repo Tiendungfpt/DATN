@@ -12,6 +12,8 @@
     "preview": "cross-env NODE_ENV=production node server"
   },
   "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "axios": "^1.13.6",
     "compression": "^1.8.1",
     "date-fns": "^4.1.0",

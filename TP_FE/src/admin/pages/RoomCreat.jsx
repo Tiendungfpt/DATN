@@ -135,7 +135,8 @@ function RoomsCreate() {
 
                 <select name="status" value={room.status} onChange={handleChange}>
                     <option value="available">Sẵn sàng cho đặt</option>
-                    <option value="booked">Đã đặt</option>
+                    <option value="occupied">occupied</option>
+                    <option value="maintenance">maintenance</option>
                 </select>
 
                 <button type="submit">Thêm phòng</button>

@@ -166,12 +166,7 @@ function HotelList() {
       <div className="row g-4">
         {rooms.map((room) => (
           <div className="col-md-6 col-lg-4" key={room._id}>
-            <Link
-              to={isAdmin ? "#" : `/booking/${room._id}`}
-              className="text-decoration-none"
-              onClick={(e) => isAdmin && e.preventDefault()}
-            >
-              <div className="card h-100 shadow border-0">
+            <div className="card h-100 shadow border-0">
                 <img
                   src={
                     room.image?.startsWith("http")
@@ -184,23 +179,35 @@ function HotelList() {
                   alt=""
                 />
 
-                <div className="card-body">
-                  <h5 className="fw-bold">{room.name}</h5>
+                <div className="card-body d-flex flex-column">
+                  <h5 className="fw-bold text-dark">{room.name}</h5>
 
                   <div className="mb-2">
                     ⭐ {ratings[room._id]?.avg ?? 0} / 5
                     <br />
-                    <small>
+                    <small className="text-muted">
                       ({ratings[room._id]?.total ?? 0} đánh giá)
                     </small>
                   </div>
 
-                  <h5 className="text-primary">
+                  <h5 className="text-primary mb-3">
                     {(room.price || 0).toLocaleString("vi-VN")}đ
                   </h5>
+
+                  {!isAdmin ? (
+                    <Link
+                      to={`/booking/${room._id}`}
+                      className="btn btn-primary mt-auto"
+                    >
+                      {"\u0110\u1eb7t ph\u00f2ng"}
+                    </Link>
+                  ) : (
+                    <p className="text-muted small mt-auto mb-0">
+                      {"Admin kh\u00f4ng \u0111\u1eb7t ph\u00f2ng qua trang kh\u00e1ch \u2014 d\u00f9ng qu\u1ea3n tr\u1ecb booking."}
+                    </p>
+                  )}
                 </div>
               </div>
-            </Link>
           </div>
         ))}
       </div>

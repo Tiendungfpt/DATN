@@ -11,30 +11,30 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [ratings, setRatings] = useState({});
   useEffect(() => {
-  const fetchRatings = async () => {
-    const ratingData = {};
-
-    await Promise.all(
-      rooms.map(async (room) => {
-        try {
-          const res = await fetch(
-            `http://localhost:3000/api/reviews/room/${room._id}/summary?aggregateByType=1`
-          );
-          const data = await res.json();
-          ratingData[room._id] = data;
-        } catch {
-          ratingData[room._id] = { avg: 0, total: 0 };
-        }
-      })
-    );
-
-    setRatings(ratingData);
-  };
-
-  if (rooms.length > 0) {
-    fetchRatings();
-  }
-}, [rooms]);
+    const list = Array.isArray(rooms) ? rooms : [];
+    const fetchRatings = async () => {
+      const ratingData = {};
+      await Promise.all(
+        list.map(async (room) => {
+          const rid = room?._id;
+          if (!rid) return;
+          try {
+            const res = await fetch(
+              `http://localhost:3000/api/reviews/room/${rid}/summary?aggregateByType=1`,
+            );
+            const data = await res.json();
+            ratingData[rid] = data;
+          } catch {
+            ratingData[rid] = { avg: 0, total: 0 };
+          }
+        }),
+      );
+      setRatings(ratingData);
+    };
+    if (list.length > 0) {
+      fetchRatings();
+    }
+  }, [rooms]);
 
   useEffect(() => {
     try {
@@ -53,7 +53,8 @@ export default function Home() {
         if (!res.ok) throw new Error(`Lỗi server: ${res.status}`);
 
         const data = await res.json();
-        const list = Array.isArray(data) ? data : data?.data || data?.result || [];
+        let list = Array.isArray(data) ? data : data?.data || data?.result || [];
+        if (!Array.isArray(list)) list = [];
 
         setRooms(list);
       } catch (err) {
@@ -92,6 +93,8 @@ export default function Home() {
     );
   }
 
+  const displayRooms = Array.isArray(rooms) ? rooms : [];
+
   return (
     <>
       <section
@@ -127,8 +130,8 @@ export default function Home() {
             <div>
               <h3 className="fw-bold mb-1">Ưu đãi nổi bật</h3>
               <p className="text-muted">
-                {rooms.length > 0
-                  ? `${rooms.length} loại phòng nổi bật`
+                {displayRooms.length > 0
+                  ? `${displayRooms.length} loại phòng nổi bật`
                   : "Khám phá các loại phòng nổi bật"}
               </p>
             </div>
@@ -137,13 +140,13 @@ export default function Home() {
             </Link>
           </div>
 
-          {rooms.length === 0 ? (
+          {displayRooms.length === 0 ? (
             <div className="text-center py-5">
               <p className="text-muted fs-5">Hiện chưa có phòng nào.</p>
             </div>
           ) : (
             <div className="row g-4">
-              {rooms.map((room) => (
+              {displayRooms.map((room) => (
                 <div className="col-md-6 col-lg-4" key={room._id}>
                   <div className="card h-100 border-0 shadow-sm overflow-hidden">
                     <img

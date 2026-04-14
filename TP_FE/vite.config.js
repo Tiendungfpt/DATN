@@ -7,4 +7,8 @@ export default defineConfig({
             jsxRuntime: "automatic",
         }),
     ],
+    server: {
+        host: true,
+        port: 5173,
+    },
 });

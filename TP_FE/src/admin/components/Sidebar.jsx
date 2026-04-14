@@ -36,6 +36,17 @@ export default function Sidebar() {
                 </li>
                 <li>
                     <NavLink
+                        to="/admin/room-types"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
+                        {"\ud83c\udfe8 Lo\u1ea1i ph\u00f2ng (danh m\u1ee5c)"}
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
                         to="/admin/users-pagination"
                         end
                         className={({ isActive }) =>

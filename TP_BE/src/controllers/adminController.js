@@ -1,6 +1,8 @@
 import User from "../models/User.js";
 import Rooms from "../models/rooms.js";
 import Booking from "../models/Booking.js";
+import Invoice from "../models/Invoice.js";
+import { getAllBookingsAdmin } from "./booking.js";
 
 function normalizeImageValue(imageValue) {
   const raw = String(imageValue || "").trim();
@@ -17,7 +19,7 @@ export const getDashboard = async (req, res) => {
     const totalUsers = await User.countDocuments();
     const totalRooms = await Rooms.countDocuments();
     // Đồng bộ với danh sách booking admin: chỉ tính booking đã thanh toán
-    const totalBookings = await Booking.countDocuments({ is_paid: true });
+    const totalBookings = await Booking.countDocuments({ status: { $ne: "cancelled" } });
 
     res.json({
       totalUsers,
@@ -162,19 +164,8 @@ export const deleteRoom = async (req, res) => {
 
 // ================= BOOKINGS =================
 
-export const getBookings = async (req, res) => {
-  try {
-    const bookings = await Booking.find({ is_paid: true })
-      .populate("user_id", "name email")
-      .populate("room_id", "name image price capacity room_no")
-      .populate("assigned_room_id", "name image price capacity room_no")
-      .sort({ createdAt: -1 })
-      .lean();
-    res.json(bookings);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+/** Same as GET /api/bookings — sort/filter via query */
+export const getBookings = getAllBookingsAdmin;
 
 export const deleteBooking = async (req, res) => {
   try {
@@ -189,23 +180,26 @@ export const deleteBooking = async (req, res) => {
 
 export const getRevenue = async (req, res) => {
   try {
-    const revenue = await Booking.aggregate([
-      { $match: { status: { $ne: "cancelled" } } },
+    const inv = await Invoice.aggregate([
+      { $match: { status: "paid" } },
+      { $group: { _id: null, totalRevenue: { $sum: "$grand_total" }, cnt: { $sum: 1 } } },
+    ]);
+    const fromInvoices = inv[0]?.totalRevenue || 0;
+    const legacy = await Booking.aggregate([
       {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$total_price" },
-          totalBookings: { $sum: 1 },
+        $match: {
+          status: { $in: ["checked_out", "completed"] },
+          invoice_id: null,
         },
       },
+      { $group: { _id: null, totalRevenue: { $sum: "$total_price" } } },
     ]);
-
-    res.json(
-      revenue[0] || {
-        totalRevenue: 0,
-        totalBookings: 0,
-      }
-    );
+    const legacySum = legacy[0]?.totalRevenue || 0;
+    const totalBookings = await Booking.countDocuments({ status: { $ne: "cancelled" } });
+    res.json({
+      totalRevenue: fromInvoices + legacySum,
+      totalBookings,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -216,10 +210,10 @@ export const getRevenue = async (req, res) => {
 export const getTopRooms = async (req, res) => {
   try {
     const topRooms = await Booking.aggregate([
-      { $match: { status: { $ne: "cancelled" } } },
+      { $match: { status: { $ne: "cancelled" }, room_type_id: { $ne: null } } },
       {
         $group: {
-          _id: "$room_id",
+          _id: "$room_type_id",
           totalBookings: { $sum: 1 },
           revenue: { $sum: "$total_price" },
         },
@@ -228,13 +222,13 @@ export const getTopRooms = async (req, res) => {
       { $limit: 5 },
       {
         $lookup: {
-          from: "rooms",
+          from: "roomtypes",
           localField: "_id",
           foreignField: "_id",
-          as: "room",
+          as: "roomType",
         },
       },
-      { $unwind: "$room" },
+      { $unwind: { path: "$roomType", preserveNullAndEmptyArrays: true } },
     ]);
 
     res.json(topRooms);

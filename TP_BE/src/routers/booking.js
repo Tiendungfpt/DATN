@@ -14,6 +14,9 @@ import {
   checkInBooking,
   checkOutBooking,
   downloadBookingInvoice,
+  addBookingServiceLine,
+  getBookingServiceLines,
+  getCheckOutPreview,
 } from "../controllers/booking.js";
 
 const bookingRouter = Router();
@@ -28,6 +31,10 @@ bookingRouter.put("/cancel/:id", checkAuth, cancelBooking);
 bookingRouter.put("/:id/check-in", checkAuth, checkAdmin, checkInBooking);
 bookingRouter.put("/:id/check-out", checkAuth, checkAdmin, checkOutBooking);
 bookingRouter.get("/:id/invoice", checkAuth, downloadBookingInvoice);
+
+bookingRouter.get("/:id/checkout-preview", checkAuth, checkAdmin, getCheckOutPreview);
+bookingRouter.get("/:id/services", checkAuth, checkAdmin, getBookingServiceLines);
+bookingRouter.post("/:id/services", checkAuth, checkAdmin, addBookingServiceLine);
 
 bookingRouter.get("/:id/assignable-rooms", checkAuth, checkAdmin, getAssignableRooms);
 bookingRouter.get("/:id", checkAuth, getBookingById);

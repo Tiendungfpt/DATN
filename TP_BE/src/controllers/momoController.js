@@ -28,10 +28,9 @@ class MoMoController {
         });
       }
 
-      const booking = await Booking.findById(bookingId).populate(
-        "room_id",
-        "name price",
-      );
+      const booking = await Booking.findById(bookingId)
+        .populate("room_id", "name price")
+        .populate("room_type_id", "name price");
 
       if (!booking) {
         return res.status(404).json({
@@ -40,14 +39,17 @@ class MoMoController {
         });
       }
 
-      const roomName = booking.room_id?.name || "Khách sạn";
+      const roomName =
+        booking.room_type_id?.name || booking.room_id?.name || "Khách sạn";
 
       const orderId = `BOOK_${booking._id}_${Date.now()}`;
       const amount =
-  booking.total_price ||
-  booking.total ||
-  booking.room_id?.price ||
-  0;
+        booking.estimated_room_total ||
+        booking.prepaid_amount ||
+        booking.total_price ||
+        booking.room_type_id?.price ||
+        booking.room_id?.price ||
+        0;
 
 const finalAmount = Math.round(amount);
       if (amount <= 0) {

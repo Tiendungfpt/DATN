@@ -144,7 +144,8 @@
   color: #1e40af;
 }
 
-.booking-admin-status.completed {
+.booking-admin-status.completed,
+.booking-admin-status.checked_out {
   background: #e0e7ff;
   color: #3730a3;
 }

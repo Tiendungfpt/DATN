@@ -52,7 +52,7 @@ export const getDashboardStats = async (req, res) => {
 
     // ===== BOOKING QUERY (OVERLAP) =====
     // Booking schema uses snake_case fields in this project.
-    const validRevenueStatuses = ["confirmed", "checked_in", "completed"];
+    const validRevenueStatuses = ["confirmed", "checked_in", "checked_out", "completed"];
 
     const currentBookings = await Booking.find({
       status: { $in: validRevenueStatuses },

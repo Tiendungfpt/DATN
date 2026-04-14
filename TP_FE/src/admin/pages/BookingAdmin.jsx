@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import "../components/BookingAdmin.css";
 
 function formatDate(d) {
@@ -8,19 +8,19 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString("vi-VN");
 }
 
-/** Nhãn trạng thái nghiệp vụ (đồng bộ backend) */
 function statusLabelVi(status) {
   switch (status) {
     case "pending":
-      return "Chờ xác nhận";
+      return "Cho xac nhan";
     case "confirmed":
       return "Đã xác nhận";
     case "checked_in":
-      return "Đang ở (đã check-in)";
+      return "Dang o (da check-in)";
+    case "checked_out":
     case "completed":
       return "Đã trả phòng (check-out)";
     case "cancelled":
-      return "Đã hủy";
+      return "Da huy";
     default:
       return status || "—";
   }
@@ -30,8 +30,6 @@ export default function BookingAdmin() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [assignableRoomsByBooking, setAssignableRoomsByBooking] = useState({});
-  const [selectedRoomByBooking, setSelectedRoomByBooking] = useState({});
   const [downloadingInvoiceByBooking, setDownloadingInvoiceByBooking] = useState({});
 
   const loadBookings = async () => {
@@ -42,17 +40,7 @@ export default function BookingAdmin() {
       const res = await axios.get("http://localhost:3000/api/admin/bookings", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const nextBookings = Array.isArray(res.data) ? res.data : [];
-      setBookings(nextBookings);
-      setSelectedRoomByBooking((prev) => {
-        const draft = { ...prev };
-        nextBookings.forEach((b) => {
-          if (!draft[b._id] && b?.assigned_room_id?._id) {
-            draft[b._id] = b.assigned_room_id._id;
-          }
-        });
-        return draft;
-      });
+      setBookings(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setError(err.response?.data?.message || "Không tải được danh sách booking");
     } finally {
@@ -64,45 +52,16 @@ export default function BookingAdmin() {
     loadBookings();
   }, []);
 
-  const loadAssignableRooms = async (bookingId) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(
-        `http://localhost:3000/api/bookings/${bookingId}/assignable-rooms`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      const rooms = Array.isArray(res.data?.rooms) ? res.data.rooms : [];
-      setAssignableRoomsByBooking((prev) => ({ ...prev, [bookingId]: rooms }));
-      if (rooms.length > 0) {
-        setSelectedRoomByBooking((prev) => ({
-          ...prev,
-          [bookingId]: prev[bookingId] || rooms[0]._id,
-        }));
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || "Không tải được danh sách phòng trống");
-    }
-  };
-
   const updateStatus = async (id, status) => {
     try {
       const token = localStorage.getItem("token");
-      const payload =
-        status === "confirmed"
-          ? { status, assigned_room_id: selectedRoomByBooking[id] }
-          : { status };
-      const res = await axios.put(
+      await axios.put(
         `http://localhost:3000/api/bookings/${id}`,
-        payload,
+        { status },
         { headers: { Authorization: `Bearer ${token}` } },
       );
-      const roomName =
-        res?.data?.booking?.assigned_room_id?.name || res?.data?.booking?.room_id?.name;
-      const roomNo = res?.data?.booking?.assigned_room_id?.room_no || "";
-      if (status === "confirmed" && roomName) {
-        alert(
-          `Đã xác nhận booking. Phòng cụ thể đã cấp cho user: ${roomName}${roomNo ? ` (${roomNo})` : ""}`,
-        );
+      if (status === "confirmed") {
+        alert("Đã xác nhận booking. Gán phòng khi check-in.");
       }
       loadBookings();
     } catch (err) {
@@ -123,38 +82,6 @@ export default function BookingAdmin() {
     }
   };
 
-  const doCheckIn = async (id) => {
-    if (!window.confirm("Xác nhận khách đã nhận phòng (check-in)?")) return;
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `http://localhost:3000/api/bookings/${id}/check-in`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      alert("Check-in thành công — khách đang ở.");
-      loadBookings();
-    } catch (err) {
-      alert(err.response?.data?.message || "Check-in thất bại");
-    }
-  };
-
-  const doCheckOut = async (id) => {
-    if (!window.confirm("Xác nhận khách đã trả phòng (check-out)?")) return;
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `http://localhost:3000/api/bookings/${id}/check-out`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      alert("Check-out thành công — booking hoàn tất, khách có thể đánh giá.");
-      loadBookings();
-    } catch (err) {
-      alert(err.response?.data?.message || "Check-out thất bại");
-    }
-  };
-
   const downloadInvoiceAsAdmin = async (bookingId) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -163,13 +90,10 @@ export default function BookingAdmin() {
     }
     try {
       setDownloadingInvoiceByBooking((prev) => ({ ...prev, [bookingId]: true }));
-      const res = await axios.get(
-        `http://localhost:3000/api/bookings/${bookingId}/invoice`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: "blob",
-        },
-      );
+      const res = await axios.get(`http://localhost:3000/api/bookings/${bookingId}/invoice`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
       const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = blobUrl;
@@ -187,10 +111,9 @@ export default function BookingAdmin() {
     }
   };
 
-  /** Bước 1–4: chờ xác nhận → đã xác nhận → đang ở → đã trả phòng */
   function stayFlowStep(status) {
     const steps = [
-      { key: "s1", label: "Chờ xác nhận" },
+      { key: "s1", label: "Cho xac nhan" },
       { key: "s2", label: "Đã xác nhận" },
       { key: "s3", label: "Check-in" },
       { key: "s4", label: "Check-out" },
@@ -198,7 +121,7 @@ export default function BookingAdmin() {
     if (status === "cancelled") {
       return (
         <div className="booking-admin-flow booking-admin-flow--cancelled">
-          <span>Đơn đã hủy — không áp dụng luồng lưu trú</span>
+          <span>Cancelled</span>
         </div>
       );
     }
@@ -206,10 +129,10 @@ export default function BookingAdmin() {
     if (status === "pending") currentIdx = 0;
     else if (status === "confirmed") currentIdx = 1;
     else if (status === "checked_in") currentIdx = 2;
-    else if (status === "completed") currentIdx = 3;
+    else if (status === "checked_out" || status === "completed") currentIdx = 3;
 
     return (
-      <div className="booking-admin-flow" aria-label="Luồng check-in check-out">
+      <div className="booking-admin-flow" aria-label="Stay flow">
         {steps.map((s, i) => (
           <div
             key={s.key}
@@ -229,9 +152,14 @@ export default function BookingAdmin() {
       pending: bookings.filter((b) => b.status === "pending"),
       confirmed: bookings.filter((b) => b.status === "confirmed"),
       checked_in: bookings.filter((b) => b.status === "checked_in"),
-      completed: bookings.filter((b) => b.status === "completed"),
+      completed: bookings.filter(
+        (b) => b.status === "checked_out" || b.status === "completed",
+      ),
       other: bookings.filter(
-        (b) => !["pending", "confirmed", "checked_in", "completed"].includes(b.status),
+        (b) =>
+          !["pending", "confirmed", "checked_in", "checked_out", "completed"].includes(
+            b.status,
+          ),
       ),
     }),
     [bookings],
@@ -244,24 +172,32 @@ export default function BookingAdmin() {
         <strong>Khách:</strong> {b.user_id?.name || "—"} ({b.user_id?.email || "—"})
       </p>
       <p>
-        <strong>Loại phòng:</strong> {b.room_id?.name || "—"}
+        <strong>Loại phòng:</strong> {b.room_type_id?.name || b.room_id?.name || "—"}
       </p>
       <p>
-        <strong>Phòng cụ thể:</strong>{" "}
-        {b.assigned_room_id?.name
-          ? `${b.assigned_room_id.name}${b.assigned_room_id.room_no ? ` (${b.assigned_room_id.room_no})` : ""}`
-          : "Chưa xếp"}
+        <strong>Phong cu the:</strong>{" "}
+        {Array.isArray(b.assigned_room_ids) && b.assigned_room_ids.length > 0
+          ? b.assigned_room_ids
+              .map(
+                (r) =>
+                  `${r?.name || ""}${r?.room_no ? ` (${r.room_no})` : ""}`.trim(),
+              )
+              .filter(Boolean)
+              .join(", ")
+          : b.assigned_room_id?.name
+            ? `${b.assigned_room_id.name}${b.assigned_room_id.room_no ? ` (${b.assigned_room_id.room_no})` : ""}`
+            : "Chưa xếp (check-in)"}
       </p>
       <p>
         <strong>Ngày:</strong> {formatDate(b.check_in_date)} - {formatDate(b.check_out_date)}
       </p>
       <p>
-        <strong>Tổng tiền:</strong> {(b.total_price || 0).toLocaleString("vi-VN")} đ
+        <strong>Tong tien:</strong> {(b.total_price || 0).toLocaleString("vi-VN")} đ
       </p>
       <p className="booking-admin-status-row">
         <strong>Trạng thái:</strong>{" "}
         <span className={`booking-admin-status ${b.status}`}>{statusLabelVi(b.status)}</span>
-        {b.status === "completed" ? (
+        {b.status === "checked_out" || b.status === "completed" ? (
           <span
             className={`booking-admin-review-badge ${b.isReviewed ? "reviewed" : "pending-review"}`}
           >
@@ -270,64 +206,49 @@ export default function BookingAdmin() {
         ) : null}
       </p>
       <div className="booking-admin-actions">
-        {(b.status === "pending" || b.status === "confirmed") && (
-          <>
-            <button className="btn-confirm" type="button" onClick={() => loadAssignableRooms(b._id)}>
-              Chọn phòng
-            </button>
-            {Array.isArray(assignableRoomsByBooking[b._id]) &&
-            assignableRoomsByBooking[b._id].length > 0 ? (
-              <select
-                value={selectedRoomByBooking[b._id] || ""}
-                onChange={(e) =>
-                  setSelectedRoomByBooking((prev) => ({
-                    ...prev,
-                    [b._id]: e.target.value,
-                  }))
-                }
-              >
-                {assignableRoomsByBooking[b._id].map((room) => (
-                  <option key={room._id} value={room._id}>
-                    {(room.name || "Phòng")} {room.room_no ? `(${room.room_no})` : ""}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-            <button
-              type="button"
-              className="btn-confirm"
-              onClick={() => updateStatus(b._id, "confirmed")}
-              disabled={!selectedRoomByBooking[b._id] && !b.assigned_room_id?._id}
-            >
-              Xác nhận đặt phòng
-            </button>
-          </>
+        {b.status === "pending" && (
+          <button type="button" className="btn-confirm" onClick={() => updateStatus(b._id, "confirmed")}>
+            Xác nhận đặt phòng
+          </button>
         )}
         {b.status === "confirmed" && (
-          <button type="button" className="btn-checkin" onClick={() => doCheckIn(b._id)}>
-            Check-in khách
-          </button>
+          <Link className="btn-checkin" to={`/admin/check-in?bookingId=${b._id}`} style={{ display: "inline-block" }}>
+            Check-in (CCCD + chọn phòng)
+          </Link>
         )}
         {b.status === "checked_in" && (
-          <button type="button" className="btn-checkout" onClick={() => doCheckOut(b._id)}>
-            Check-out (trả phòng)
-          </button>
-        )}
-        {b.status !== "completed" && (
-          <button type="button" className="btn-cancel" onClick={() => updateStatus(b._id, "cancelled")}>
-            Hủy booking
-          </button>
-        )}
-        {b.assigned_room_id?._id && ["confirmed", "checked_in", "completed"].includes(b.status) && (
-          <button
-            type="button"
+          <Link
             className="btn-checkout"
-            onClick={() => downloadInvoiceAsAdmin(b._id)}
-            disabled={Boolean(downloadingInvoiceByBooking[b._id])}
+            to={`/admin/check-out?bookingId=${b._id}`}
+            style={{ display: "inline-block" }}
           >
-            {downloadingInvoiceByBooking[b._id] ? "Đang xuất hóa đơn..." : "Xuất hóa đơn PDF"}
+            Check-out & hóa đơn
+          </Link>
+        )}
+        {b.status === "checked_in" && (
+          <Link
+            to={`/admin/service-manager?bookingId=${b._id}`}
+            style={{ display: "inline-block", marginLeft: 8 }}
+          >
+            Dịch vụ phát sinh
+          </Link>
+        )}
+        {b.status !== "checked_out" && b.status !== "completed" && (
+          <button type="button" className="btn-cancel" onClick={() => updateStatus(b._id, "cancelled")}>
+            Huy booking
           </button>
         )}
+        {(b.status === "checked_out" || b.status === "completed") &&
+          (b.invoice_id?._id || b.invoice_id) && (
+            <button
+              type="button"
+              className="btn-checkout"
+              onClick={() => downloadInvoiceAsAdmin(b._id)}
+              disabled={Boolean(downloadingInvoiceByBooking[b._id])}
+            >
+              {downloadingInvoiceByBooking[b._id] ? "Đang xuất hóa đơn..." : "Xuất hóa đơn PDF"}
+            </button>
+          )}
         <button type="button" className="btn-remove" onClick={() => removeBooking(b._id)}>
           Xóa
         </button>
@@ -342,7 +263,10 @@ export default function BookingAdmin() {
     <div className="booking-admin-page">
       <h2>Quản lý booking</h2>
       <p className="booking-admin-subtitle">
-        Theo dõi check-in / check-out, xác nhận phòng và trạng thái đánh giá của khách.
+        Xác nhận không gán phòng; check-in nhập CCCD và chọn phòng; check-out mới tạo hóa đơn.
+      </p>
+      <p>
+        <Link to="/admin/booking-list">Danh sach loc / sap xep</Link>
       </p>
       <Outlet
         context={{

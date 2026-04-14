@@ -1,3 +1,7 @@
+#root {
+  min-height: 100vh;
+}
+
 .hover-card {
     transition: all 0.3s ease;
 }

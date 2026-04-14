@@ -87,6 +87,7 @@ export async function searchRooms(req, res) {
       $or: [
         { room_id: { $in: candidateRoomIds } },
         { assigned_room_id: { $in: candidateRoomIds } },
+        { assigned_room_ids: { $in: candidateRoomIds } },
       ],
     })
       .select("room_id assigned_room_id")
@@ -98,6 +99,10 @@ export async function searchRooms(req, res) {
       const aid = b.assigned_room_id != null ? String(b.assigned_room_id) : null;
       if (rid && candidateIdStrSet.has(rid)) busyRoomIdSet.add(rid);
       if (aid && candidateIdStrSet.has(aid)) busyRoomIdSet.add(aid);
+      for (const x of b.assigned_room_ids || []) {
+        const sid = x != null ? String(x) : null;
+        if (sid && candidateIdStrSet.has(sid)) busyRoomIdSet.add(sid);
+      }
     }
     const availableRooms = candidateRooms.filter(
       (room) => !busyRoomIdSet.has(String(room._id)),
