@@ -1,0 +1,94 @@
+.acc-page {
+  padding-bottom: 40px;
+}
+
+.acc-hero {
+  padding: 54px 0 26px;
+  background: #fff;
+}
+
+.acc-hero-inner h1 {
+  font-family: var(--hh-font-serif);
+  font-weight: 600;
+  margin: 0 0 10px;
+  font-size: 32px;
+  color: #111827;
+}
+
+.acc-hero-inner p {
+  margin: 0;
+  color: rgba(17, 24, 39, 0.7);
+  max-width: 760px;
+  line-height: 1.55;
+}
+
+.acc-list {
+  padding-top: 18px;
+}
+
+.acc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 22px;
+}
+
+.acc-card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.acc-image {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  display: block;
+}
+
+.acc-body {
+  padding: 16px 16px 14px;
+}
+
+.acc-title {
+  font-size: 18px;
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.acc-meta {
+  font-size: 12px;
+  color: rgba(17, 24, 39, 0.65);
+  margin-bottom: 10px;
+}
+
+.acc-desc {
+  font-size: 13px;
+  color: rgba(17, 24, 39, 0.75);
+  line-height: 1.5;
+  min-height: 56px;
+  margin: 0 0 14px;
+}
+
+.acc-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.acc-link {
+  font-size: 13px;
+  text-decoration: none;
+  color: rgba(17, 24, 39, 0.8);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.3);
+  padding-bottom: 2px;
+}
+
+.acc-muted {
+  color: rgba(17, 24, 39, 0.6);
+}
+
+.acc-error {
+  color: #b91c1c;
+}
+

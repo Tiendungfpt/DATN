@@ -21,7 +21,7 @@ export const getBookingById = (id) => {
 };
 
 export const cancelBooking = (id) => {
-  return api.put(`/bookings/cancel/${id}`);
+  return api.put(`/bookings/${id}/cancel`);
 };
 
 export const deleteBooking = (id) => {
@@ -31,4 +31,12 @@ export const deleteBooking = (id) => {
 /** PUT /api/bookings/payment/:id */
 export const payBooking = (id, body = {}) => {
   return api.put(`/bookings/payment/${id}`, body);
+};
+
+export const confirmBooking = (id) => {
+  return api.put(`/bookings/${id}/confirm`);
+};
+
+export const markNoShowBooking = (id) => {
+  return api.put(`/bookings/${id}/no-show`);
 };

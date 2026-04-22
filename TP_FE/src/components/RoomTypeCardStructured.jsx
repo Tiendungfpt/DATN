@@ -14,6 +14,10 @@ function RoomTypeCardStructured({
   showBookButton = true,
 }) {
   const isSoldOut = Number(availableCount) <= 0;
+  const roomTypeId = String(room?.roomType?._id ?? room?.roomType ?? room?.room_type_id ?? "");
+  const canUseRoomType = Boolean(roomTypeId) && roomTypeId !== "undefined" && roomTypeId !== "null";
+  const detailHref = canUseRoomType ? `/hang-phong/${roomTypeId}` : `/booking/${room._id}`;
+  const bookHref = canUseRoomType ? `/book?room_type_id=${encodeURIComponent(roomTypeId)}` : `/book`;
 
   return (
     <article className={`rt-structured-card${isSoldOut ? " is-sold-out" : ""}`}>
@@ -53,8 +57,8 @@ function RoomTypeCardStructured({
           </p>
 
           <div className="rt-structured-actions">
-            <Link to={`/booking/${room._id}`} className="rt-structured-link">
-              Xem chi tiết phòng
+            <Link to={detailHref} className="rt-structured-link">
+              Xem chi tiết
             </Link>
 
             {showBookButton && (
@@ -63,7 +67,7 @@ function RoomTypeCardStructured({
                   Hết phòng
                 </button>
               ) : (
-                <Link to={`/booking/${room._id}`} className="rt-structured-book-btn">
+                <Link to={bookHref} className="rt-structured-book-btn">
                   Đặt phòng
                 </Link>
               )

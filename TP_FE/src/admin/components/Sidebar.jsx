@@ -1,9 +1,45 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 export default function Sidebar() {
+    const navigate = useNavigate();
+    const [me, setMe] = useState(null);
+    const token = localStorage.getItem("token");
+
+    useEffect(() => {
+        const cached = JSON.parse(localStorage.getItem("user") || "null");
+        if (cached) setMe(cached);
+        if (!token) return;
+        axios
+            .get("/api/users/profile", { headers: { Authorization: `Bearer ${token}` } })
+            .then((res) => {
+                const merged = { ...(cached || {}), ...(res.data || {}) };
+                setMe(merged);
+                localStorage.setItem("user", JSON.stringify(merged));
+            })
+            .catch(() => {
+                // ignore
+            });
+    }, [token]);
+
     return (
         <div className="sidebar">
+            <div className="sidebar-profile" role="button" tabIndex={0} onClick={() => navigate("/thong-tin-tai-khoan?tab=profile")}>
+                <div className="sidebar-avatar">
+                    {me?.avatar ? (
+                        <img src={`/uploads/${me.avatar}`} alt="Avatar" />
+                    ) : (
+                        <span>{String(me?.name || "A").trim().charAt(0).toUpperCase() || "A"}</span>
+                    )}
+                </div>
+                <div className="sidebar-profile-meta">
+                    <div className="sidebar-profile-name">{me?.name || "Admin"}</div>
+                    <div className="sidebar-profile-role">{me?.role === "admin" ? "Quản trị viên" : "Người dùng"}</div>
+                </div>
+            </div>
+
             <Link to="/" className="sidebar-title-link">
                 <h2 className="sidebar-title">Thịnh Phát Hotel</h2>
             </Link>
@@ -130,6 +166,18 @@ export default function Sidebar() {
                         }
                     >
                         📋 Danh sách Review
+                    </NavLink>
+                </li>
+
+                <li>
+                    <NavLink
+                        to="/admin/services-catalog"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
+                        🧾 Quản lý dịch vụ
                     </NavLink>
                 </li>
 

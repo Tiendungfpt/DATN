@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE = "http://localhost:3000/api/room-types/availability";
+const BASE = "/api/room-types/availability";
 
 export async function fetchRoomTypeAvailability(params = {}) {
   const res = await axios.get(BASE, { params });
@@ -8,7 +8,7 @@ export async function fetchRoomTypeAvailability(params = {}) {
 }
 
 export async function fetchRoomTypeCatalog() {
-  const res = await axios.get("http://localhost:3000/api/room-types");
+  const res = await axios.get("/api/room-types");
   return Array.isArray(res.data) ? res.data : [];
 }
 

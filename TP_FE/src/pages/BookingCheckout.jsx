@@ -13,14 +13,14 @@ function BookingCheckout() {
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("payWithATM");
-  const [paymentMode, setPaymentMode] = useState("full");
-  const [depositAmount, setDepositAmount] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState("payWithATM"); 
+  const [payDepositNow, setPayDepositNow] = useState(true);
 
   const total = Number(checkoutData?.total) || 0;
   const bookingType = checkoutData?.bookingType === "hourly" ? "hourly" : "overnight";
   const stayHours = Math.max(1, Number.parseInt(String(checkoutData?.stayHours || 0), 10) || 1);
-  const prepaidAmount = paymentMode === "full" ? total : depositAmount;
+  const requiredDeposit = Math.max(0, Number(checkoutData?.depositTotal) || 0);
+  const prepaidAmount = payDepositNow ? requiredDeposit : 0;
   const checkInDate = checkoutData?.checkInDate ? new Date(checkoutData.checkInDate) : null;
   const checkOutDate = checkoutData?.checkOutDate ? new Date(checkoutData.checkOutDate) : null;
 
@@ -37,19 +37,10 @@ function BookingCheckout() {
   }, []);
 
   useEffect(() => {
-    if (paymentMode !== "deposit") {
-      setDepositAmount(0);
-      return;
+    if (requiredDeposit <= 0) {
+      setPayDepositNow(false);
     }
-    if (total <= 0) {
-      setDepositAmount(0);
-      return;
-    }
-    setDepositAmount((prev) => {
-      if (prev <= 0 || prev >= total) return Math.floor(total * 0.3);
-      return prev;
-    });
-  }, [paymentMode, total]);
+  }, [requiredDeposit]);
 
   const lineItems = useMemo(
     () =>
@@ -92,15 +83,15 @@ function BookingCheckout() {
     }
     if (!checkoutData || !checkInDate || !checkOutDate || total <= 0) {
       alert("Thiếu dữ liệu đặt phòng. Vui lòng quay lại chọn phòng.");
-      navigate(`/booking/${checkoutData?.roomId || ""}`);
+      navigate("/book");
       return;
     }
     if (lineItems.length === 0) {
       alert("Không có dòng đặt phòng hợp lệ. Vui lòng thử lại.");
       return;
     }
-    if (paymentMode === "deposit" && (depositAmount <= 0 || depositAmount >= total)) {
-      alert("Số tiền đặt cọc phải lớn hơn 0 và nhỏ hơn tổng tiền phòng.");
+    if (requiredDeposit <= 0) {
+      alert("Loại phòng chưa được cấu hình tiền cọc. Vui lòng liên hệ khách sạn.");
       return;
     }
     if (!guestName.trim() || !guestPhone.trim() || !guestEmail.trim()) {
@@ -123,15 +114,16 @@ function BookingCheckout() {
         bookingType === "hourly"
           ? checkOutDate.toISOString()
           : checkOutDate.toISOString().split("T")[0],
-      payment_mode: paymentMode,
-      prepaid_amount: prepaidAmount,
+      // HanoiHotel policy: deposit required to confirm; allow creating pending booking when paying later
+      payment_mode: "deposit",
+      prepaid_amount: 0,
     };
 
     try {
       setLoading(true);
       setError("");
 
-      const bookingRes = await axios.post("http://localhost:3000/api/bookings", payload, {
+      const bookingRes = await axios.post("/api/bookings", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -140,17 +132,23 @@ function BookingCheckout() {
         throw new Error("Không lấy được bookingId để thanh toán");
       }
 
-      const momoRes = await axios.post("http://localhost:3000/api/momo/create", {
-        bookingId,
-        requestType: paymentMethod,
-      });
+      if (payDepositNow) {
+        const momoRes = await axios.post("/api/momo/create", {
+          bookingId,
+          requestType: paymentMethod,
+          type: "deposit",
+        });
 
-      if (momoRes?.data?.success && momoRes?.data?.payUrl) {
-        window.location.href = momoRes.data.payUrl;
-        return;
+        if (momoRes?.data?.success && momoRes?.data?.payUrl) {
+          window.location.href = momoRes.data.payUrl;
+          return;
+        }
+
+        throw new Error(momoRes?.data?.message || "Không tạo được link thanh toán MoMo");
       }
 
-      throw new Error(momoRes?.data?.message || "Không tạo được link thanh toán MoMo");
+      alert("Đặt phòng đã được tạo. Vui lòng thanh toán tiền cọc để được xác nhận.");
+      navigate("/thong-tin-tai-khoan?tab=history");
     } catch (err) {
       const errorMsg =
         err.response?.data?.message || err.message || "Đặt phòng thất bại. Vui lòng thử lại!";
@@ -186,7 +184,7 @@ function BookingCheckout() {
           <button
             type="button"
             className="checkout-back"
-            onClick={() => navigate(`/booking/${checkoutData.roomId}`)}
+            onClick={() => navigate("/book")}
           >
             ←
           </button>
@@ -203,7 +201,7 @@ function BookingCheckout() {
                 src={
                   checkoutData.roomImage?.startsWith("http")
                     ? checkoutData.roomImage
-                    : `http://localhost:3000/uploads/${checkoutData.roomImage}`
+                  : `/uploads/${checkoutData.roomImage}`
                 }
                 alt={checkoutData.roomName}
                 onError={(e) => {
@@ -294,33 +292,38 @@ function BookingCheckout() {
           <section className="checkout-card">
             <h3>Chọn phương thức thanh toán</h3>
             <div className="checkout-form-group">
-              <label>Hình thức thanh toán</label>
-              <select
-                value={paymentMode}
-                onChange={(e) => setPaymentMode(e.target.value)}
-                disabled={loading}
-              >
-                <option value="full">Thanh toán toàn bộ</option>
-                <option value="deposit">Đặt cọc một phần</option>
-              </select>
+              <label>Thanh toán tiền cọc (bắt buộc để xác nhận)</label>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="radio"
+                    name="pay_deposit_now"
+                    value="now"
+                    checked={payDepositNow}
+                    onChange={() => setPayDepositNow(true)}
+                    disabled={loading}
+                  />
+                  <span>Thanh toán ngay</span>
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="radio"
+                    name="pay_deposit_now"
+                    value="later"
+                    checked={!payDepositNow}
+                    onChange={() => setPayDepositNow(false)}
+                    disabled={loading}
+                  />
+                  <span>Thanh toán sau (booking sẽ ở trạng thái chờ)</span>
+                </label>
+              </div>
             </div>
 
-            {paymentMode === "deposit" && (
-              <div className="checkout-form-group">
-                <label>Số tiền đặt cọc</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={Math.max(1, total - 1)}
-                  value={depositAmount}
-                  onChange={(e) =>
-                    setDepositAmount(Number.parseInt(e.target.value || "0", 10) || 0)
-                  }
-                  disabled={loading || total <= 0}
-                />
-                <small>Phải lớn hơn 0 và nhỏ hơn {total.toLocaleString("vi-VN")}₫</small>
-              </div>
-            )}
+            <div className="checkout-form-group">
+              <label>Tiền cọc cần thanh toán</label>
+              <input type="text" value={requiredDeposit.toLocaleString("vi-VN")} disabled />
+              <small>Tiền cọc được cấu hình theo loại phòng (không chỉnh sửa).</small>
+            </div>
 
             <div className="checkout-form-group">
               <label>Cổng thanh toán MoMo</label>

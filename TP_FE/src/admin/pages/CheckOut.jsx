@@ -5,7 +5,7 @@ import "../components/BookingAdmin.css";
 
 /**
  * GET /api/bookings/:id/checkout-preview
- * POST /api/checkout/:bookingId — totals + creates Invoice (never before this).
+ * PUT /api/bookings/:id/check-out — totals + creates Invoice (never before this).
  */
 export default function CheckOut() {
   const [params] = useSearchParams();
@@ -14,6 +14,7 @@ export default function CheckOut() {
   const [preview, setPreview] = useState(null);
   const [err, setErr] = useState("");
   const [payMethod, setPayMethod] = useState("cash");
+  const [overrideTimeWindow, setOverrideTimeWindow] = useState(false);
 
   const token = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
@@ -21,10 +22,7 @@ export default function CheckOut() {
     if (!bookingId) return;
     (async () => {
       try {
-        const res = await axios.get(
-          `http://localhost:3000/api/bookings/${bookingId}/checkout-preview`,
-          { headers: token() },
-        );
+        const res = await axios.get(`/api/bookings/${bookingId}/folio`, { headers: token() });
         setPreview(res.data);
       } catch (e) {
         setErr(e.response?.data?.message || "Cannot load preview");
@@ -35,9 +33,9 @@ export default function CheckOut() {
   const settle = async () => {
     setErr("");
     try {
-      await axios.post(
-        `http://localhost:3000/api/checkout/${bookingId}`,
-        { payment_method: payMethod, settle_balance: true },
+      await axios.put(
+        `/api/bookings/${bookingId}/check-out`,
+        { payment_method: payMethod, settle_balance: true, override_time_window: overrideTimeWindow },
         { headers: token() },
       );
       navigate("/admin/bookings/completed");
@@ -70,6 +68,14 @@ export default function CheckOut() {
               <option value="card">card</option>
               <option value="momo">momo</option>
             </select>
+          </label>
+          <label style={{ display: "block", marginTop: 12 }}>
+            <input
+              type="checkbox"
+              checked={overrideTimeWindow}
+              onChange={(e) => setOverrideTimeWindow(e.target.checked)}
+            />{" "}
+            Override khung giờ check-out (trước 12:00)
           </label>
           <p>
             <button type="button" onClick={settle}>

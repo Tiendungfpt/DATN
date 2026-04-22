@@ -17,6 +17,7 @@ import BookingList from "./admin/pages/BookingList";
 import CheckIn from "./admin/pages/CheckIn";
 import CheckOut from "./admin/pages/CheckOut";
 import ServiceManager from "./admin/pages/ServiceManager";
+import ServiceCatalog from "./admin/pages/ServiceCatalog";
 import BookingAllPage from "./admin/pages/BookingAllPage";
 import Booking from "./pages/Booking";
 import RoomsEdit from "./admin/pages/RoomEdit";
@@ -28,6 +29,7 @@ import ResetPassword from "./auth/resetPassword";
 import RoomsList from "./pages/RoomList";
 import RoomDetail from "./pages/RoomDetail";
 import HotelList from "./pages/HotelList";
+import Accommodations from "./pages/Accommodations";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import BookingCheckout from "./pages/BookingCheckout";
@@ -36,6 +38,9 @@ import Review from "./pages/Review";
 import AdminDashboard from "./admin/pages/DashboardAdmin";
 import AdminReviews from "./admin/pages/AdminReview";
 import RoomTypeManager from "./admin/pages/RoomTypeManager";
+import SelectRoom from "./pages/book/SelectRoom";
+import GuestInfo from "./pages/book/GuestInfo";
+import RoomTypeDetail from "./pages/RoomTypeDetail";
 
 function Layout() {
     const location = useLocation();
@@ -53,16 +58,19 @@ function Layout() {
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 <Route path="/dat-phong" element={<RoomsList />} />
-                <Route path="/khach-san" element={<HotelList />} />
+                <Route path="/khach-san" element={<Accommodations />} />
                 <Route path="/lien-he" element={<Contact />} />
                 <Route path="/booking/checkout" element={<BookingCheckout />} />
                 <Route path="/booking/:roomId" element={<Booking />} />
+                <Route path="/book" element={<SelectRoom />} />
+                <Route path="/book/guest" element={<GuestInfo />} />
                 <Route
                     path="/booking-list"
                     element={<Navigate to="/thong-tin-tai-khoan?tab=history" replace />}
                 />
                 <Route path="/phong/:id" element={<RoomDetail />} />
                 <Route path="/khach-san/:id" element={<HotelList />} />
+                <Route path="/hang-phong/:id" element={<RoomTypeDetail />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/payment-failed" element={<PaymentFailed />} />
                 <Route path="/thong-tin-tai-khoan" element={<UserProfile />}></Route>
@@ -89,6 +97,7 @@ function Layout() {
                     <Route path="check-in" element={<CheckIn />} />
                     <Route path="check-out" element={<CheckOut />} />
                     <Route path="service-manager" element={<ServiceManager />} />
+                    <Route path="services-catalog" element={<ServiceCatalog />} />
                 </Route>
             </Routes>
 

@@ -7,7 +7,15 @@ function ProfileSidebar({ user, activeTab, onTabChange }) {
             className="mx-auto bg-primary text-white d-flex align-items-center justify-content-center rounded-circle mb-3 shadow"
             style={{ width: "90px", height: "90px", fontSize: "32px" }}
           >
-            {user?.name?.charAt(0).toUpperCase() || "U"}
+            {user?.avatar ? (
+              <img
+                src={`/uploads/${user.avatar}`}
+                alt="Avatar"
+                style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }}
+              />
+            ) : (
+              user?.name?.charAt(0).toUpperCase() || "U"
+            )}
           </div>
           <h5 className="fw-bold mb-1">{user?.name}</h5>
           <p className="text-muted small mb-0">{user?.email}</p>

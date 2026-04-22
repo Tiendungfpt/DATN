@@ -17,7 +17,7 @@ export default function NotificationList() {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:3000/api/users/notifications", {
+      const res = await axios.get("/api/users/notifications", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setItems(Array.isArray(res.data?.items) ? res.data.items : []);
@@ -37,7 +37,7 @@ export default function NotificationList() {
   const markOneRead = async (id) => {
     try {
       await axios.patch(
-        `http://localhost:3000/api/users/notifications/${id}/read`,
+        `/api/users/notifications/${id}/read`,
         {},
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -51,7 +51,7 @@ export default function NotificationList() {
   const markAllRead = async () => {
     try {
       await axios.patch(
-        "http://localhost:3000/api/users/notifications/read-all",
+        "/api/users/notifications/read-all",
         {},
         { headers: { Authorization: `Bearer ${token}` } },
       );

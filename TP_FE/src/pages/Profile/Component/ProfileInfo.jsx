@@ -3,6 +3,9 @@ import axios from "axios";
 
 function ProfileInfo({ user }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -18,15 +21,49 @@ function ProfileInfo({ user }) {
   const handleSave = async () => {
     try {
       const res = await axios.put(
-        "http://localhost:3000/api/users/profile",
+        "/api/users/profile",
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setIsEditing(false);
       alert("✅ Cập nhật thông tin thành công!");
-      window.location.reload(); 
+      const updated = res?.data?.user || null;
+      if (updated) {
+        localStorage.setItem("user", JSON.stringify(updated));
+      }
+      window.location.reload();
     } catch (err) {
       alert(err.response?.data?.message || "Cập nhật thất bại.");
+    }
+  };
+
+  const handlePickAvatar = (e) => {
+    const f = e.target.files?.[0] || null;
+    setAvatarFile(f);
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    setAvatarPreview(f ? URL.createObjectURL(f) : "");
+  };
+
+  const handleUploadAvatar = async () => {
+    if (!avatarFile) {
+      alert("Vui lòng chọn ảnh.");
+      return;
+    }
+    const form = new FormData();
+    form.append("avatar", avatarFile);
+    try {
+      setUploadingAvatar(true);
+      const res = await axios.put("/api/users/avatar", form, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const updated = res?.data?.user || null;
+      if (updated) localStorage.setItem("user", JSON.stringify(updated));
+      alert("✅ Đã cập nhật ảnh đại diện!");
+      window.location.reload();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không cập nhật được ảnh đại diện.");
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -43,6 +80,52 @@ function ProfileInfo({ user }) {
             Chỉnh sửa
           </button>
         )}
+      </div>
+
+      <div className="d-flex flex-column flex-md-row gap-4 align-items-start mb-5">
+        <div style={{ minWidth: 220 }}>
+          <label className="form-label fw-semibold text-muted">Ảnh đại diện</label>
+          <div className="d-flex align-items-center gap-3">
+            <img
+              src={
+                avatarPreview
+                  ? avatarPreview
+                  : user?.avatar
+                    ? `/uploads/${user.avatar}`
+                    : "https://ui-avatars.com/api/?background=111827&color=fff&name=User"
+              }
+              alt="Avatar"
+              style={{
+                width: 74,
+                height: 74,
+                borderRadius: "50%",
+                objectFit: "cover",
+                border: "1px solid rgba(0,0,0,0.08)",
+              }}
+            />
+            <div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePickAvatar}
+                disabled={uploadingAvatar}
+              />
+              <div className="d-flex gap-2 mt-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={handleUploadAvatar}
+                  disabled={uploadingAvatar || !avatarFile}
+                >
+                  {uploadingAvatar ? "Đang tải..." : "Cập nhật ảnh"}
+                </button>
+              </div>
+              <small className="text-muted d-block mt-1">
+                Khuyến nghị ảnh vuông, &lt; 2MB.
+              </small>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="row g-4">

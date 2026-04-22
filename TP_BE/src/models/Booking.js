@@ -22,6 +22,12 @@ const bookingSchema = new mongoose.Schema(
             ref: "RoomType",
             required: true,
           },
+          /** Rate plan key for PMS-like pricing (basic/breakfast/non_refund). */
+          rate_plan_key: {
+            type: String,
+            enum: ["basic", "breakfast", "non_refund"],
+            default: "basic",
+          },
           quantity: { type: Number, required: true, min: 1 },
           unit_price_per_night: { type: Number, default: 0, min: 0 },
           line_subtotal: { type: Number, default: 0, min: 0 },
@@ -65,6 +71,16 @@ const bookingSchema = new mongoose.Schema(
     },
     /** Amount paid at booking (MoMo / counter) toward the stay */
     prepaid_amount: { type: Number, default: 0, min: 0 },
+    /** Snapshot: required deposit to secure the booking (per policy) */
+    deposit_amount: { type: Number, default: 0, min: 0 },
+    /** Total deposit actually received (online/counter) */
+    deposit_paid_amount: { type: Number, default: 0, min: 0 },
+    deposit_status: {
+      type: String,
+      enum: ["unpaid", "paid", "refunded", "partial_refunded", "forfeited"],
+      default: "unpaid",
+      index: true,
+    },
     /** nights * roomType.price * qty at booking time (for payment validation & MoMo) */
     estimated_room_total: { type: Number, default: 0, min: 0 },
     /** Legacy flat extras on booking document */
@@ -85,6 +101,9 @@ const bookingSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "checked_in", "checked_out", "cancelled", "completed"],
       default: "pending",
     },
+    cancelled_at: { type: Date, default: null },
+    cancel_reason: { type: String, default: "", trim: true },
+    no_show_at: { type: Date, default: null },
     isReviewed: {
       type: Boolean,
       default: false,
@@ -93,6 +112,11 @@ const bookingSchema = new mongoose.Schema(
     guest_phone: { type: String, default: "", trim: true },
     guest_email: { type: String, default: "", trim: true },
     guest_id_number: { type: String, default: "", trim: true },
+    /** Snapshot of guest identity/info captured at check-in time (front desk). */
+    checkin_guest_snapshot: { type: mongoose.Schema.Types.Mixed, default: null },
+    checked_in_by: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    actual_check_in_at: { type: Date, default: null },
+    actual_check_out_at: { type: Date, default: null },
     invoice_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Invoice",

@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import {
-  FEATURED_ROOM_SLOTS,
-  normalizeRoomTypeName,
-  roomMatchesFeaturedSlot,
-} from "../constants/featuredRoomTypes";
+import { normalizeRoomTypeName } from "../constants/featuredRoomTypes";
 import RoomTypeCardStructured from "../components/RoomTypeCardStructured";
 import {
   fetchRoomTypeAvailability,
@@ -29,22 +25,20 @@ function RoomsList() {
 useEffect(() => {
   const fetchData = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/rooms");
+      const res = await axios.get("/api/rooms");
       const data = Array.isArray(res.data) ? res.data : [];
 
+      // Show ALL rooms/types from API (no hard-coded featured filter).
+      // If there are multiple physical rooms per type, pick one representative per type.
+      const repByTypeKey = new Map();
       const counts = {};
-      FEATURED_ROOM_SLOTS.forEach((slot) => {
-        const key = normalizeRoomTypeName(slot.name);
-        counts[key] = data.filter((r) =>
-          roomMatchesFeaturedSlot(r, slot),
-        ).length;
-      });
-
-      const selected = [];
-      FEATURED_ROOM_SLOTS.forEach((slot) => {
-        const found = data.find((r) => roomMatchesFeaturedSlot(r, slot));
-        if (found) selected.push(found);
-      });
+      for (const r of data) {
+        const typeKey = String(r.roomType || r.room_type || r.room_type_id || r.name || "");
+        const norm = normalizeRoomTypeName(typeKey);
+        counts[norm] = (counts[norm] || 0) + 1;
+        if (!repByTypeKey.has(norm)) repByTypeKey.set(norm, r);
+      }
+      const selected = [...repByTypeKey.values()];
 
       setPhysicalCountByTypeKey(counts);
       setTotalPhysicalFromApi(data.length);
@@ -56,7 +50,7 @@ useEffect(() => {
         selected.map(async (room) => {
           try {
             const r = await axios.get(
-              `http://localhost:3000/api/reviews/room/${room._id}/summary?aggregateByType=1`
+              `/api/reviews/room/${room._id}/summary?aggregateByType=1`
             );
             ratingData[room._id] = r.data;
           } catch {
@@ -143,7 +137,7 @@ useEffect(() => {
                           imageSrc={
                             room.image?.startsWith("http")
                               ? room.image
-                              : `http://localhost:3000/uploads/${room.image}`
+                              : `/uploads/${room.image}`
                           }
                           ratingAvg={ratings[room._id]?.avg || 0}
                           ratingTotal={ratings[room._id]?.total || 0}

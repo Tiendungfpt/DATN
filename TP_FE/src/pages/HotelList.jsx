@@ -3,8 +3,7 @@ import axios from "axios";
 import { Link, useSearchParams } from "react-router-dom";
 import RoomTypeCardStructured from "../components/RoomTypeCardStructured";
 import {
-  FEATURED_ROOM_SLOTS,
-  roomMatchesFeaturedSlot,
+  normalizeRoomTypeName,
 } from "../constants/featuredRoomTypes";
 import {
   fetchRoomTypeAvailability,
@@ -130,15 +129,14 @@ function HotelList() {
       .then((res) => {
         const roomList = Array.isArray(res.data) ? res.data : [];
 
-        const selected = [];
-        FEATURED_ROOM_SLOTS.forEach((slot) => {
-          const found = roomList.find((r) =>
-            roomMatchesFeaturedSlot(r, slot)
-          );
-          if (found) selected.push(found);
-        });
-
-        setRooms(selected);
+        // Show all types (pick one representative per type)
+        const repByType = new Map();
+        for (const r of roomList) {
+          const typeKey = String(r.roomType || r.room_type || r.name || "");
+          const norm = normalizeRoomTypeName(typeKey);
+          if (!repByType.has(norm)) repByType.set(norm, r);
+        }
+        setRooms([...repByType.values()]);
         setLoading(false);
       })
       .catch(() => {

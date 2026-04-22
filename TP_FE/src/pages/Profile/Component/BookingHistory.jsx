@@ -27,7 +27,7 @@ function BookingHistory() {
   const handleDownloadInvoice = async (bookingId) => {
     try {
       const res = await axios.get(
-        `http://localhost:3000/api/bookings/${bookingId}/invoice`,
+        `/api/bookings/${bookingId}/invoice`,
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: "blob",
@@ -57,13 +57,13 @@ function BookingHistory() {
     if (!image) return null;
     return image.startsWith("http")
       ? image
-      : `http://localhost:3000/uploads/${image}`;
+      : `/uploads/${image}`;
   };
 
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/bookings/user", {
+        const res = await axios.get("/api/bookings/user", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setBookings(res.data);
@@ -85,26 +85,20 @@ function BookingHistory() {
     }
   }, [token]);
 
-  const handleCancel = async (bookingId) => {
-    if (!window.confirm("Bạn có chắc chắn muốn hủy đặt phòng này không?"))
-      return;
-
+  const handlePayDeposit = async (bookingId) => {
     try {
-      await axios.put(
-        `http://localhost:3000/api/bookings/cancel/${bookingId}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-
-      setBookings((prev) =>
-        prev.map((b) =>
-          b._id === bookingId ? { ...b, status: "cancelled" } : b,
-        ),
-      );
-
-      alert("Đặt phòng đã được hủy thành công!");
+      const momoRes = await axios.post("/api/momo/create", {
+        bookingId,
+        requestType: "payWithATM",
+        type: "deposit",
+      });
+      if (momoRes?.data?.success && momoRes?.data?.payUrl) {
+        window.location.href = momoRes.data.payUrl;
+        return;
+      }
+      alert(momoRes?.data?.message || "Không tạo được link thanh toán MoMo");
     } catch (err) {
-      alert(err.response?.data?.message || "Hủy đặt phòng thất bại");
+      alert(err.response?.data?.message || "Không tạo được link thanh toán cọc");
     }
   };
 
@@ -217,8 +211,10 @@ function BookingHistory() {
           const nights = Math.ceil((checkOut - checkIn) / (1000 * 3600 * 24));
 
  const isCancelled = booking.status === "cancelled";
-          const canCancelUser =
-            booking.status === "pending" || booking.status === "confirmed";
+          const canPayDeposit =
+            booking.status === "pending" &&
+            String(booking.deposit_status || "unpaid") !== "paid" &&
+            (Number(booking.deposit_amount) || 0) > 0;
           const showPaidHint =
             booking.status === "confirmed" ||
             booking.status === "checked_in" ||
@@ -358,13 +354,21 @@ function BookingHistory() {
                         <small className="text-muted">({nights} đêm)</small>
                       </div>
 
-                      {canCancelUser && !isCancelled && (
+                      <div className="mb-3">
+                        <small className="text-muted d-block">Tiền cọc</small>
+                        <div className="fw-semibold">
+                          {(Number(booking.deposit_paid_amount) || 0).toLocaleString("vi-VN")} ₫ /{" "}
+                          {(Number(booking.deposit_amount) || 0).toLocaleString("vi-VN")} ₫{" "}
+                          <small className="text-muted">({booking.deposit_status || "unpaid"})</small>
+                        </div>
+                      </div>
+
+                      {canPayDeposit && !isCancelled && (
                         <button
-                          onClick={() => handleCancel(booking._id)}
-                          className="btn btn-outline-danger btn-lg px-5 py-3 rounded-4 w-100 w-lg-auto fw-medium transition-all hover-scale"
+                          onClick={() => handlePayDeposit(booking._id)}
+                          className="btn btn-primary btn-lg px-5 py-3 rounded-4 w-100 w-lg-auto fw-medium"
                         >
-                          <i className="bi bi-x-circle me-2"></i>
-                          Hủy đặt phòng
+                          Thanh toán tiền cọc
                         </button>
                       )}
 

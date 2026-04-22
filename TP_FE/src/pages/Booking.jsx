@@ -213,6 +213,12 @@ useEffect(() => {
     0,
   );
 
+  const depositTotal = cartLines.reduce((sum, l) => {
+    const rt = roomTypes.find((r) => String(r._id) === String(l.room_type_id));
+    const q = Math.max(1, Number.parseInt(String(l.quantity), 10) || 1);
+    return sum + (Number(rt?.deposit_amount) || 0) * q;
+  }, 0);
+
   const hasValidStayTime =
     bookingType === "hourly"
       ? Boolean(hourlyCheckIn) && Number.parseInt(String(stayHours), 10) >= 1
@@ -659,6 +665,7 @@ useEffect(() => {
                       checkOutDate: checkOutDate.toISOString(),
                       nights,
                       total,
+                      depositTotal,
                       totalRoomCount,
                       checkoutLines,
                     },

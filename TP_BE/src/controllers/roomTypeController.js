@@ -7,7 +7,19 @@ import {
   sumReservedSlotsForRoomType,
 } from "../utils/hotelBooking.js";
 
-const ALLOWED = ["name", "price", "hourly_price", "description", "maxGuests", "image", "code"];
+const ALLOWED = [
+  "name",
+  "price",
+  "hourly_price",
+  "deposit_amount",
+  "description",
+  "maxGuests",
+  "image",
+  "images",
+  "area_sqm",
+  "bed_type",
+  "code",
+];
 
 function pickRoomTypeBody(body) {
   const o = {};
@@ -21,10 +33,20 @@ function pickRoomTypeBody(body) {
         .replace(/\s+/g, "_");
     else if (k === "description") o.description = String(body.description);
     else if (k === "image") o.image = String(body.image).trim();
+    else if (k === "images")
+      o.images = Array.isArray(body.images)
+        ? body.images.map((x) => String(x || "").trim()).filter(Boolean)
+        : String(body.images || "")
+            .split(",")
+            .map((x) => x.trim())
+            .filter(Boolean);
     else if (k === "price") o.price = Number(body.price);
     else if (k === "hourly_price") o.hourly_price = Number(body.hourly_price);
+    else if (k === "deposit_amount") o.deposit_amount = Number(body.deposit_amount);
     else if (k === "maxGuests")
       o.maxGuests = Math.max(1, Number.parseInt(String(body.maxGuests), 10) || 1);
+    else if (k === "area_sqm") o.area_sqm = Math.max(0, Number(body.area_sqm) || 0);
+    else if (k === "bed_type") o.bed_type = String(body.bed_type || "").trim();
   }
   return o;
 }
@@ -44,6 +66,17 @@ export const listRoomTypes = async (req, res) => {
     res.json(items);
   } catch (e) {
     res.status(500).json({ message: e.message });
+  }
+};
+
+/** Public detail for room type page */
+export const getRoomTypeById = async (req, res) => {
+  try {
+    const doc = await RoomType.findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ message: "Không tìm thấy loại phòng" });
+    return res.json(doc);
+  } catch (e) {
+    return res.status(400).json({ message: e.message });
   }
 };
 
@@ -131,14 +164,24 @@ export const createRoomType = async (req, res) => {
     ) {
       return res.status(400).json({ message: "Gia theo gio khong hop le" });
     }
+    if (
+      data.deposit_amount !== undefined &&
+      (Number.isNaN(data.deposit_amount) || data.deposit_amount < 0)
+    ) {
+      return res.status(400).json({ message: "Tien coc khong hop le" });
+    }
     const doc = await RoomType.create({
       code: data.code ?? "",
       name: data.name,
       price: data.price,
       hourly_price: data.hourly_price ?? 0,
+      deposit_amount: data.deposit_amount ?? 0,
       description: data.description ?? "",
       maxGuests: data.maxGuests ?? 2,
       image: data.image ?? "",
+      images: data.images ?? [],
+      area_sqm: data.area_sqm ?? 0,
+      bed_type: data.bed_type ?? "",
     });
     res.status(201).json(doc);
   } catch (e) {
