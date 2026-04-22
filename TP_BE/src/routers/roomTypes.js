@@ -4,6 +4,7 @@ import { checkAuth } from "../middlewares/checkAuth.js";
 import { checkAdmin } from "../middlewares/checkAdmin.js";
 import {
   listRoomTypes,
+  getRoomTypeAvailability,
   createRoomType,
   updateRoomType,
   deleteRoomType,
@@ -12,6 +13,7 @@ import {
 
 const r = Router();
 r.get("/", listRoomTypes);
+r.get("/availability", getRoomTypeAvailability);
 r.post(
   "/upload-image",
   checkAuth,

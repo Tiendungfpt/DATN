@@ -11,6 +11,7 @@ const roomTypeSchema = new mongoose.Schema(
     /** Tên hiển thị (tiếng Việt) */
     name: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0 },
+    hourly_price: { type: Number, default: 0, min: 0 },
     description: { type: String, default: "" },
     maxGuests: { type: Number, default: 2, min: 1 },
     /** Filename in /uploads or full image URL */

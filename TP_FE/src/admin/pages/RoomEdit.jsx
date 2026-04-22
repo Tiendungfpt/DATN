@@ -6,10 +6,12 @@ import "../components/Form.css";
 function RoomsEdit() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [roomTypes, setRoomTypes] = useState([]);
 
     const [room, setRoom] = useState({
         name: "",
-        room_type: "standard",
+        room_type: "",
+        roomType: "",
         room_no: "",
         image: "",
         price: 0,
@@ -21,6 +23,20 @@ function RoomsEdit() {
     const [file, setFile] = useState(null);
 
     useEffect(() => {
+        const fetchRoomTypes = async () => {
+            try {
+                const res = await axios.get("http://localhost:3000/api/room-types");
+                const items = Array.isArray(res.data) ? res.data : [];
+                setRoomTypes(items);
+            } catch (error) {
+                console.log("Lỗi tải room types:", error);
+                setRoomTypes([]);
+            }
+        };
+        fetchRoomTypes();
+    }, []);
+
+    useEffect(() => {
         const token = localStorage.getItem("token");
         axios.get(`http://localhost:3000/api/admin/rooms/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -29,7 +45,8 @@ function RoomsEdit() {
 
             setRoom({
                 name: data.name || "",
-                room_type: data.room_type || "standard",
+                room_type: data.room_type || "",
+                roomType: String(data.roomType?._id || data.roomType || ""),
                 room_no: data.room_no || "",
                 image: data.image || "",
                 price: data.price ?? 0,
@@ -47,6 +64,18 @@ function RoomsEdit() {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        if (name === "roomType") {
+            const selected = roomTypes.find((rt) => String(rt._id) === String(value));
+            setRoom({
+                ...room,
+                roomType: value,
+                room_type: String(selected?.code || selected?.name || "").trim(),
+                price: Number(selected?.price) || room.price,
+                capacity: Number(selected?.maxGuests) || room.capacity,
+            });
+            return;
+        }
 
         setRoom({
             ...room,
@@ -103,12 +132,13 @@ function RoomsEdit() {
                     placeholder="Tên phòng"
                 />
 
-                <select name="room_type" value={room.room_type} onChange={handleChange}>
-                    <option value="standard">standard</option>
-                    <option value="deluxe_twin">deluxe_twin</option>
-                    <option value="deluxe_queen">deluxe_queen</option>
-                    <option value="luxury">luxury</option>
-                    <option value="family_suite">family_suite</option>
+                <select name="roomType" value={room.roomType} onChange={handleChange} required>
+                    {roomTypes.length === 0 && <option value="">Chưa có loại phòng</option>}
+                    {roomTypes.map((rt) => (
+                        <option key={rt._id} value={rt._id}>
+                            {rt.name}
+                        </option>
+                    ))}
                 </select>
 
                 <input

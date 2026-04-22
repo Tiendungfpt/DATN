@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
+import RoomTypeCardStructured from "../components/RoomTypeCardStructured";
+import {
+  fetchRoomTypeAvailability,
+  fetchRoomTypeCatalog,
+  normalizeTypeName,
+} from "../services/availabilityApi";
 export default function Home() {
   const fallbackRoomImage =
     "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
@@ -10,6 +16,10 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [ratings, setRatings] = useState({});
+  const [availabilityByTypeId, setAvailabilityByTypeId] = useState({});
+  const [availabilityByName, setAvailabilityByName] = useState({});
+  const [descriptionByTypeId, setDescriptionByTypeId] = useState({});
+  const [descriptionByName, setDescriptionByName] = useState({});
   useEffect(() => {
     const list = Array.isArray(rooms) ? rooms : [];
     const fetchRatings = async () => {
@@ -66,6 +76,41 @@ export default function Home() {
     };
 
     fetchRooms();
+  }, []);
+
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        const [items, roomTypes] = await Promise.all([
+          fetchRoomTypeAvailability(),
+          fetchRoomTypeCatalog(),
+        ]);
+        const byId = {};
+        const byName = {};
+        items.forEach((item) => {
+          byId[String(item.room_type_id)] = Number(item.available_count) || 0;
+          byName[normalizeTypeName(item.name)] = Number(item.available_count) || 0;
+        });
+        const descById = {};
+        const descByName = {};
+        roomTypes.forEach((rt) => {
+          const desc = String(rt.description || "").trim();
+          descById[String(rt._id)] = desc;
+          descByName[normalizeTypeName(rt.name)] = desc;
+          if (rt.code) descByName[normalizeTypeName(rt.code)] = desc;
+        });
+        setAvailabilityByTypeId(byId);
+        setAvailabilityByName(byName);
+        setDescriptionByTypeId(descById);
+        setDescriptionByName(descByName);
+      } catch {
+        setAvailabilityByTypeId({});
+        setAvailabilityByName({});
+        setDescriptionByTypeId({});
+        setDescriptionByName({});
+      }
+    };
+    fetchAvailability();
   }, []);
 
   if (loading) {
@@ -148,52 +193,30 @@ export default function Home() {
             <div className="row g-4">
               {displayRooms.map((room) => (
                 <div className="col-md-6 col-lg-4" key={room._id}>
-                  <div className="card h-100 border-0 shadow-sm overflow-hidden">
-                    <img
-                      src={
-                        room.image?.startsWith("http")
-                          ? room.image
-                          : room.image
-                            ? `http://localhost:3000/uploads/${room.image}`
-                            : fallbackRoomImage
-                      }
-                      alt={room.name}
-                      style={{ height: "220px", objectFit: "cover" }}
-                      onError={(e) => {
-                        e.currentTarget.src = fallbackRoomImage;
-                      }}
-                    />
-                    <div className="card-body d-flex flex-column">
-                      <h5 className="fw-bold">{room.name}</h5>
-                      {/* ⭐ HIỂN THỊ ĐÁNH GIÁ */}
-<div className="mb-2">
-  ⭐ {ratings[room._id]?.avg ?? 0} / 5
-  <br />
-  <small className="text-muted">
-    ({ratings[room._id]?.total ?? 0} đánh giá)
-  </small>
-</div>
-                      <p className="text-muted mb-2">
-                        Sức chứa: {room.capacity ?? room.maxGuests ?? "Đang cập nhật"} người
-                      </p>
-                      <p className="mb-3">
-                        Giá:{" "}
-                        <strong>
-                          {room.price
-                            ? `${Number(room.price).toLocaleString("vi-VN")}đ/đêm`
-                            : "Liên hệ"}
-                        </strong>
-                      </p>
-                      {!isAdmin && (
-                        <Link
-                          to={`/booking/${room._id}`}
-                          className="btn btn-primary mt-auto"
-                        >
-                          Đặt phòng
-                        </Link>
-                      )}
-                    </div>
-                  </div>
+                  <RoomTypeCardStructured
+                    room={room}
+                    imageSrc={
+                      room.image?.startsWith("http")
+                        ? room.image
+                        : room.image
+                          ? `http://localhost:3000/uploads/${room.image}`
+                          : fallbackRoomImage
+                    }
+                    ratingAvg={ratings[room._id]?.avg ?? 0}
+                    ratingTotal={ratings[room._id]?.total ?? 0}
+                    availableCount={
+                      room.roomType
+                        ? (availabilityByTypeId[String(room.roomType)] ?? 0)
+                        : (availabilityByName[normalizeTypeName(room.name)] ?? 0)
+                    }
+                    description={
+                      room.roomType
+                        ? descriptionByTypeId[String(room.roomType)] || "Mô tả đang cập nhật."
+                        : descriptionByName[normalizeTypeName(room.name)] ||
+                          "Mô tả đang cập nhật."
+                    }
+                    showBookButton={!isAdmin}
+                  />
                 </div>
               ))}
             </div>

@@ -17,6 +17,7 @@ import {
   addBookingServiceLine,
   getBookingServiceLines,
   getCheckOutPreview,
+  checkBookingAvailability,
 } from "../controllers/booking.js";
 
 const bookingRouter = Router();
@@ -24,6 +25,7 @@ const bookingRouter = Router();
 bookingRouter.post("/", checkAuth, createBooking);
 bookingRouter.get("/user", checkAuth, getMyBookings);
 bookingRouter.get("/", checkAuth, checkAdmin, getAllBookingsAdmin);
+bookingRouter.get("/availability", checkBookingAvailability);
 
 bookingRouter.put("/payment/:id", checkAuth, paymentBooking);
 bookingRouter.put("/cancel/:id", checkAuth, cancelBooking);

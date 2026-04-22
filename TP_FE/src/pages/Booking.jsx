@@ -50,11 +50,12 @@ useEffect(() => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState("");
+  const [availabilityItems, setAvailabilityItems] = useState([]);
+  const [availabilityOk, setAvailabilityOk] = useState(true);
 
   const [currentUser, setCurrentUser] = useState(null);
-  const [guestName, setGuestName] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
@@ -69,29 +70,22 @@ useEffect(() => {
     }
   }, []);
 
-  useEffect(() => {
-    if (!currentUser) return;
-    setGuestName(String(currentUser.name || "").trim());
-    setGuestEmail(String(currentUser.email || "").trim());
-  }, [currentUser]);
-
   const [checkInDate, setCheckInDate] = useState(null);
   const [checkOutDate, setCheckOutDate] = useState(null);
+  const [bookingType, setBookingType] = useState("overnight");
+  const [hourlyCheckIn, setHourlyCheckIn] = useState("");
+  const [stayHours, setStayHours] = useState(3);
   /** Gio hang nhieu loai phong: dong dau = loai tu URL */
   const [cartLines, setCartLines] = useState([]);
   const [roomTypes, setRoomTypes] = useState([]);
 
-  const isDevEnvironment =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1");
-  const [paymentMethod, setPaymentMethod] = useState(
-    isDevEnvironment ? "payWithCC" : "payWithATM",
-  );
-  const [paymentMode, setPaymentMode] = useState("full");
-  const [depositAmount, setDepositAmount] = useState(0);
-
-  const prepaidAmount = paymentMode === "full" ? total : depositAmount;
+  const getHourlyRate = (roomType) => {
+    const configured = Number(roomType?.hourly_price) || 0;
+    if (configured > 0) return configured;
+    const nightly = Number(roomType?.price) || 0;
+    if (nightly <= 0) return 0;
+    return Math.max(1000, Math.ceil(nightly / 10));
+  };
 
   useEffect(() => {
     if (!roomId) return;
@@ -127,6 +121,38 @@ useEffect(() => {
   }, [room?.roomType, room?._id]);
 
   useEffect(() => {
+    if (bookingType === "hourly") {
+      if (!hourlyCheckIn || roomTypes.length === 0 || cartLines.length === 0) {
+        setNights(0);
+        setTotal(0);
+        setCheckInDate(null);
+        setCheckOutDate(null);
+        return;
+      }
+      const start = new Date(hourlyCheckIn);
+      if (Number.isNaN(start.getTime())) {
+        setNights(0);
+        setTotal(0);
+        setCheckInDate(null);
+        setCheckOutDate(null);
+        return;
+      }
+      const hours = Math.max(1, Number.parseInt(String(stayHours), 10) || 1);
+      const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
+      setCheckInDate(start);
+      setCheckOutDate(end);
+      setNights(0);
+      let sum = 0;
+      for (const line of cartLines) {
+        const rt = roomTypes.find((r) => String(r._id) === String(line.room_type_id));
+        const p = getHourlyRate(rt);
+        const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
+        sum += hours * p * q;
+      }
+      setTotal(sum);
+      return;
+    }
+
     if (checkInDate && checkOutDate && roomTypes.length > 0 && cartLines.length > 0) {
       const diffDays = Math.ceil(
         Math.abs(checkOutDate - checkInDate) / (1000 * 60 * 60 * 24),
@@ -144,135 +170,7 @@ useEffect(() => {
       setNights(0);
       setTotal(0);
     }
-  }, [checkInDate, checkOutDate, roomTypes, cartLines]);
-
-  useEffect(() => {
-    // Keep deposit value always valid against current estimated room total.
-    if (paymentMode !== "deposit") {
-      setDepositAmount(0);
-      return;
-    }
-    if (total <= 0) {
-      setDepositAmount(0);
-      return;
-    }
-    setDepositAmount((prev) => {
-      if (prev <= 0 || prev >= total) return Math.floor(total * 0.3);
-      return prev;
-    });
-  }, [paymentMode, total]);
-
-  const handleCreateBooking = async (e) => {
-    e.preventDefault();
-
-    if (!currentUser || !currentUser._id) {
-      alert("Vui lòng đăng nhập để đặt phòng!");
-      navigate("/login");
-      return;
-    }
-    if (currentUser?.role === "admin") {
-      alert("Tài khoản admin không được phép đặt phòng.");
-      return;
-    }
-
-    if (!checkInDate || !checkOutDate || total <= 0) {
-      alert("Vui lòng chọn ngày nhận và trả phòng hợp lệ!");
-      return;
-    }
-
-    if (paymentMode === "deposit" && (depositAmount <= 0 || depositAmount >= total)) {
-      alert("Số tiền đặt cọc phải lớn hơn 0 và nhỏ hơn tổng tiền phòng.");
-      return;
-    }
-
-    if (!room?.roomType) {
-      alert("Loại phòng chưa được gán cho phòng này. Vui lòng liên hệ khách sạn.");
-      return;
-    }
-    const line_items = cartLines
-      .filter((l) => l.room_type_id && Number(l.quantity) >= 1)
-      .map((l) => ({
-        room_type_id: l.room_type_id,
-        quantity: Math.max(1, Number.parseInt(String(l.quantity), 10) || 1),
-      }));
-    if (line_items.length === 0) {
-      alert("Vui lòng chọn ít nhất một loại phòng và số lượng.");
-      return;
-    }
-    const gn = guestName.trim();
-    const gp = guestPhone.trim();
-    const ge = guestEmail.trim();
-    if (!gn || !gp || !ge) {
-      alert("Vui lòng nhập họ tên, số điện thoại và email.");
-      return;
-    }
-
-    const payload = {
-      line_items,
-      guest_name: gn,
-      guest_phone: gp,
-      guest_email: ge,
-      check_in_date: checkInDate.toISOString().split("T")[0],
-      check_out_date: checkOutDate.toISOString().split("T")[0],
-      payment_mode: paymentMode,
-      prepaid_amount: prepaidAmount,
-    };
-
-    try {
-      setLoading(true);
-      setError("");
-
-      const token = localStorage.getItem("token");
-
-      const bookingRes = await axios.post(
-        "http://localhost:3000/api/bookings",
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      const bookingId = bookingRes?.data?.booking?._id;
-      if (!bookingId) {
-        throw new Error("Không lấy được bookingId để thanh toán");
-      }
-
-      try {
-        const momoRes = await axios.post("http://localhost:3000/api/momo/create", {
-          bookingId,
-          requestType: paymentMethod,
-        });
-
-        if (momoRes?.data?.success && momoRes?.data?.payUrl) {
-          window.location.href = momoRes.data.payUrl;
-          return;
-        }
-
-        throw new Error(momoRes?.data?.message || "Không tạo được link thanh toán MoMo");
-      } catch (momoErr) {
-        const momoMsg =
-          momoErr.response?.data?.message ||
-          momoErr.message ||
-          "Không thể kết nối cổng thanh toán";
-        alert(
-          `Đặt phòng thành công nhưng chưa tạo được link thanh toán.\n${momoMsg}\nBạn có thể kiểm tra đơn trong lịch sử đặt phòng và thử lại sau.`,
-        );
-        navigate("/thong-tin-tai-khoan?tab=history");
-      }
-    } catch (err) {
-      console.error("❌ Lỗi đặt phòng/thanh toán:", err);
-      const errorMsg =
-        err.response?.data?.message ||
-        err.message ||
-        "Đặt phòng thất bại. Vui lòng thử lại!";
-      setError(errorMsg);
-      alert(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [bookingType, hourlyCheckIn, stayHours, checkInDate, checkOutDate, roomTypes, cartLines]);
 
   const formatDateDisplay = (date) => {
     if (!date) return "Chưa chọn";
@@ -314,6 +212,83 @@ useEffect(() => {
     (s, l) => s + Math.max(1, Number.parseInt(String(l.quantity), 10) || 1),
     0,
   );
+
+  const hasValidStayTime =
+    bookingType === "hourly"
+      ? Boolean(hourlyCheckIn) && Number.parseInt(String(stayHours), 10) >= 1
+      : Boolean(checkInDate) && Boolean(checkOutDate);
+
+  const canContinueToGuestInfo =
+    hasValidStayTime &&
+    Boolean(checkOutDate) &&
+    total > 0 &&
+    currentUser?.role !== "admin" &&
+    cartLines.some((l) => l.room_type_id && Number(l.quantity) >= 1);
+
+  useEffect(() => {
+    let timer;
+    let cancelled = false;
+
+    const validLines = cartLines
+      .filter((l) => l.room_type_id && Number(l.quantity) >= 1)
+      .map((l) => ({
+        room_type_id: String(l.room_type_id),
+        quantity: Math.max(1, Number.parseInt(String(l.quantity), 10) || 1),
+      }));
+
+    const canCheckOvernight = bookingType === "overnight" && checkInDate && checkOutDate;
+    const canCheckHourly =
+      bookingType === "hourly" &&
+      hourlyCheckIn &&
+      Number.parseInt(String(stayHours), 10) >= 1;
+
+    if (!validLines.length || (!canCheckOvernight && !canCheckHourly)) {
+      setAvailabilityItems([]);
+      setAvailabilityError("");
+      setAvailabilityOk(true);
+      setAvailabilityLoading(false);
+      return undefined;
+    }
+
+    timer = setTimeout(async () => {
+      try {
+        setAvailabilityLoading(true);
+        setAvailabilityError("");
+        const params = {
+          booking_type: bookingType,
+          line_items: JSON.stringify(validLines),
+        };
+        if (bookingType === "hourly") {
+          params.check_in_date = new Date(hourlyCheckIn).toISOString();
+          params.stay_hours = Math.max(1, Number.parseInt(String(stayHours), 10) || 1);
+        } else {
+          params.check_in_date = checkInDate.toISOString().split("T")[0];
+          params.check_out_date = checkOutDate.toISOString().split("T")[0];
+        }
+        const res = await axios.get("http://localhost:3000/api/bookings/availability", {
+          params,
+        });
+        if (cancelled) return;
+        const items = Array.isArray(res.data?.items) ? res.data.items : [];
+        setAvailabilityItems(items);
+        setAvailabilityOk(Boolean(res.data?.ok));
+      } catch (err) {
+        if (cancelled) return;
+        setAvailabilityItems([]);
+        setAvailabilityOk(false);
+        setAvailabilityError(
+          err.response?.data?.message || "Không thể kiểm tra phòng trống. Vui lòng thử lại.",
+        );
+      } finally {
+        if (!cancelled) setAvailabilityLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [bookingType, hourlyCheckIn, stayHours, checkInDate, checkOutDate, cartLines]);
 
   if (!room) {
     return <div className="booking-loading">Đang tải thông tin phòng...</div>;
@@ -365,7 +340,20 @@ useEffect(() => {
 
             {error && <p className="error-message">{error}</p>}
 
-            <form onSubmit={handleCreateBooking}>
+            <div className="date-range-group">
+              <label>Hình thức đặt</label>
+              <select
+                value={bookingType}
+                className="custom-date-input"
+                onChange={(e) => setBookingType(e.target.value)}
+                disabled={loading}
+              >
+                <option value="overnight">Đặt theo đêm</option>
+                <option value="hourly">Đặt theo giờ</option>
+              </select>
+            </div>
+
+            {bookingType === "overnight" ? (
               <div className="date-range-group">
                 <label>Chọn ngày nhận - trả phòng</label>
                 <div className="date-picker-wrapper">
@@ -392,160 +380,194 @@ useEffect(() => {
                   />
                 </div>
               </div>
+            ) : (
+              <>
+                <div className="date-range-group">
+                  <label>Giờ nhận phòng</label>
+                  <input
+                    type="datetime-local"
+                    className="custom-date-input"
+                    value={hourlyCheckIn}
+                    min={new Date().toISOString().slice(0, 16)}
+                    onChange={(e) => setHourlyCheckIn(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="date-range-group">
+                  <label>Số giờ sử dụng</label>
+                  <select
+                    className="custom-date-input"
+                    value={stayHours}
+                    onChange={(e) =>
+                      setStayHours(Math.max(1, Number.parseInt(e.target.value, 10) || 1))
+                    }
+                    disabled={loading}
+                  >
+                    {[1, 2, 3, 4, 5, 6, 8, 10, 12, 24].map((h) => (
+                      <option key={h} value={h}>
+                        {h} giờ
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
 
-              <div className="selected-dates">
-                <div className="date-box">
-                  <span className="label">Nhận phòng</span>
-                  <strong>{formatDateDisplay(checkInDate)}</strong>
-                </div>
-                <div className="date-box">
-                  <span className="label">Trả phòng</span>
-                  <strong>{formatDateDisplay(checkOutDate)}</strong>
-                </div>
+            <div className="selected-dates">
+              <div className="date-box">
+                <span className="label">Nhận phòng</span>
+                <strong>{formatDateDisplay(checkInDate)}</strong>
               </div>
+              <div className="date-box">
+                <span className="label">Trả phòng</span>
+                <strong>{formatDateDisplay(checkOutDate)}</strong>
+              </div>
+            </div>
 
-              <div className="date-range-group booking-cart">
-                <label>Phòng và số lượng</label>
-                <p className="booking-cart-hint">
-                  Dòng đầu là loại phòng bạn đang xem. Bấm &quot;Thêm loại phòng khác&quot; để gộp
-                  nhiều loại trong một đơn (không cần quay lại trang chủ).
-                </p>
-                {cartLines.map((line, idx) => {
-                  const rt = roomTypes.find(
-                    (r) => String(r._id) === String(line.room_type_id),
-                  );
-                  const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
-                  const unit =
-                    Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
-                  const lineSubtotal = nights * unit * q;
-                  return (
-                    <div
-                      key={line.key}
-                      className={
-                        idx === 0
-                          ? "booking-cart-line booking-cart-line--featured"
-                          : "booking-cart-line"
-                      }
-                    >
-                      <div className="booking-cart-line-top">
-                        {idx === 0 ? (
-                          <div className="booking-cart-line-main">
-                            <span className="booking-cart-badge">Đang xem</span>
-                            <span className="booking-cart-field-label">Loại phòng</span>
-                            <span className="booking-cart-type-name">
-                              {rt?.name || room.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="booking-cart-select-wrap">
-                            <span className="booking-cart-field-label">Loại phòng</span>
-                            <select
-                              className="custom-date-input"
-                              value={String(line.room_type_id || "")}
-                              onChange={(e) =>
-                                updateCartLine(line.key, {
-                                  room_type_id: e.target.value,
-                                })
-                              }
-                              disabled={loading}
-                              aria-label="Chọn loại phòng"
-                            >
-                              <option value="">— Chọn —</option>
-                              {roomTypes.map((r) => (
-                                <option key={r._id} value={String(r._id)}>
-                                  {`${r.name} — ${Number(r.price).toLocaleString("vi-VN")} ₫/đêm`}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                        <div className="booking-cart-qty">
-                          <span className="booking-cart-field-label">Số phòng</span>
-                          <input
-                            type="number"
-                            min={1}
-                            value={line.quantity}
+            <div className="date-range-group booking-cart">
+              <label>Phòng và số lượng</label>
+              <p className="booking-cart-hint">
+                Dòng đầu là loại phòng bạn đang xem. Bấm &quot;Thêm loại phòng khác&quot; để gộp
+                nhiều loại trong một đơn (không cần quay lại trang chủ).
+              </p>
+              {cartLines.map((line, idx) => {
+                const rt = roomTypes.find(
+                  (r) => String(r._id) === String(line.room_type_id),
+                );
+                const lineAvailability = availabilityItems.find(
+                  (item) => String(item.room_type_id) === String(line.room_type_id),
+                );
+                const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
+                const unit =
+                  bookingType === "hourly"
+                    ? getHourlyRate(rt)
+                    : Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
+                const duration = bookingType === "hourly" ? Math.max(1, Number(stayHours) || 1) : nights;
+                const lineSubtotal = duration * unit * q;
+                return (
+                  <div
+                    key={line.key}
+                    className={
+                      idx === 0
+                        ? "booking-cart-line booking-cart-line--featured"
+                        : "booking-cart-line"
+                    }
+                  >
+                    <div className="booking-cart-line-top">
+                      {idx === 0 ? (
+                        <div className="booking-cart-line-main">
+                          <span className="booking-cart-badge">Đang xem</span>
+                          <span className="booking-cart-field-label">Loại phòng</span>
+                          <span className="booking-cart-type-name">
+                            {rt?.name || room.name}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="booking-cart-select-wrap">
+                          <span className="booking-cart-field-label">Loại phòng</span>
+                          <select
+                            className="custom-date-input"
+                            value={String(line.room_type_id || "")}
                             onChange={(e) =>
                               updateCartLine(line.key, {
-                                quantity: Math.max(
-                                  1,
-                                  Number.parseInt(e.target.value || "1", 10) || 1,
-                                ),
+                                room_type_id: e.target.value,
                               })
                             }
-                            className="custom-date-input"
                             disabled={loading}
-                            aria-label="Số lượng phòng"
-                          />
-                        </div>
-                        {idx > 0 && (
-                          <button
-                            type="button"
-                            className="booking-cart-remove"
-                            onClick={() => removeCartLine(line.key)}
-                            disabled={loading}
+                            aria-label="Chọn loại phòng"
                           >
-                            Xóa dòng
-                          </button>
-                        )}
-                      </div>
-                      {nights > 0 && unit > 0 && (
-                        <div className="booking-cart-line-subtotal">
-                          Tạm tính dòng:{" "}
-                          {`${lineSubtotal.toLocaleString("vi-VN")} ₫`}
+                            <option value="">— Chọn —</option>
+                            {roomTypes.map((r) => (
+                              <option key={r._id} value={String(r._id)}>
+                                {`${r.name} — ${Number(r.price).toLocaleString("vi-VN")} ₫/đêm`}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       )}
+                      <div className="booking-cart-qty">
+                        <span className="booking-cart-field-label">Số phòng</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={line.quantity}
+                          onChange={(e) =>
+                            updateCartLine(line.key, {
+                              quantity: Math.max(
+                                1,
+                                Number.parseInt(e.target.value || "1", 10) || 1,
+                              ),
+                            })
+                          }
+                          className="custom-date-input"
+                          disabled={loading}
+                          aria-label="Số lượng phòng"
+                        />
+                      </div>
+                      {idx > 0 && (
+                        <button
+                          type="button"
+                          className="booking-cart-remove"
+                          onClick={() => removeCartLine(line.key)}
+                          disabled={loading}
+                        >
+                          Xóa dòng
+                        </button>
+                      )}
                     </div>
-                  );
-                })}
-                <button
-                  type="button"
-                  className="booking-cart-add"
-                  onClick={addCartLine}
-                  disabled={loading || roomTypes.length === 0}
-                >
-                  + Thêm loại phòng khác
-                </button>
-              </div>
-
-              <div className="date-range-group">
-                <label>Họ và tên</label>
-                <input
-                  type="text"
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  className="custom-date-input"
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <div className="date-range-group">
-                <label>Số điện thoại (đối chiếu khi check-in)</label>
-                <input
-                  type="tel"
-                  value={guestPhone}
-                  onChange={(e) => setGuestPhone(e.target.value)}
-                  className="custom-date-input"
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <div className="date-range-group">
-                <label>Email</label>
-                <input
-                  type="email"
-                  value={guestEmail}
-                  onChange={(e) => setGuestEmail(e.target.value)}
-                  className="custom-date-input"
-                  required
-                  disabled={loading}
-                />
-              </div>
+                    {duration > 0 && unit > 0 && (
+                      <div className="booking-cart-line-subtotal">
+                        Tạm tính dòng:{" "}
+                        {`${lineSubtotal.toLocaleString("vi-VN")} ₫`}
+                      </div>
+                    )}
+                    {lineAvailability && (
+                      <div
+                        className="booking-cart-line-subtotal"
+                        style={{
+                          color: lineAvailability.is_enough ? "#065f46" : "#b91c1c",
+                          borderTopStyle: "solid",
+                        }}
+                      >
+                        {lineAvailability.is_enough
+                          ? `Còn ${lineAvailability.available} phòng trống cho loại này.`
+                          : lineAvailability.message}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                className="booking-cart-add"
+                onClick={addCartLine}
+                disabled={loading || roomTypes.length === 0}
+              >
+                + Thêm loại phòng khác
+              </button>
+              {availabilityLoading && (
+                <p className="booking-cart-hint" style={{ marginTop: 10 }}>
+                  Đang kiểm tra phòng trống...
+                </p>
+              )}
+              {availabilityError && (
+                <p className="error-message" style={{ marginTop: 10 }}>
+                  {availabilityError}
+                </p>
+              )}
+              {!availabilityLoading && !availabilityError && availabilityItems.length > 0 && !availabilityOk && (
+                <p className="error-message" style={{ marginTop: 10 }}>
+                  Một số loại phòng không đủ số lượng. Vui lòng đổi loại phòng hoặc giảm số lượng.
+                </p>
+              )}
+            </div>
 
               <div className="summary">
                 <div className="summary-row">
-                  <span>Số đêm:</span>
-                  <strong>{nights} đêm</strong>
+                  <span>{bookingType === "hourly" ? "Số giờ:" : "Số đêm:"}</span>
+                  <strong>
+                    {bookingType === "hourly" ? `${stayHours} giờ` : `${nights} đêm`}
+                  </strong>
                 </div>
                 {cartLines.map((line, idx) => {
                   const rt = roomTypes.find(
@@ -554,8 +576,11 @@ useEffect(() => {
                   const name = idx === 0 ? rt?.name || room.name : rt?.name || "—";
                   const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
                   const p =
-                    Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
-                  const sub = nights * p * q;
+                    bookingType === "hourly"
+                      ? getHourlyRate(rt)
+                      : Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
+                  const duration = bookingType === "hourly" ? Math.max(1, Number(stayHours) || 1) : nights;
+                  const sub = duration * p * q;
                   return (
                     <div key={line.key} className="summary-row summary-row--line">
                       <span>
@@ -577,85 +602,77 @@ useEffect(() => {
                 </div>
               </div>
 
-              <div className="date-range-group">
-                <label>Hình thức thanh toán khi đặt phòng</label>
-                <select
-                  value={paymentMode}
-                  onChange={(e) => setPaymentMode(e.target.value)}
-                  className="custom-date-input"
-                  disabled={loading}
-                >
-                  <option value="full">Thanh toán toàn bộ tiền phòng</option>
-                  <option value="deposit">Đặt cọc một phần</option>
-                </select>
-              </div>
-
-              {paymentMode === "deposit" && (
-                <div className="date-range-group">
-                  <label>Số tiền đặt cọc (VND)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={Math.max(1, total - 1)}
-                    value={depositAmount}
-                    onChange={(e) => {
-                      const next = Number.parseInt(e.target.value || "0", 10) || 0;
-                      setDepositAmount(next);
-                    }}
-                    className="custom-date-input"
-                    disabled={loading || total <= 0}
-                  />
-                  <small className="text-muted">
-                    Tiền cọc phải &gt; 0 và &lt; {total.toLocaleString("vi-VN")} ₫.
-                  </small>
-                </div>
-              )}
-
-              <div className="summary">
-                <div className="summary-row">
-                  <span>Số tiền thanh toán ngay:</span>
-                  <strong>{prepaidAmount.toLocaleString("vi-VN")} ₫</strong>
-                </div>
-              </div>
-
-              <div className="date-range-group">
-                <label>Phương thức thanh toán MoMo</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="custom-date-input"
-                  disabled={loading}
-                >
-                  <option value="payWithATM">Thẻ ATM nội địa (Napas)</option>
-                  <option value="payWithCC">Thẻ quốc tế (Visa/Master/JCB)</option>
-                </select>
-              </div>
-
               <button
-                type="submit"
+                type="button"
                 className="book-button momo-pay-button"
-                disabled={
-                  !total ||
-                  loading ||
-                  !checkInDate ||
-                  !checkOutDate ||
-                  (paymentMode === "deposit" &&
-                    (depositAmount <= 0 || depositAmount >= total)) ||
-                  currentUser?.role === "admin"
-                }
+                onClick={() => {
+                  if (!currentUser || !currentUser._id) {
+                    alert("Vui lòng đăng nhập để đặt phòng!");
+                    navigate("/login");
+                    return;
+                  }
+                  if (!checkInDate || !checkOutDate || total <= 0) {
+                    alert("Vui lòng chọn thời gian lưu trú hợp lệ!");
+                    return;
+                  }
+                  if (currentUser?.role === "admin") {
+                    alert("Tài khoản admin không được phép đặt phòng.");
+                    return;
+                  }
+                  if (!cartLines.some((l) => l.room_type_id && Number(l.quantity) >= 1)) {
+                    alert("Vui lòng chọn ít nhất một loại phòng và số lượng.");
+                    return;
+                  }
+                  const checkoutLines = cartLines
+                    .filter((l) => l.room_type_id && Number(l.quantity) >= 1)
+                    .map((l, idx) => {
+                      const rt = roomTypes.find(
+                        (r) => String(r._id) === String(l.room_type_id),
+                      );
+                      const quantity = Math.max(
+                        1,
+                        Number.parseInt(String(l.quantity), 10) || 1,
+                      );
+                      const price =
+                        bookingType === "hourly"
+                          ? getHourlyRate(rt)
+                          : Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
+                      const duration =
+                        bookingType === "hourly" ? Math.max(1, Number(stayHours) || 1) : nights;
+                      return {
+                        room_type_id: String(l.room_type_id),
+                        room_type_name: idx === 0 ? rt?.name || room.name : rt?.name || "—",
+                        quantity,
+                        price,
+                        subtotal: duration * price * quantity,
+                      };
+                    });
+
+                  navigate("/booking/checkout", {
+                    state: {
+                      roomId,
+                      roomName: room.name,
+                      roomImage: room.image,
+                      bookingType,
+                      stayHours: bookingType === "hourly" ? Math.max(1, Number(stayHours) || 1) : null,
+                      checkInDate: checkInDate.toISOString(),
+                      checkOutDate: checkOutDate.toISOString(),
+                      nights,
+                      total,
+                      totalRoomCount,
+                      checkoutLines,
+                    },
+                  });
+                }}
+                disabled={!canContinueToGuestInfo || loading || !availabilityOk || availabilityLoading}
               >
-                {currentUser?.role === "admin"
-                  ? "Admin không thể đặt phòng"
-                  : loading
-                    ? "Đang xử lý..."
-                    : "Xác nhận đặt phòng"}
+                {currentUser?.role === "admin" ? "Admin không thể đặt phòng" : "Đặt phòng"}
               </button>
 
               <p className="guarantee">
                 Lịch sử đặt phòng của bạn tại{" "}
                 <Link to="/thong-tin-tai-khoan?tab=history">Lịch sử đặt phòng</Link>
               </p>
-            </form>
           </div>
         </div>
       </div>

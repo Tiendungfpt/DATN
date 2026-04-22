@@ -50,6 +50,12 @@ const bookingSchema = new mongoose.Schema(
     },
     check_in_date: { type: Date, required: true },
     check_out_date: { type: Date, required: true },
+    booking_type: {
+      type: String,
+      enum: ["overnight", "hourly"],
+      default: "overnight",
+    },
+    stay_hours: { type: Number, min: 1, default: null },
     room_quantity: { type: Number, required: true, min: 1, default: 1 },
     /** deposit | full prepay of estimated room portion */
     payment_mode: {

@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import {
@@ -6,11 +5,14 @@ import {
   normalizeRoomTypeName,
   roomMatchesFeaturedSlot,
 } from "../constants/featuredRoomTypes";
+import RoomTypeCardStructured from "../components/RoomTypeCardStructured";
+import {
+  fetchRoomTypeAvailability,
+  fetchRoomTypeCatalog,
+} from "../services/availabilityApi";
 
 
 function RoomsList() {
-    const navigate = useNavigate();
-
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
@@ -18,6 +20,10 @@ function RoomsList() {
     const [totalPhysicalFromApi, setTotalPhysicalFromApi] = useState(0);
 
     const [ratings, setRatings] = useState({});
+    const [availabilityByTypeId, setAvailabilityByTypeId] = useState({});
+    const [availabilityByName, setAvailabilityByName] = useState({});
+    const [descriptionByTypeId, setDescriptionByTypeId] = useState({});
+    const [descriptionByName, setDescriptionByName] = useState({});
 
     const placeholderImage = "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
 useEffect(() => {
@@ -60,6 +66,35 @@ useEffect(() => {
       );
 
       setRatings(ratingData);
+      try {
+        const [availability, roomTypes] = await Promise.all([
+          fetchRoomTypeAvailability(),
+          fetchRoomTypeCatalog(),
+        ]);
+        const byId = {};
+        const byName = {};
+        availability.forEach((row) => {
+          byId[String(row.room_type_id)] = Number(row.available_count) || 0;
+          byName[normalizeRoomTypeName(row.name)] = Number(row.available_count) || 0;
+        });
+        const descById = {};
+        const descByName = {};
+        roomTypes.forEach((rt) => {
+          const desc = String(rt.description || "").trim();
+          descById[String(rt._id)] = desc;
+          descByName[normalizeRoomTypeName(rt.name)] = desc;
+          if (rt.code) descByName[normalizeRoomTypeName(rt.code)] = desc;
+        });
+        setAvailabilityByTypeId(byId);
+        setAvailabilityByName(byName);
+        setDescriptionByTypeId(descById);
+        setDescriptionByName(descByName);
+      } catch {
+        setAvailabilityByTypeId({});
+        setAvailabilityByName({});
+        setDescriptionByTypeId({});
+        setDescriptionByName({});
+      }
     } catch {
       setRooms([]);
     } finally {
@@ -103,76 +138,39 @@ useEffect(() => {
             <div style={styles.grid}>
                 {rooms.map((room) => (
                     <div key={room._id} style={styles.card}>
-                        <div style={styles.imageContainer}>
-                            <img
-                                src={
-                                    room.image?.startsWith("http")
-                                        ? room.image
-                                        : `http://localhost:3000/uploads/${room.image}`
-                                }
-                                alt={room.name}
-                                style={styles.image}
-                                onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = placeholderImage;
-                                }}
-                            />
-                            {isAdmin && (
-                            <div style={{
-                                ...styles.statusBadge,
-                                backgroundColor: room.status === "available" ? "#10b981" : "#ef4444"
-                            }}>
-                                {room.status === "available" ? "Còn trống" : "Đã đặt"}
-                            </div>
-                            )}
-                        </div>
-
-                        <div style={styles.cardContent}>
-                            <h3 style={styles.roomName}>{room.name}</h3>
-                            {isAdmin && (
-                              <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "8px" }}>
-                                Loại này:{" "}
-                                <strong>
-                                  {physicalCountByTypeKey[
-                                    normalizeRoomTypeName(room.name)
-                                  ] ?? 0}{" "}
-                                  phòng
-                                </strong>
-                              </p>
-                            )}
-   <div style={{ marginBottom: "10px" }}>
-  ⭐ {ratings[room._id]?.avg || 0} / 5
-  <br />
-  <small>
-    ({ratings[room._id]?.total || 0} đánh giá)
-  </small>
-</div>                         
-                            <p style={styles.capacity}>
-                                🛏️ {room.capacity} người
-                            </p>
-
-                            <p style={styles.description}>
-                                Không gian sạch sẽ, đầy đủ tiện nghi cho kỳ nghỉ của bạn.
-                            </p>
-
-                            <div style={styles.priceRow}>
-                                <div>
-                                    <span style={styles.price}>
-                                        {room.price?.toLocaleString("vi-VN")} ₫
-                                    </span>
-                                    <span style={styles.perNight}> / đêm</span>
-                                </div>
-                            </div>
-
-                            {!isAdmin && (
-                                <button
-                                    style={styles.button}
-                                    onClick={() => navigate(`/booking/${room._id}`)}
-                                >
-                                    Đặt phòng
-                                </button>
-                            )}
-                        </div>
+                        <RoomTypeCardStructured
+                          room={room}
+                          imageSrc={
+                            room.image?.startsWith("http")
+                              ? room.image
+                              : `http://localhost:3000/uploads/${room.image}`
+                          }
+                          ratingAvg={ratings[room._id]?.avg || 0}
+                          ratingTotal={ratings[room._id]?.total || 0}
+                          availableCount={
+                            room.roomType
+                              ? (availabilityByTypeId[String(room.roomType)] ?? 0)
+                              : (availabilityByName[normalizeRoomTypeName(room.name)] ?? 0)
+                          }
+                          description={
+                            room.roomType
+                              ? descriptionByTypeId[String(room.roomType)] || "Mô tả đang cập nhật."
+                              : descriptionByName[normalizeRoomTypeName(room.name)] ||
+                                "Mô tả đang cập nhật."
+                          }
+                          showBookButton={!isAdmin}
+                        />
+                        {isAdmin && (
+                          <p style={{ fontSize: "14px", color: "#64748b", marginTop: "8px" }}>
+                            Loại này:{" "}
+                            <strong>
+                              {physicalCountByTypeKey[
+                                normalizeRoomTypeName(room.name)
+                              ] ?? 0}{" "}
+                              phòng
+                            </strong>
+                          </p>
+                        )}
                     </div>
                 ))}
             </div>
@@ -276,8 +274,18 @@ const styles = {
         color: "#475569",
         fontSize: "15px",
         lineHeight: "1.6",
-        marginBottom: "20px",
+        marginBottom: "12px",
         minHeight: "70px",
+    },
+    availableCount: {
+        marginBottom: "16px",
+        color: "#374151",
+        fontSize: "14px",
+        background: "#fff7ed",
+        border: "1px solid #fdba74",
+        borderRadius: "8px",
+        padding: "6px 10px",
+        display: "inline-block",
     },
 
     priceRow: {

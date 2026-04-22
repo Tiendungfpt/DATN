@@ -24,6 +24,7 @@ const emptyForm = {
   code: "",
   name: "",
   price: "",
+  hourly_price: "",
   description: "",
   maxGuests: 2,
   image: "",
@@ -85,6 +86,7 @@ export default function RoomTypeManager() {
       code: row.code ?? "",
       name: row.name || "",
       price: row.price ?? "",
+      hourly_price: row.hourly_price ?? "",
       description: row.description || "",
       maxGuests: row.maxGuests ?? 2,
       image: row.image || "",
@@ -106,6 +108,7 @@ export default function RoomTypeManager() {
       code: String(form.code || "").trim(),
       name: String(form.name || "").trim(),
       price: Number(form.price),
+      hourly_price: Number(form.hourly_price || 0),
       description: String(form.description || "").trim(),
       maxGuests: Math.max(1, Number.parseInt(String(form.maxGuests), 10) || 1),
       image: String(form.image || "").trim(),
@@ -116,6 +119,10 @@ export default function RoomTypeManager() {
     }
     if (Number.isNaN(payload.price) || payload.price < 0) {
       setErr("Giá phải là số ≥ 0.");
+      return;
+    }
+    if (Number.isNaN(payload.hourly_price) || payload.hourly_price < 0) {
+      setErr("Giá theo giờ phải là số ≥ 0.");
       return;
     }
     try {
@@ -201,6 +208,15 @@ export default function RoomTypeManager() {
             required
           />
           <input
+            name="hourly_price"
+            type="number"
+            min={0}
+            step={1000}
+            placeholder="Giá / giờ (VND, tùy chọn)"
+            value={form.hourly_price}
+            onChange={onChange}
+          />
+          <input
             name="maxGuests"
             type="number"
             min={1}
@@ -280,6 +296,9 @@ export default function RoomTypeManager() {
               ) : null}
               <p className="price">
                 <strong>{Number(row.price || 0).toLocaleString("vi-VN")} đ</strong> / đêm
+              </p>
+              <p className="price" style={{ marginTop: "-4px" }}>
+                <strong>{Number(row.hourly_price || 0).toLocaleString("vi-VN")} đ</strong> / giờ
               </p>
               <p className="capacity">Tối đa {row.maxGuests ?? 2} khách</p>
               {row.description ? <p className="desc">{row.description}</p> : null}

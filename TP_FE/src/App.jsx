@@ -30,6 +30,7 @@ import RoomDetail from "./pages/RoomDetail";
 import HotelList from "./pages/HotelList";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
+import BookingCheckout from "./pages/BookingCheckout";
 import UserProfile from "./pages/Profile/UserProfile";
 import Review from "./pages/Review";
 import AdminDashboard from "./admin/pages/DashboardAdmin";
@@ -54,6 +55,7 @@ function Layout() {
                 <Route path="/dat-phong" element={<RoomsList />} />
                 <Route path="/khach-san" element={<HotelList />} />
                 <Route path="/lien-he" element={<Contact />} />
+                <Route path="/booking/checkout" element={<BookingCheckout />} />
                 <Route path="/booking/:roomId" element={<Booking />} />
                 <Route
                     path="/booking-list"

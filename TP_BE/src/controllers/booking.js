@@ -47,6 +47,18 @@ function normalizePhone(value) {
   return String(value || "").replace(/\D/g, "");
 }
 
+function resolveHourlyPrice(roomTypeDoc) {
+  const configured = Number(roomTypeDoc?.hourly_price) || 0;
+  if (configured > 0) return configured;
+  const nightly = Number(roomTypeDoc?.price) || 0;
+  if (nightly <= 0) return 0;
+  return Math.max(1000, Math.ceil(nightly / 10));
+}
+
+function computeSubtotal(unitPrice, units, quantity) {
+  return Math.max(0, Number(unitPrice) || 0) * Math.max(1, Number(units) || 1) * Math.max(1, Number(quantity) || 1);
+}
+
 function resolveExistingPath(candidates) {
   for (const p of candidates) {
     if (p && fs.existsSync(p)) return p;
@@ -116,6 +128,8 @@ export const createBooking = async (req, res) => {
       guest_email: guestEmailRaw,
       payment_mode = "full",
       prepaid_amount: prepaidRaw,
+      booking_type: bookingTypeRaw = "overnight",
+      stay_hours: stayHoursRaw,
     } = req.body;
 
     const forbiddenRoom =
@@ -148,12 +162,39 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const parsed = parseStayDates(checkInRaw, checkOutRaw);
-    if (parsed.error) {
-      return res.status(400).json({ message: parsed.error });
+    const bookingType = String(bookingTypeRaw || "overnight").trim().toLowerCase();
+    if (!["overnight", "hourly"].includes(bookingType)) {
+      return res.status(400).json({ message: "booking_type phải là overnight hoặc hourly" });
     }
-    const { start, end } = parsed;
-    const n = nightsBetween(start, end);
+
+    let start;
+    let end;
+    let stayUnits;
+    let stayHours = null;
+
+    if (bookingType === "hourly") {
+      const startAt = new Date(checkInRaw);
+      if (Number.isNaN(startAt.getTime())) {
+        return res.status(400).json({ message: "Giờ nhận phòng không hợp lệ" });
+      }
+      const parsedHours = Number.parseInt(String(stayHoursRaw), 10);
+      if (!Number.isInteger(parsedHours) || parsedHours < 1 || parsedHours > 24) {
+        return res.status(400).json({ message: "stay_hours phải là số nguyên từ 1 đến 24" });
+      }
+      start = startAt;
+      end = new Date(startAt.getTime() + parsedHours * 60 * 60 * 1000);
+      stayUnits = parsedHours;
+      stayHours = parsedHours;
+    } else {
+      const parsed = parseStayDates(checkInRaw, checkOutRaw);
+      if (parsed.error) {
+        return res.status(400).json({ message: parsed.error });
+      }
+      start = parsed.start;
+      end = parsed.end;
+      stayUnits = nightsBetween(start, end);
+    }
+
     const prepaid = Math.max(0, Number(prepaidRaw) || 0);
 
     let lineItemsToSave = [];
@@ -192,12 +233,16 @@ export const createBooking = async (req, res) => {
             message: `Khong du phong trong khoang ngay da chon cho loai "${roomTypeDoc.name}" (dat ${q} phong). Co the chon them loai phong khac trong cung don.`,
           });
         }
-        const lineSub = computeRoomSubtotal(roomTypeDoc.price, n, q);
+        const unitPrice =
+          bookingType === "hourly"
+            ? resolveHourlyPrice(roomTypeDoc)
+            : Number(roomTypeDoc.price) || 0;
+        const lineSub = computeSubtotal(unitPrice, stayUnits, q);
         estimated += lineSub;
         lineItemsToSave.push({
           room_type_id: rtid,
           quantity: q,
-          unit_price_per_night: roomTypeDoc.price,
+          unit_price_per_night: unitPrice,
           line_subtotal: lineSub,
         });
       }
@@ -236,7 +281,17 @@ export const createBooking = async (req, res) => {
       }
       roomTypeIdStr = roomTypeIdSingle;
       totalQty = quantity;
-      estimated = computeRoomSubtotal(roomType.price, n, quantity);
+      const unitPrice =
+        bookingType === "hourly"
+          ? resolveHourlyPrice(roomType)
+          : Number(roomType.price) || 0;
+      estimated = computeSubtotal(unitPrice, stayUnits, quantity);
+      lineItemsToSave.push({
+        room_type_id: roomTypeIdSingle,
+        quantity,
+        unit_price_per_night: unitPrice,
+        line_subtotal: estimated,
+      });
     }
 
     if (!["deposit", "full"].includes(payment_mode)) {
@@ -266,6 +321,8 @@ export const createBooking = async (req, res) => {
       guest_email,
       check_in_date: start,
       check_out_date: end,
+      booking_type: bookingType,
+      stay_hours: stayHours,
       room_quantity: totalQty,
       payment_mode,
       prepaid_amount: prepaid,
@@ -286,6 +343,142 @@ export const createBooking = async (req, res) => {
     return res.status(201).json({
       message: "Đặt phòng thành công",
       booking: attachCanReview(populated),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Public availability checker for booking screen.
+ * GET /api/bookings/availability?check_in_date=...&check_out_date=...&booking_type=overnight|hourly&stay_hours=...
+ * Optional query: line_items (JSON), room_type_ids (comma-separated), room_type_id, quantity
+ */
+export const checkBookingAvailability = async (req, res) => {
+  try {
+    const bookingType = String(req.query.booking_type || "overnight")
+      .trim()
+      .toLowerCase();
+    if (!["overnight", "hourly"].includes(bookingType)) {
+      return res.status(400).json({ message: "booking_type phải là overnight hoặc hourly" });
+    }
+
+    const checkInRaw = req.query.check_in_date;
+    const checkOutRaw = req.query.check_out_date;
+    const stayHoursRaw = req.query.stay_hours;
+
+    let start;
+    let end;
+    if (bookingType === "hourly") {
+      const startAt = new Date(String(checkInRaw || ""));
+      if (Number.isNaN(startAt.getTime())) {
+        return res.status(400).json({ message: "Giờ nhận phòng không hợp lệ" });
+      }
+      let hours = Number.parseInt(String(stayHoursRaw || ""), 10);
+      if (!Number.isInteger(hours) || hours < 1) {
+        const endAt = new Date(String(checkOutRaw || ""));
+        if (Number.isNaN(endAt.getTime()) || endAt <= startAt) {
+          return res.status(400).json({ message: "stay_hours không hợp lệ" });
+        }
+        hours = Math.ceil((endAt.getTime() - startAt.getTime()) / (1000 * 60 * 60));
+      }
+      start = startAt;
+      end = new Date(startAt.getTime() + hours * 60 * 60 * 1000);
+    } else {
+      const parsed = parseStayDates(checkInRaw, checkOutRaw);
+      if (parsed.error) {
+        return res.status(400).json({ message: parsed.error });
+      }
+      start = parsed.start;
+      end = parsed.end;
+    }
+
+    const requestedMap = new Map();
+    const lineItemsRaw = req.query.line_items;
+    if (lineItemsRaw) {
+      let parsedItems;
+      try {
+        parsedItems = JSON.parse(String(lineItemsRaw));
+      } catch (_err) {
+        return res.status(400).json({ message: "line_items phải là JSON hợp lệ" });
+      }
+      if (Array.isArray(parsedItems)) {
+        for (const row of parsedItems) {
+          const tid = row?.room_type_id ?? row?.roomType;
+          if (!mongoose.isValidObjectId(tid)) continue;
+          const qty = Math.max(1, Number.parseInt(String(row?.quantity), 10) || 1);
+          const key = String(tid);
+          requestedMap.set(key, (requestedMap.get(key) || 0) + qty);
+        }
+      }
+    }
+
+    if (requestedMap.size === 0) {
+      const singleRoomType = req.query.room_type_id;
+      if (singleRoomType && mongoose.isValidObjectId(singleRoomType)) {
+        const qty = Math.max(1, Number.parseInt(String(req.query.quantity), 10) || 1);
+        requestedMap.set(String(singleRoomType), qty);
+      }
+    }
+
+    if (requestedMap.size === 0) {
+      const roomTypeIds = String(req.query.room_type_ids || "")
+        .split(",")
+        .map((x) => x.trim())
+        .filter((x) => mongoose.isValidObjectId(x));
+      for (const tid of roomTypeIds) {
+        requestedMap.set(String(tid), 1);
+      }
+    }
+
+    if (requestedMap.size === 0) {
+      return res.status(400).json({
+        message: "Cần room_type_id, room_type_ids hoặc line_items để kiểm tra phòng trống",
+      });
+    }
+
+    const results = [];
+    for (const [roomTypeId, requested] of requestedMap.entries()) {
+      const roomTypeDoc = await RoomType.findById(roomTypeId).select("name code").lean();
+      if (!roomTypeDoc) {
+        results.push({
+          room_type_id: roomTypeId,
+          room_type_name: "",
+          requested,
+          physical: 0,
+          reserved: 0,
+          available: 0,
+          is_enough: false,
+          message: "Không tìm thấy loại phòng",
+        });
+        continue;
+      }
+      const physical = await countBookablePhysicalRoomsByType(roomTypeId);
+      const reserved = await sumReservedSlotsForRoomType(roomTypeId, start, end, null);
+      const available = Math.max(0, physical - reserved);
+      const isEnough = available >= requested;
+
+      results.push({
+        room_type_id: roomTypeId,
+        room_type_name: roomTypeDoc.name || "",
+        room_type_code: roomTypeDoc.code || "",
+        requested,
+        physical,
+        reserved,
+        available,
+        is_enough: isEnough,
+        message: isEnough
+          ? "Còn phòng"
+          : `Không đủ phòng trống (cần ${requested}, còn ${available})`,
+      });
+    }
+
+    return res.json({
+      booking_type: bookingType,
+      check_in_date: start,
+      check_out_date: end,
+      ok: results.every((r) => r.is_enough),
+      items: results,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
