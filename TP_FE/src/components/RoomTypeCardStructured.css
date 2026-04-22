@@ -1,0 +1,125 @@
+.rt-structured-card {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+}
+
+.rt-structured-card.is-sold-out {
+  opacity: 0.74;
+  filter: grayscale(0.2);
+}
+
+.rt-structured-header {
+  background: #f1f5f9;
+  color: #111827;
+  font-weight: 700;
+  font-size: 19px;
+  padding: 10px 12px;
+}
+
+.rt-structured-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 14px;
+  padding: 12px 12px 14px;
+}
+
+.rt-structured-image {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.rt-structured-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rt-structured-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.rt-structured-rating-star {
+  font-size: 15px;
+}
+
+.rt-structured-rating small {
+  color: #64748b;
+}
+
+.rt-structured-list {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.rt-structured-list li {
+  margin-bottom: 5px;
+}
+
+.rt-structured-desc {
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rt-structured-actions {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rt-structured-link {
+  color: #475569;
+  text-decoration: underline;
+  font-size: 13px;
+}
+
+.rt-structured-book-btn {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.rt-structured-book-btn.is-disabled {
+  border: none;
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .rt-structured-body {
+    grid-template-columns: 1fr;
+  }
+
+  .rt-structured-image {
+    height: 190px;
+  }
+
+  .rt-structured-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

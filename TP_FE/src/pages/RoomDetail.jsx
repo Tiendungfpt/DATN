@@ -157,7 +157,14 @@ function RoomDetail() {
                         {!isAdmin && (
                             <button 
                                 style={styles.bookButton}
-                                onClick={() => navigate(`/booking/${room._id}`)}
+                                onClick={() => {
+                                  const roomTypeId = String(room?.roomType?._id ?? room?.roomType ?? "");
+                                  if (roomTypeId && roomTypeId !== "undefined" && roomTypeId !== "null") {
+                                    navigate(`/book?room_type_id=${encodeURIComponent(roomTypeId)}`);
+                                  } else {
+                                    navigate("/book");
+                                  }
+                                }}
                             >
                                 Đặt phòng ngay
                             </button>

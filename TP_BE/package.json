@@ -5,8 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "nodemon --exec babel-node src/app.js",
-    "seed:test-user": "babel-node src/scripts/seedTestUser.js"
+    "dev": "nodemon --exec babel-node src/app.js"
   },
   "repository": {
     "type": "git",

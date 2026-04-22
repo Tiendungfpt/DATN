@@ -27,79 +27,70 @@ export default function SearchBar() {
       alert("Vui lòng chọn ít nhất 1 khách.");
       return;
     }
+    // Redirect-like booking engine entry (HanoiHotel style)
     navigate(
-      `/khach-san?check_in_date=${encodeURIComponent(checkIn)}&check_out_date=${encodeURIComponent(checkOut)}&capacity=${encodeURIComponent(totalGuests)}`,
+      `/book?check_in_date=${encodeURIComponent(checkIn)}&check_out_date=${encodeURIComponent(checkOut)}&adults=${encodeURIComponent(adults)}&children=${encodeURIComponent(children)}`,
     );
   };
 
   return (
-    <div className="search-container mt-4">
-      <div className="card shadow-lg border-0 rounded-4 overflow-hidden">
-        <div className="card-body p-4">
-          <div className="row g-3 align-items-end">
-            <div className="col-lg-3">
-              <label className="form-label fw-medium text-muted">
-                Nhận phòng
-              </label>
-              <input
-                type="date"
-                className="form-control"
-                value={checkIn}
-                min={today}
-                onChange={(e) => setCheckIn(e.target.value)}
-              />
-            </div>
-
-            <div className="col-lg-3">
-              <label className="form-label fw-medium text-muted">
-                Trả phòng
-              </label>
-              <input
-                type="date"
-                className="form-control"
-                value={checkOut}
-                min={checkIn || today}
-                onChange={(e) => setCheckOut(e.target.value)}
-              />
-            </div>
-
-            <div className="col-lg-2">
-              <label className="form-label fw-medium text-muted">
-                Người lớn
-              </label>
-              <input
-                type="number"
-                min="1"
-                className="form-control"
-                value={adults}
-                onChange={(e) => setAdults(Number(e.target.value || 1))}
-              />
-            </div>
-
-            <div className="col-lg-2">
-              <label className="form-label fw-medium text-muted">
-                Trẻ em
-              </label>
-              <input
-                type="number"
-                min="0"
-                className="form-control"
-                value={children}
-                onChange={(e) => setChildren(Number(e.target.value || 0))}
-              />
-            </div>
-
-            <div className="col-lg-2">
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="btn btn-primary w-100 py-3 fw-semibold rounded-3"
-              >
-                <i className="bi bi-search me-2"></i>
-                Tìm phòng
-              </button>
-            </div>
-          </div>
+    <div className="home-book-strip" aria-label="Đặt phòng nhanh">
+      <div className="home-book-grid">
+        <div>
+          <label className="hh-label">Nhận phòng *</label>
+          <input
+            type="date"
+            className="hh-input"
+            value={checkIn}
+            min={today}
+            onChange={(e) => setCheckIn(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="hh-label">Trả phòng *</label>
+          <input
+            type="date"
+            className="hh-input"
+            value={checkOut}
+            min={checkIn || today}
+            onChange={(e) => setCheckOut(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="hh-label">Người lớn *</label>
+          <select
+            className="hh-input"
+            value={adults}
+            onChange={(e) => setAdults(Number(e.target.value || 1))}
+          >
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="hh-label">Trẻ em</label>
+          <select
+            className="hh-input"
+            value={children}
+            onChange={(e) => setChildren(Number(e.target.value || 0))}
+          >
+            {[0, 1, 2, 3, 4].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="hh-label" style={{ visibility: "hidden" }}>
+            action
+          </label>
+          <button type="button" className="home-book-btn" onClick={handleSearch}>
+            Đặt phòng
+          </button>
         </div>
       </div>
     </div>

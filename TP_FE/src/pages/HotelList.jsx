@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useSearchParams } from "react-router-dom";
+import RoomTypeCardStructured from "../components/RoomTypeCardStructured";
 import {
-  FEATURED_ROOM_SLOTS,
   normalizeRoomTypeName,
-  roomMatchesFeaturedSlot,
 } from "../constants/featuredRoomTypes";
+import {
+  fetchRoomTypeAvailability,
+  fetchRoomTypeCatalog,
+  normalizeTypeName,
+} from "../services/availabilityApi";
 
 function HotelList() {
   const [visibleCount, setVisibleCount] = useState(3);
@@ -19,6 +23,10 @@ function HotelList() {
   const [error, setError] = useState(null);
   const [searchParams] = useSearchParams();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [availabilityByTypeId, setAvailabilityByTypeId] = useState({});
+  const [availabilityByName, setAvailabilityByName] = useState({});
+  const [descriptionByTypeId, setDescriptionByTypeId] = useState({});
+  const [descriptionByName, setDescriptionByName] = useState({});
 
   // ================= FETCH REVIEWS =================
   useEffect(() => {
@@ -121,21 +129,60 @@ function HotelList() {
       .then((res) => {
         const roomList = Array.isArray(res.data) ? res.data : [];
 
-        const selected = [];
-        FEATURED_ROOM_SLOTS.forEach((slot) => {
-          const found = roomList.find((r) =>
-            roomMatchesFeaturedSlot(r, slot)
-          );
-          if (found) selected.push(found);
-        });
-
-        setRooms(selected);
+        // Show all types (pick one representative per type)
+        const repByType = new Map();
+        for (const r of roomList) {
+          const typeKey = String(r.roomType || r.room_type || r.name || "");
+          const norm = normalizeRoomTypeName(typeKey);
+          if (!repByType.has(norm)) repByType.set(norm, r);
+        }
+        setRooms([...repByType.values()]);
         setLoading(false);
       })
       .catch(() => {
         setError("Không thể tải danh sách phòng.");
         setLoading(false);
       });
+  }, [searchParams]);
+
+  useEffect(() => {
+    const checkIn = searchParams.get("check_in_date");
+    const checkOut = searchParams.get("check_out_date");
+    const isSearching = Boolean(checkIn && checkOut);
+    const fetchAvailability = async () => {
+      try {
+        const [items, roomTypes] = await Promise.all([
+          fetchRoomTypeAvailability(
+            isSearching ? { check_in_date: checkIn, check_out_date: checkOut } : {},
+          ),
+          fetchRoomTypeCatalog(),
+        ]);
+        const byId = {};
+        const byName = {};
+        items.forEach((item) => {
+          byId[String(item.room_type_id)] = Number(item.available_count) || 0;
+          byName[normalizeTypeName(item.name)] = Number(item.available_count) || 0;
+        });
+        const descById = {};
+        const descByName = {};
+        roomTypes.forEach((rt) => {
+          const desc = String(rt.description || "").trim();
+          descById[String(rt._id)] = desc;
+          descByName[normalizeTypeName(rt.name)] = desc;
+          if (rt.code) descByName[normalizeTypeName(rt.code)] = desc;
+        });
+        setAvailabilityByTypeId(byId);
+        setAvailabilityByName(byName);
+        setDescriptionByTypeId(descById);
+        setDescriptionByName(descByName);
+      } catch {
+        setAvailabilityByTypeId({});
+        setAvailabilityByName({});
+        setDescriptionByTypeId({});
+        setDescriptionByName({});
+      }
+    };
+    fetchAvailability();
   }, [searchParams]);
 
   // ✅ dùng toàn bộ review (KHÔNG FILTER)
@@ -145,9 +192,6 @@ function HotelList() {
   useEffect(() => {
     setVisibleCount(3);
   }, [featuredReviews.length]);
-
-  const defaultImage =
-    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
 
   if (loading)
     return (
@@ -166,48 +210,33 @@ function HotelList() {
       <div className="row g-4">
         {rooms.map((room) => (
           <div className="col-md-6 col-lg-4" key={room._id}>
-            <div className="card h-100 shadow border-0">
-                <img
-                  src={
-                    room.image?.startsWith("http")
-                      ? room.image
-                      : `http://localhost:3000/uploads/${room.image}`
-                  }
-                  className="card-img-top"
-                  style={{ height: 260, objectFit: "cover" }}
-                  onError={(e) => (e.target.src = defaultImage)}
-                  alt=""
-                />
-
-                <div className="card-body d-flex flex-column">
-                  <h5 className="fw-bold text-dark">{room.name}</h5>
-
-                  <div className="mb-2">
-                    ⭐ {ratings[room._id]?.avg ?? 0} / 5
-                    <br />
-                    <small className="text-muted">
-                      ({ratings[room._id]?.total ?? 0} đánh giá)
-                    </small>
-                  </div>
-
-                  <h5 className="text-primary mb-3">
-                    {(room.price || 0).toLocaleString("vi-VN")}đ
-                  </h5>
-
-                  {!isAdmin ? (
-                    <Link
-                      to={`/booking/${room._id}`}
-                      className="btn btn-primary mt-auto"
-                    >
-                      {"\u0110\u1eb7t ph\u00f2ng"}
-                    </Link>
-                  ) : (
-                    <p className="text-muted small mt-auto mb-0">
-                      {"Admin kh\u00f4ng \u0111\u1eb7t ph\u00f2ng qua trang kh\u00e1ch \u2014 d\u00f9ng qu\u1ea3n tr\u1ecb booking."}
-                    </p>
-                  )}
-                </div>
-              </div>
+            <RoomTypeCardStructured
+              room={room}
+              imageSrc={
+                room.image?.startsWith("http")
+                  ? room.image
+                  : `http://localhost:3000/uploads/${room.image}`
+              }
+              ratingAvg={ratings[room._id]?.avg ?? 0}
+              ratingTotal={ratings[room._id]?.total ?? 0}
+              availableCount={
+                room.roomType
+                  ? (availabilityByTypeId[String(room.roomType)] ?? 0)
+                  : (availabilityByName[normalizeTypeName(room.name)] ?? 0)
+              }
+              description={
+                room.roomType
+                  ? descriptionByTypeId[String(room.roomType)] || "Mô tả đang cập nhật."
+                  : descriptionByName[normalizeTypeName(room.name)] ||
+                    "Mô tả đang cập nhật."
+              }
+              showBookButton={!isAdmin}
+            />
+            {isAdmin && (
+              <p className="text-muted small mt-2 mb-0">
+                {"Admin không đặt phòng qua trang khách — dùng quản trị booking."}
+              </p>
+            )}
           </div>
         ))}
       </div>

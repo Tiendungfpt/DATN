@@ -1,12 +1,15 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
+import "./HanoiHeader.css";
 
 export default function Header() {
   const [logo, setLogo] = useState("");
   const [user, setUser] = useState(null);
   const [notificationItems, setNotificationItems] = useState([]);
   const [notificationUnread, setNotificationUnread] = useState(0);
+  const [openMenu, setOpenMenu] = useState(false);
+  const menuRef = useRef(null);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
@@ -25,7 +28,7 @@ export default function Header() {
           setUser({ name: "Khách hàng" });
         }
 
-        const res = await axios.get("http://localhost:3000/api/users/profile", {
+        const res = await axios.get("/api/users/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const profile = res.data || {};
@@ -49,7 +52,7 @@ export default function Header() {
 
     const fetchNotifications = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/users/notifications", {
+        const res = await axios.get("/api/users/notifications", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const items = Array.isArray(res.data?.items) ? res.data.items : [];
@@ -67,7 +70,7 @@ export default function Header() {
     if (!token) return;
     try {
       await axios.patch(
-        "http://localhost:3000/api/users/notifications/read-all",
+        "/api/users/notifications/read-all",
         {},
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -90,7 +93,7 @@ export default function Header() {
     try {
       if (!item.is_read && token) {
         await axios.patch(
-          `http://localhost:3000/api/users/notifications/${item._id}/read`,
+          `/api/users/notifications/${item._id}/read`,
           {},
           { headers: { Authorization: `Bearer ${token}` } },
         );
@@ -102,6 +105,7 @@ export default function Header() {
     } catch (err) {
       console.error("Lỗi mở thông báo:", err);
     } finally {
+      setOpenMenu(false);
       navigate(getNotificationTarget(item));
     }
   };
@@ -109,196 +113,159 @@ export default function Header() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setOpenMenu(false);
     navigate("/login");
     window.location.reload();
   };
 
+  const navItems = useMemo(
+    () => [
+      { to: "/", label: "Trang chủ" },
+      { to: "/khach-san", label: "Hạng phòng" },
+      { to: "/lien-he", label: "Liên hệ" },
+    ],
+    [],
+  );
+
+  useEffect(() => {
+    const onDocDown = (e) => {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(e.target)) setOpenMenu(false);
+    };
+    document.addEventListener("mousedown", onDocDown);
+    return () => document.removeEventListener("mousedown", onDocDown);
+  }, []);
+
+  const shortName = String(user?.name || "Khách").trim().split(/\s+/).slice(-1)[0] || "Khách";
+  const initial = String(user?.name || "U").trim().charAt(0).toUpperCase() || "U";
+  const avatarSrc = user?.avatar ? `/uploads/${user.avatar}` : "";
+  const isAdmin = String(user?.role || "").toLowerCase() === "admin";
+
   return (
     <>
-      <nav className="navbar navbar-expand-lg navbar-light bg-white shadow sticky-top py-3">
-        <div className="container">
-          {/* Logo */}
-          <Link className="navbar-brand d-flex align-items-center" to="/">
+      <header className="hh-header">
+        <div className="hh-container hh-header-inner">
+          <Link className="hh-logo" to="/">
             <img
-              src={
-                logo
-                  ? `http://localhost:3000/uploads/${logo}`
-                  : "http://localhost:3000/uploads/Logo.jpg"
-              }
-              alt="Thịnh Phát Hotel"
-              style={{ height: "55px", objectFit: "contain" }}
+              src={logo ? `/uploads/${logo}` : "/uploads/Logo.jpg"}
+              alt="Hanoi Hotel"
             />
           </Link>
 
-          <button
-            className="navbar-toggler"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#navbarNav"
-          >
-            <span className="navbar-toggler-icon"></span>
-          </button>
+          <nav className="hh-nav" aria-label="Main navigation">
+            {navItems.map((it) => (
+              <NavLink key={it.to} to={it.to} end>
+                {it.label}
+              </NavLink>
+            ))}
+          </nav>
 
-          <div className="collapse navbar-collapse" id="navbarNav">
-            <ul className="navbar-nav ms-auto align-items-center gap-1">
-              <li className="nav-item">
-                <NavLink className="nav-link fw-medium px-3" to="/">
-                  Trang chủ
-                </NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink className="nav-link fw-medium px-3" to="/khach-san">
-                  Danh sách phòng
-                </NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink className="nav-link fw-medium px-3" to="/lien-he">
-                  Liên hệ
-                </NavLink>
-              </li>
-
-              {!token ? (
-                <>
-                  <li className="nav-item ms-3">
-                    <NavLink
-                      className="btn btn-outline-primary px-4 fw-medium"
-                      to="/register"
-                    >
-                      Đăng ký
-                    </NavLink>
-                  </li>
-                  <li className="nav-item">
-                    <NavLink
-                      className="btn btn-primary px-4 fw-medium"
-                      to="/login"
-                    >
-                      Đăng nhập
-                    </NavLink>
-                  </li>
-                </>
-              ) : (
-                <>
-                  <li className="nav-item ms-3 dropdown">
-                    <button
-                      className="btn btn-light position-relative"
-                      type="button"
-                      data-bs-toggle="dropdown"
-                      aria-expanded="false"
-                      title="Thông báo"
-                    >
-                      <i className="bi bi-bell fs-5"></i>
-                      {notificationUnread > 0 ? (
-                        <span
-                          className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                        >
-                          {notificationUnread > 99 ? "99+" : notificationUnread}
-                        </span>
-                      ) : null}
-                    </button>
-                    <ul className="dropdown-menu dropdown-menu-end shadow" style={{ minWidth: "350px" }}>
-                      <li className="px-3 py-2 d-flex justify-content-between align-items-center">
-                        <strong>Thông báo</strong>
-                        <button
-                          className="btn btn-sm btn-link p-0 text-decoration-none"
-                          onClick={markAllNotificationsRead}
-                          type="button"
-                        >
-                          Đọc tất cả
-                        </button>
-                      </li>
-                      <li><hr className="dropdown-divider" /></li>
-                      {notificationItems.length === 0 ? (
-                        <li className="px-3 py-2 text-muted small">Chưa có thông báo nào.</li>
-                      ) : (
-                        notificationItems.map((item) => (
-                          <li key={item._id} className="border-bottom">
-                            <button
-                              type="button"
-                              className="dropdown-item px-3 py-2"
-                              onClick={() => handleNotificationClick(item)}
-                            >
-                              <div className="d-flex justify-content-between gap-2">
-                                <strong className="small">{item.title}</strong>
-                                {!item.is_read ? <span className="badge bg-danger">Mới</span> : null}
-                              </div>
-                              <div className="small text-muted text-wrap">{item.message}</div>
-                            </button>
-                          </li>
-                        ))
-                      )}
-                      <li>
-                        <button
-                          className="dropdown-item text-primary fw-semibold"
-                          type="button"
-                          onClick={() => navigate("/thong-tin-tai-khoan?tab=notifications")}
-                        >
-                          Xem tất cả thông báo
-                        </button>
-                      </li>
-                    </ul>
-                  </li>
-
-                  {user?.role === "admin" && (
-                    <li className="nav-item ms-2">
-                      <NavLink
-                        className="btn btn-warning px-3 fw-semibold"
-                        to="/admin/dashboard"
+          <div className="hh-header-right">
+            {!token ? (
+              <>
+                <span className="hh-user">Xin chào</span>
+                <button type="button" className="hh-btn-gold" onClick={() => navigate("/login")}>
+                  Đăng nhập
+                </button>
+              </>
+            ) : (
+              <div className="hh-account" ref={menuRef}>
+                <button
+                  type="button"
+                  className="hh-account-btn"
+                  onClick={() => setOpenMenu((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={openMenu}
+                >
+                  <span className="hh-avatar" aria-hidden="true">
+                    {avatarSrc ? (
+                      <img src={avatarSrc} alt="" />
+                    ) : (
+                      initial
+                    )}
+                  </span>
+                  <span className="hh-account-name">Xin chào, {shortName}</span>
+                  {notificationUnread > 0 ? (
+                    <span className="hh-pill" aria-label={`Có ${notificationUnread} thông báo chưa đọc`}>
+                      {notificationUnread > 9 ? "9+" : notificationUnread}
+                    </span>
+                  ) : null}
+                </button>
+                {openMenu ? (
+                  <div className="hh-menu" role="menu">
+                    {isAdmin ? (
+                      <button
+                        type="button"
+                        className="hh-menu-item"
+                        onClick={() => {
+                          setOpenMenu(false);
+                          navigate("/admin");
+                        }}
+                        role="menuitem"
                       >
-                        Admin
-                      </NavLink>
-                    </li>
-                  )}
-                  {/* === Phần Dropdown khi đã đăng nhập === */}
-                  <li className="nav-item ms-3 dropdown">
-                    <a
-                      className="nav-link dropdown-toggle fw-medium d-flex align-items-center gap-2"
-                      href="#"
-                      role="button"
-                      data-bs-toggle="dropdown"
-                      aria-expanded="false"
+                        Trang Admin
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="hh-menu-item"
+                      onClick={() => {
+                        setOpenMenu(false);
+                        navigate("/thong-tin-tai-khoan?tab=profile");
+                      }}
+                      role="menuitem"
                     >
-                      <i className="bi bi-person-circle fs-5"></i>
-                      Xin chào, <span className="fw-semibold">{user?.name}</span>
-                    </a>
-
-                    <ul className="dropdown-menu dropdown-menu-end shadow">
-                      <li>
-                        <a className="dropdown-item" href="/thong-tin-tai-khoan">
-                          <i className="bi bi-person me-2"></i>Thông tin tài khoản
-                        </a>
-                      </li>
-                      <li>
-                        <a
-                          className="dropdown-item"
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            window.location.href = "/thong-tin-tai-khoan?tab=history";
-                          }}
-                        >
-                          <i className="bi bi-bookmark me-2"></i>
-                          Lịch sử đặt phòng
-                        </a>
-                      </li>
-                      <li>
-                        <hr className="dropdown-divider" />
-                      </li>
-                      <li>
-                        <button
-                          onClick={handleLogout}
-                          className="dropdown-item text-danger fw-medium"
-                        >
-                          <i className="bi bi-box-arrow-right me-2"></i>Đăng xuất
-                        </button>
-                      </li>
-                    </ul>
-                  </li>
-                </>
-              )}
-            </ul>
+                      Thông tin tài khoản
+                    </button>
+                    <button
+                      type="button"
+                      className="hh-menu-item"
+                      onClick={() => {
+                        setOpenMenu(false);
+                        navigate("/thong-tin-tai-khoan?tab=history");
+                      }}
+                      role="menuitem"
+                    >
+                      Lịch sử đặt phòng
+                    </button>
+                    <div className="hh-menu-sep" />
+                    <div className="hh-menu-head">
+                      <span>Thông báo</span>
+                      <button type="button" className="hh-menu-link" onClick={markAllNotificationsRead}>
+                        Đánh dấu đã đọc
+                      </button>
+                    </div>
+                    {notificationItems.length > 0 ? (
+                      <div className="hh-menu-list">
+                        {notificationItems.map((n) => (
+                          <button
+                            key={n._id}
+                            type="button"
+                            className={`hh-noti ${n.is_read ? "" : "unread"}`}
+                            onClick={() => handleNotificationClick(n)}
+                          >
+                            <div className="hh-noti-title">{n.title || "Thông báo"}</div>
+                            <div className="hh-noti-msg">{n.message || ""}</div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="hh-menu-empty">Chưa có thông báo.</div>
+                    )}
+                    <div className="hh-menu-sep" />
+                    <button type="button" className="hh-menu-item danger" onClick={handleLogout} role="menuitem">
+                      Đăng xuất
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+            <button type="button" className="hh-btn-gold" onClick={() => navigate("/book")}>
+              Đặt phòng
+            </button>
           </div>
         </div>
-      </nav>
+      </header>
     </>
   );
 }

@@ -6,6 +6,9 @@ function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const bookingId = searchParams.get("bookingId");
+  const paidAmountParam = searchParams.get("paidAmount");
+  const payType = searchParams.get("payType") || "deposit";
+  const paidAmount = Math.max(0, Number(paidAmountParam || 0));
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +21,7 @@ function PaymentSuccess() {
 
     const token = localStorage.getItem("token");
     axios
-      .get(`http://localhost:3000/api/bookings/${bookingId}`, {
+      .get(`/api/bookings/${bookingId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
       .then((res) => {
@@ -71,9 +74,28 @@ function PaymentSuccess() {
 
                         <div className="col-12">
                           <div className="d-flex justify-content-between py-2 border-bottom">
-                            <span className="text-muted">Tổng thanh toán:</span>
+                            <span className="text-muted">Đã thanh toán ({payType === "balance" ? "toàn bộ" : "tiền cọc"}):</span>
                             <strong className="text-success fs-5">
-                              {booking.total_price?.toLocaleString("vi-VN")} ₫
+                              {paidAmount > 0 ? paidAmount.toLocaleString("vi-VN") : (Number(booking.prepaid_amount || 0)).toLocaleString("vi-VN")} ₫
+                            </strong>
+                          </div>
+                        </div>
+
+                        <div className="col-12">
+                          <div className="d-flex justify-content-between py-2 border-bottom">
+                            <span className="text-muted">Tổng tiền đơn (tiền phòng):</span>
+                            <strong className="text-dark">
+                              {Number(booking.total_price || booking.estimated_room_total || 0).toLocaleString("vi-VN")} ₫
+                            </strong>
+                          </div>
+                        </div>
+
+                        <div className="col-12">
+                          <div className="d-flex justify-content-between py-2 border-bottom">
+                            <span className="text-muted">Tiền cọc:</span>
+                            <strong className="text-dark">
+                              {Number(booking.deposit_paid_amount || 0).toLocaleString("vi-VN")} ₫ /{" "}
+                              {Number(booking.deposit_amount || 0).toLocaleString("vi-VN")} ₫
                             </strong>
                           </div>
                         </div>
@@ -81,8 +103,12 @@ function PaymentSuccess() {
                         <div className="col-12">
                           <div className="d-flex justify-content-between py-2 border-bottom">
                             <span className="text-muted">Trạng thái:</span>
-                            <span className="badge bg-success fs-6 px-3 py-2">
-                              {booking.status === "confirmed" ? "ĐÃ XÁC NHẬN" : booking.status}
+                            <span className={`badge fs-6 px-3 py-2 ${booking.status === "confirmed" ? "bg-success" : "bg-warning text-dark"}`}>
+                              {booking.status === "confirmed"
+                                ? "ĐÃ XÁC NHẬN"
+                                : booking.status === "pending"
+                                  ? "CHỜ XÁC NHẬN"
+                                  : booking.status}
                             </span>
                           </div>
                         </div>
@@ -98,7 +124,9 @@ function PaymentSuccess() {
 
                     <div className="alert alert-success border-0 shadow-sm mb-4">
                       <i className="bi bi-check-circle-fill me-2"></i>
-                      Đặt phòng của bạn đã được xác nhận. Chúng tôi sẽ gửi email chi tiết đến bạn trong thời gian sớm nhất.
+                      {booking.status === "confirmed"
+                        ? "Đặt phòng của bạn đã được xác nhận."
+                        : "Chúng tôi đã ghi nhận thanh toán. Booking đang ở trạng thái chờ admin xác nhận."}
                     </div>
                     <div className="alert alert-info border-0 shadow-sm mb-4">
                       <i className="bi bi-receipt me-2"></i>

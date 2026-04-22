@@ -49,6 +49,29 @@ export const updateUserProfile = async (req, res) => {
     res.status(500).json({ message: "Lỗi server" });
   }
 };
+
+// Cập nhật ảnh đại diện
+export const updateUserAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "Vui lòng chọn ảnh avatar" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user?.id || req.userId,
+      { avatar: req.file.filename },
+      { new: true, runValidators: true },
+    ).select("-password");
+
+    return res.status(200).json({
+      message: "Cập nhật ảnh đại diện thành công",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Update avatar error:", error);
+    return res.status(500).json({ message: "Lỗi server" });
+  }
+};
 // Đổi mật khẩu
 export const changePassword = async (req, res) => {
   try {

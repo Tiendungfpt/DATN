@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "../components/List.css";
 
 const API = "http://localhost:3000/api/room-types";
 
 function authHeaders() {
   const token = localStorage.getItem("token");
+  if (!token) return {};
   return { Authorization: `Bearer ${token}` };
 }
 
@@ -24,12 +26,15 @@ const emptyForm = {
   code: "",
   name: "",
   price: "",
+  hourly_price: "",
+  deposit_amount: "",
   description: "",
   maxGuests: 2,
   image: "",
 };
 
 export default function RoomTypeManager() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -37,12 +42,29 @@ export default function RoomTypeManager() {
   const [editingId, setEditingId] = useState(null);
   const [uploading, setUploading] = useState(false);
 
+  const handleAuthError = (ex) => {
+    const status = ex?.response?.status;
+    if (status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setErr("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      navigate("/login", { replace: true, state: { from: "/admin/room/types" } });
+      return true;
+    }
+    if (status === 403) {
+      setErr("Bạn không có quyền admin.");
+      return true;
+    }
+    return false;
+  };
+
   const load = async () => {
     setErr("");
     try {
       const res = await axios.get(API);
       setItems(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
+      if (handleAuthError(e)) return;
       setErr(e.response?.data?.message || "Không tải được danh sách loại phòng.");
     } finally {
       setLoading(false);
@@ -73,6 +95,7 @@ export default function RoomTypeManager() {
       const filename = res.data?.filename;
       if (filename) setForm((f) => ({ ...f, image: filename }));
     } catch (ex) {
+      if (handleAuthError(ex)) return;
       setErr(ex.response?.data?.message || "Upload anh that bai.");
     } finally {
       setUploading(false);
@@ -85,6 +108,8 @@ export default function RoomTypeManager() {
       code: row.code ?? "",
       name: row.name || "",
       price: row.price ?? "",
+      hourly_price: row.hourly_price ?? "",
+      deposit_amount: row.deposit_amount ?? "",
       description: row.description || "",
       maxGuests: row.maxGuests ?? 2,
       image: row.image || "",
@@ -106,6 +131,8 @@ export default function RoomTypeManager() {
       code: String(form.code || "").trim(),
       name: String(form.name || "").trim(),
       price: Number(form.price),
+      hourly_price: Number(form.hourly_price || 0),
+      deposit_amount: Number(form.deposit_amount || 0),
       description: String(form.description || "").trim(),
       maxGuests: Math.max(1, Number.parseInt(String(form.maxGuests), 10) || 1),
       image: String(form.image || "").trim(),
@@ -118,6 +145,14 @@ export default function RoomTypeManager() {
       setErr("Giá phải là số ≥ 0.");
       return;
     }
+    if (Number.isNaN(payload.hourly_price) || payload.hourly_price < 0) {
+      setErr("Giá theo giờ phải là số ≥ 0.");
+      return;
+    }
+    if (Number.isNaN(payload.deposit_amount) || payload.deposit_amount < 0) {
+      setErr("Tiền cọc phải là số ≥ 0.");
+      return;
+    }
     try {
       if (editingId) {
         await axios.put(`${API}/${editingId}`, payload, { headers: authHeaders() });
@@ -127,6 +162,7 @@ export default function RoomTypeManager() {
       cancelEdit();
       load();
     } catch (ex) {
+      if (handleAuthError(ex)) return;
       setErr(ex.response?.data?.message || "Lưu thất bại.");
     }
   };
@@ -144,6 +180,7 @@ export default function RoomTypeManager() {
       if (editingId === id) cancelEdit();
       load();
     } catch (ex) {
+      if (handleAuthError(ex)) return;
       setErr(ex.response?.data?.message || "Xóa thất bại.");
     }
   };
@@ -199,6 +236,24 @@ export default function RoomTypeManager() {
             value={form.price}
             onChange={onChange}
             required
+          />
+          <input
+            name="hourly_price"
+            type="number"
+            min={0}
+            step={1000}
+            placeholder="Giá / giờ (VND, tùy chọn)"
+            value={form.hourly_price}
+            onChange={onChange}
+          />
+          <input
+            name="deposit_amount"
+            type="number"
+            min={0}
+            step={1000}
+            placeholder="Tiền cọc cố định / phòng (VND)"
+            value={form.deposit_amount}
+            onChange={onChange}
           />
           <input
             name="maxGuests"
@@ -280,6 +335,12 @@ export default function RoomTypeManager() {
               ) : null}
               <p className="price">
                 <strong>{Number(row.price || 0).toLocaleString("vi-VN")} đ</strong> / đêm
+              </p>
+              <p className="price" style={{ marginTop: "-4px" }}>
+                <strong>{Number(row.hourly_price || 0).toLocaleString("vi-VN")} đ</strong> / giờ
+              </p>
+              <p className="price" style={{ marginTop: "-4px" }}>
+                <strong>{Number(row.deposit_amount || 0).toLocaleString("vi-VN")} đ</strong> / cọc mỗi phòng
               </p>
               <p className="capacity">Tối đa {row.maxGuests ?? 2} khách</p>
               {row.description ? <p className="desc">{row.description}</p> : null}
