@@ -276,6 +276,11 @@
   white-space: nowrap;
 }
 
+.folio-line-amount--free {
+  color: #16a34a;
+  letter-spacing: 0.04em;
+}
+
 .folio-empty {
   margin-top: 8px;
   padding: 10px 12px;

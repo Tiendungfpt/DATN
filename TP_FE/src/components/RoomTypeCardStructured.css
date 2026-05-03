@@ -79,6 +79,31 @@
   overflow: hidden;
 }
 
+.rt-structured-free {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.rt-structured-free-list {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rt-structured-free-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .rt-structured-actions {
   margin-top: auto;
   display: flex;

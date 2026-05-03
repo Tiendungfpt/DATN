@@ -8,7 +8,6 @@ import "../components/BookingAdmin.css";
  */
 export default function BookingList() {
   const [items, setItems] = useState([]);
-  const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -18,7 +17,6 @@ export default function BookingList() {
       setErr("");
       const token = localStorage.getItem("token");
       const params = { sort: "createdAt_desc" };
-      if (status) params.status = status;
       const res = await axios.get("http://localhost:3000/api/bookings", {
         headers: { Authorization: `Bearer ${token}` },
         params,
@@ -33,25 +31,13 @@ export default function BookingList() {
 
   useEffect(() => {
     load();
-  }, [status]);
+  }, []);
 
   if (loading) return <p>Loading...</p>;
   if (err) return <p style={{ color: "crimson" }}>{err}</p>;
 
   return (
     <section className="booking-admin-section" style={{ maxWidth: 960 }}>
-      <h3>Booking list (sorted by createdAt DESC)</h3>
-      <label>
-        Status filter:{" "}
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">All</option>
-          <option value="pending">pending</option>
-          <option value="confirmed">confirmed</option>
-          <option value="checked_in">checked_in</option>
-          <option value="checked_out">checked_out</option>
-          <option value="cancelled">cancelled</option>
-        </select>
-      </label>
       <table style={{ width: "100%", marginTop: 16, borderCollapse: "collapse" }}>
         <thead>
           <tr>

@@ -5,7 +5,12 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "nodemon --exec babel-node src/app.js"
+    "dev": "nodemon --exec babel-node src/app.js",
+    "seed:site": "babel-node src/scripts/seedSiteContent.js",
+    "seed:complimentary-services": "babel-node src/scripts/seedComplimentaryServices.js",
+    "seed:roomtype-images": "babel-node src/scripts/seedRoomTypeImages.js",
+    "seed:roomtype-images:force": "babel-node src/scripts/seedRoomTypeImages.js --force",
+    "seed:roomtype-images:download": "babel-node src/scripts/downloadRoomTypeImagesToUploads.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +28,7 @@
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
+    "dayjs": "^1.11.20",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "joi": "^18.0.1",

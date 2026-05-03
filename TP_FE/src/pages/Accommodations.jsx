@@ -66,7 +66,7 @@ export default function Accommodations() {
               <div className="acc-body">
                 <h2 className="acc-title">{rt.name}</h2>
                 <div className="acc-meta">
-                  <span>{rt.maxGuests ?? 2} người lớn</span>
+                  <span>{rt.maxGuests ?? rt.max_guests ?? 2} người lớn</span>
                 </div>
                 <p className="acc-desc">{String(rt.description || "").trim() || "Mô tả đang cập nhật."}</p>
                 <div className="acc-actions">

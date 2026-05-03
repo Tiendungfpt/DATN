@@ -53,8 +53,6 @@ export default function Login() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.background} />
-
       <div style={styles.card}>
         <div style={styles.header}>
           <h1 style={styles.title}>Chào mừng trở lại</h1>
@@ -113,37 +111,25 @@ export default function Login() {
 
 const styles = {
   container: {
-    position: "relative",
-    minHeight: "100vh",
+    minHeight: "calc(100vh - 180px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
+    padding: "32px 16px",
+    background:
+      "radial-gradient(circle at 10% 10%, rgba(37,99,235,0.10), transparent 35%), radial-gradient(circle at 90% 0%, rgba(124,58,237,0.10), transparent 32%), #f8fafc",
     fontFamily: "'Segoe UI', system-ui, sans-serif",
   },
-
-  background: {
-    position: "absolute",
-    inset: 0,
-    backgroundImage: `url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2073&auto=format&fit=crop')`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    filter: "brightness(0.75) contrast(1.1)",
-    zIndex: -1,
-  },
-
   card: {
-    background: "rgba(255, 255, 255, 0.15)",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
-    padding: "45px 40px",
-    borderRadius: "20px",
-    boxShadow: "0 15px 35px rgba(0, 0, 0, 0.25)",
+    background: "#ffffff",
+    padding: "30px 26px",
+    borderRadius: "16px",
+    boxShadow: "0 16px 34px rgba(15,23,42,0.10)",
     width: "100%",
-    maxWidth: "400px",
-    border: "1px solid rgba(255, 255, 255, 0.3)",
+    maxWidth: "460px",
+    border: "1px solid rgba(15,23,42,0.10)",
     textAlign: "center",
-    color: "white",
+    color: "#0f172a",
   },
 
   header: {
@@ -152,20 +138,21 @@ const styles = {
 
   title: {
     fontSize: "32px",
-    fontWeight: "700",
+    fontWeight: "900",
     margin: "0 0 8px 0",
-    textShadow: "0 2px 10px rgba(0,0,0,0.3)",
+    color: "#0f172a",
   },
 
   subtitle: {
-    fontSize: "15.5px",
-    opacity: 0.9,
+    fontSize: "15px",
+    color: "rgba(15,23,42,0.68)",
     margin: 0,
   },
 
   error: {
-    color: "#ff6b6b",
-    background: "rgba(255, 107, 107, 0.2)",
+    color: "#b91c1c",
+    background: "rgba(239, 68, 68, 0.08)",
+    border: "1px solid rgba(239, 68, 68, 0.25)",
     padding: "12px",
     borderRadius: "8px",
     marginBottom: "20px",
@@ -186,18 +173,18 @@ const styles = {
     display: "block",
     marginBottom: "7px",
     fontSize: "14px",
-    fontWeight: "600",
-    opacity: 0.95,
+    fontWeight: "700",
+    color: "#0f172a",
   },
 
   input: {
     width: "100%",
     padding: "14px 16px",
-    background: "rgba(255, 255, 255, 0.25)",
-    border: "1px solid rgba(255, 255, 255, 0.4)",
-    borderRadius: "10px",
-    fontSize: "16px",
-    color: "white",
+    background: "#ffffff",
+    border: "1px solid rgba(15,23,42,0.18)",
+    borderRadius: "11px",
+    fontSize: "15px",
+    color: "#0f172a",
     outline: "none",
   },
 
@@ -207,30 +194,30 @@ const styles = {
     background: "linear-gradient(135deg, #f59e0b, #ea580c)",
     color: "white",
     border: "none",
-    borderRadius: "10px",
-    fontSize: "17px",
+    borderRadius: "11px",
+    fontSize: "16px",
     fontWeight: "700",
     cursor: "pointer",
-    boxShadow: "0 8px 20px rgba(245, 158, 11, 0.4)",
+    boxShadow: "0 10px 20px rgba(234,88,12,0.28)",
   },
 
   register: {
-    marginTop: "30px",
-    fontSize: "14.5px",
-    opacity: 0.9,
+    marginTop: "20px",
+    fontSize: "14px",
+    color: "rgba(15,23,42,0.72)",
   },
   forgotWrap: {
     marginTop: "10px",
   },
   forgotLink: {
-    color: "#fde047",
-    fontWeight: "600",
+    color: "#1d4ed8",
+    fontWeight: "700",
     textDecoration: "none",
     fontSize: "14px",
   },
 
   link: {
-    color: "#fde047",
+    color: "#1d4ed8",
     fontWeight: "700",
     textDecoration: "none",
   },

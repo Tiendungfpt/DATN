@@ -41,6 +41,14 @@ function ProfileSidebar({ user, activeTab, onTabChange }) {
           </button>
 
           <button
+            className={`nav-link text-start py-3 px-4 mb-2 rounded-3 fw-semibold ${activeTab === "refunds" ? "active" : ""}`}
+            onClick={() => onTabChange("refunds")}
+          >
+            <i className="bi bi-arrow-counterclockwise me-3"></i>
+            Hoàn tiền
+          </button>
+
+          <button
             className={`nav-link text-start py-3 px-4 mb-2 rounded-3 fw-semibold ${activeTab === "notifications" ? "active" : ""}`}
             onClick={() => onTabChange("notifications")}
           >

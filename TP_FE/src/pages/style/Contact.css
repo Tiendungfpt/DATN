@@ -1,0 +1,44 @@
+.contact-page {
+  background: #f8fafc;
+}
+
+.contact-card {
+  border: 1px solid rgba(2, 6, 23, 0.06);
+}
+
+.contact-card--left {
+  overflow: hidden;
+}
+
+.contact-card--form {
+  position: relative;
+}
+
+.contact-input {
+  background: #f9fafb;
+  border: 1px solid rgba(2, 6, 23, 0.10);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.contact-input:focus {
+  background: #fff;
+  border-color: rgba(13, 110, 253, 0.6);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.12);
+}
+
+.contact-textarea {
+  resize: vertical;
+  min-height: 180px;
+}
+
+.contact-email-note {
+  font-size: 12.5px;
+}
+
+.contact-error {
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+

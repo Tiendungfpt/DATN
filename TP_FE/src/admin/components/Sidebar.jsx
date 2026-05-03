@@ -72,6 +72,16 @@ export default function Sidebar() {
                 </li>
                 <li>
                     <NavLink
+                        to="/admin/rooms/create"
+                        className={({ isActive }) =>
+                            isActive ? "sub-menu-item active" : "sub-menu-item"
+                        }
+                    >
+                        • Thêm phòng
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
                         to="/admin/room-types"
                         end
                         className={({ isActive }) =>
@@ -79,6 +89,17 @@ export default function Sidebar() {
                         }
                     >
                         {"\ud83c\udfe8 Lo\u1ea1i ph\u00f2ng (danh m\u1ee5c)"}
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
+                        to="/admin/room-types/create"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "sub-menu-item active" : "sub-menu-item"
+                        }
+                    >
+                        • Thêm loại phòng
                     </NavLink>
                 </li>
                 <li>
@@ -159,6 +180,28 @@ export default function Sidebar() {
                 </li>
                 <li>
                     <NavLink
+                        to="/admin/bookings/cancelled"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "sub-menu-item active" : "sub-menu-item"
+                        }
+                    >
+                        • Đã hủy
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
+                        to="/admin/refunds"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "sub-menu-item active" : "sub-menu-item"
+                        }
+                    >
+                        • Hoàn tiền
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
                         to="/admin/reviews"
                         end
                         className={({ isActive }) =>
@@ -180,17 +223,40 @@ export default function Sidebar() {
                         🧾 Quản lý dịch vụ
                     </NavLink>
                 </li>
-
                 <li>
                     <NavLink
-                        to="/admin/rooms/create"
+                        to="/admin/posts"
+                        end
                         className={({ isActive }) =>
                             isActive ? "menu-item active" : "menu-item"
                         }
                     >
-                        ➕ Thêm phòng
+                        📝 Quản lý bài viết
                     </NavLink>
                 </li>
+                <li>
+                    <NavLink
+                        to="/admin/discount-codes"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
+                        🎟️ Quản lý mã giảm giá
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink
+                        to="/admin/contact-messages"
+                        end
+                        className={({ isActive }) =>
+                            isActive ? "menu-item active" : "menu-item"
+                        }
+                    >
+                        💬 Phản hồi liên hệ
+                    </NavLink>
+                </li>
+
             </ul>
         </div>
     );

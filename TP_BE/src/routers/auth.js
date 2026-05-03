@@ -20,6 +20,7 @@ import {
   resetPassword,
 } from "../controllers/auth.js";
 import { checkAuth } from "../middlewares/checkAuth.js";
+import { checkAdmin } from "../middlewares/checkAdmin.js";
 import { updateRole } from "../controllers/auth.js";
 
 const authRouter = Router();
@@ -39,6 +40,7 @@ authRouter.post("/reset-password/:token", resetPassword);
 // GET api/auth/profile
 authRouter.get("/profile", checkAuth, getProfileUser);
 
-authRouter.put("/:id", updateRole);
+// SECURITY: role updates must be admin-only (use /api/admin/users/:id/role too)
+authRouter.put("/:id", checkAuth, checkAdmin, updateRole);
 
 export default authRouter;

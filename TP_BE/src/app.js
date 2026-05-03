@@ -1,10 +1,8 @@
+import "./config/loadEnv.js";
 import "./config/mongooseInit.js";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 import postRouter from "./routers/post.js";
 import roomsRouter from "./routers/rooms.js";
@@ -20,6 +18,11 @@ import adminRouter from "./routers/admin.js";
 import momoRouter from "./routers/momoRoutes.js";
 import userRoutes from "./routers/user.js";
 import dashboardRoutes from "./routers/dashboard.route.js";
+import siteRouter from "./routers/site.js";
+import adminSiteRouter from "./routers/adminSite.js";
+import contactMessagesRouter from "./routers/contactMessages.js";
+import discountCodesRouter from "./routers/discountCodes.js";
+import refundRouter from "./routers/refund.js";
 
 const app = express();
 
@@ -51,9 +54,14 @@ async function start() {
     app.use("/api/services-catalog", servicesCatalogRouter);
     app.use("/api/reviews", reviewRouter);
     app.use("/api/admin", adminRouter);
+    app.use("/api/admin/site", adminSiteRouter);
     app.use("/api/momo", momoRouter);
     app.use("/api/users", userRoutes);
     app.use("/api/dashboard", dashboardRoutes);
+    app.use("/api/site", siteRouter);
+    app.use("/api/contact-messages", contactMessagesRouter);
+    app.use("/api/discount-codes", discountCodesRouter);
+    app.use("/api/refunds", refundRouter);
     app.use("/uploads", express.static("uploads"));
 
     const port = Number(process.env.PORT || 3000);

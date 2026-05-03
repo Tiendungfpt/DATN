@@ -7,6 +7,27 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    /** Khách sạn (tùy chọn — đa chi nhánh trong tương lai) */
+    hotel_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hotel",
+      default: null,
+      index: true,
+    },
+    /**
+     * Cổng thanh toán đã chọn (tích hợp hiện tại: MoMo; giữ các giá trị khác trong enum cho dữ liệu cũ).
+     */
+    payment_provider: {
+      type: String,
+      enum: ["vnpay", "momo", "zalopay", "credit_card"],
+      index: true,
+    },
+    /** Mã giao dịch gốc lưu snapshot (gateway) */
+    payment_transaction_id: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     /** New flow: book by room category (khi có line_items: loại đầu tiên, để tương thích populate) */
     room_type_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -25,7 +46,7 @@ const bookingSchema = new mongoose.Schema(
           /** Rate plan key for PMS-like pricing (basic/breakfast/non_refund). */
           rate_plan_key: {
             type: String,
-            enum: ["basic", "breakfast", "non_refund"],
+            enum: ["basic"],
             default: "basic",
           },
           quantity: { type: Number, required: true, min: 1 },
@@ -58,10 +79,9 @@ const bookingSchema = new mongoose.Schema(
     check_out_date: { type: Date, required: true },
     booking_type: {
       type: String,
-      enum: ["overnight", "hourly"],
+      enum: ["overnight"],
       default: "overnight",
     },
-    stay_hours: { type: Number, min: 1, default: null },
     room_quantity: { type: Number, required: true, min: 1, default: 1 },
     /** deposit | full prepay of estimated room portion */
     payment_mode: {
@@ -77,12 +97,47 @@ const bookingSchema = new mongoose.Schema(
     deposit_paid_amount: { type: Number, default: 0, min: 0 },
     deposit_status: {
       type: String,
-      enum: ["unpaid", "paid", "refunded", "partial_refunded", "forfeited"],
+      enum: ["unpaid", "paid", "pending_refund", "refunded", "partial_refunded", "forfeited"],
       default: "unpaid",
       index: true,
     },
+    refund_requested_amount: { type: Number, default: 0, min: 0 },
+    refund_processed_amount: { type: Number, default: 0, min: 0 },
+    refund_requested_at: { type: Date, default: null },
+    refund_processed_at: { type: Date, default: null },
+    refund_rejected_reason: { type: String, default: "", trim: true },
+    refund_status: {
+      type: String,
+      enum: ["none", "requested", "approved", "rejected", "paid"],
+      default: "none",
+      index: true,
+    },
+    refund_requested_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    refund_approved_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    refund_rejected_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    refund_approved_at: { type: Date, default: null },
+    refund_rejected_at: { type: Date, default: null },
     /** nights * roomType.price * qty at booking time (for payment validation & MoMo) */
     estimated_room_total: { type: Number, default: 0, min: 0 },
+    discount_code_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DiscountCode",
+      default: null,
+    },
+    discount_code: { type: String, default: "", trim: true, uppercase: true },
+    discount_amount: { type: Number, default: 0, min: 0 },
     /** Legacy flat extras on booking document */
     services: {
       type: [String],

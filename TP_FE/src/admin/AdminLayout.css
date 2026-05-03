@@ -1,10 +1,206 @@
 .admin-layout {
+  --ad-bg: #0a1020;
+  --ad-bg-soft: #111a2f;
+  --ad-panel: #131f37;
+  --ad-panel-2: #0f182c;
+  --ad-border: rgba(255, 255, 255, 0.12);
+  --ad-border-strong: rgba(214, 182, 112, 0.42);
+  --ad-text: #e8eefc;
+  --ad-text-muted: #9dadc9;
+  --ad-accent: #d6b670;
+  --ad-accent-2: #b89454;
+  --ad-blue: #4d8cff;
   display: flex;
   min-height: 100vh;
-  background: #f6f5f2;
+  background: radial-gradient(circle at 0% 0%, #1a2540 0%, var(--ad-bg) 38%, #090f1c 100%);
 }
 
 .admin-main {
   flex: 1;
   padding: 24px;
+  color: var(--ad-text);
+}
+
+.admin-main h1,
+.admin-main h2,
+.admin-main h3,
+.admin-main h4,
+.admin-main h5,
+.admin-main h6,
+.admin-main .title {
+  color: #f7f9ff !important;
+  letter-spacing: 0.01em;
+}
+
+.admin-main p,
+.admin-main label,
+.admin-main small,
+.admin-main .subtitle,
+.admin-main .text-muted {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main a {
+  color: var(--ad-accent);
+}
+
+.admin-main .card,
+.admin-main .chart-card,
+.admin-main .booking-admin-card,
+.admin-main .sc-card,
+.admin-main .folio-card,
+.admin-main .ci-panel,
+.admin-main .hotel-create-container,
+.admin-main .hotel-card,
+.admin-main .user-table,
+.admin-main .cm-contact-table-wrap,
+.admin-main .cm-contact-stat,
+.admin-main .cm-contact-drawer,
+.admin-main .reply-box,
+.admin-main .cm-msg-body,
+.admin-main .cm-kv {
+  background: linear-gradient(180deg, var(--ad-panel) 0%, #101b30 100%) !important;
+  border: 1px solid var(--ad-border) !important;
+  color: var(--ad-text) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32) !important;
+}
+
+.admin-main .table,
+.admin-main .user-table,
+.admin-main .cm-contact-table {
+  color: var(--ad-text) !important;
+}
+
+.admin-main .table th,
+.admin-main .user-table th,
+.admin-main .cm-contact-table thead th {
+  background: var(--ad-panel-2) !important;
+  color: #c7d4ee !important;
+  border-color: var(--ad-border) !important;
+}
+
+.admin-main .table td,
+.admin-main .user-table td,
+.admin-main .cm-contact-table tbody td {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--ad-text) !important;
+}
+
+.admin-main .user-table tr:hover,
+.admin-main .cm-contact-row:hover {
+  background: rgba(77, 140, 255, 0.08) !important;
+}
+
+.admin-main input,
+.admin-main select,
+.admin-main textarea,
+.admin-main .form-control,
+.admin-main .form-select,
+.admin-main .search-input,
+.admin-main .cm-contact-search,
+.admin-main .cm-contact-search input {
+  background: #0d162a !important;
+  color: var(--ad-text) !important;
+  border: 1px solid var(--ad-border) !important;
+}
+
+.admin-main input:focus,
+.admin-main select:focus,
+.admin-main textarea:focus {
+  outline: none;
+  border-color: var(--ad-blue) !important;
+  box-shadow: 0 0 0 3px rgba(77, 140, 255, 0.18);
+}
+
+.admin-main input::placeholder,
+.admin-main textarea::placeholder {
+  color: #7483a3 !important;
+}
+
+.admin-main .btn,
+.admin-main .sc-ghost,
+.admin-main .ci-secondary,
+.admin-main .cm-contact-page-btn,
+.admin-main .cm-contact-export,
+.admin-main .pagination button {
+  background: #17243f !important;
+  color: var(--ad-text) !important;
+  border: 1px solid var(--ad-border) !important;
+}
+
+.admin-main .btn-primary,
+.admin-main .sc-primary,
+.admin-main .folio-add-btn,
+.admin-main .ci-primary,
+.admin-main .cm-contact-search-btn,
+.admin-main .cm-contact-reply-btn {
+  background: linear-gradient(135deg, var(--ad-accent), var(--ad-accent-2)) !important;
+  border: 1px solid var(--ad-border-strong) !important;
+  color: #0b1020 !important;
+  font-weight: 900 !important;
+}
+
+.admin-main .booking-admin-tab,
+.admin-main .cm-contact-tab {
+  background: #17243f !important;
+  color: #cad7f1 !important;
+  border: 1px solid var(--ad-border) !important;
+}
+
+.admin-main .booking-admin-tab.active,
+.admin-main .cm-contact-tab.is-active {
+  background: rgba(214, 182, 112, 0.22) !important;
+  border-color: var(--ad-border-strong) !important;
+  color: #f7e8c5 !important;
+}
+
+.admin-main .booking-admin-empty,
+.admin-main .cm-contact-empty,
+.admin-main .ci-alert,
+.admin-main .sc-alert {
+  background: #0f182c !important;
+  color: var(--ad-text-muted) !important;
+  border: 1px solid var(--ad-border) !important;
+}
+
+.admin-main .booking-admin-status.pending,
+.admin-main .status.available {
+  background: rgba(214, 182, 112, 0.2) !important;
+  color: #f7e8c5 !important;
+}
+
+.admin-main .booking-admin-status.confirmed,
+.admin-main .booking-admin-status.checked_in,
+.admin-main .role-user {
+  background: rgba(61, 214, 140, 0.2) !important;
+  color: #9bf1c7 !important;
+}
+
+.admin-main .booking-admin-status.cancelled,
+.admin-main .status.booked,
+.admin-main .role-admin {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #ffb2b2 !important;
+}
+
+.admin-main .booking-admin-flow,
+.admin-main .folio-row,
+.admin-main .ci-kv,
+.admin-main .folio-divider,
+.admin-main .ci-divider {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .cm-contact-drawer-footer,
+.admin-main .ci-panel-foot {
+  background: #101a2f !important;
+  border-top: 1px solid var(--ad-border) !important;
+}
+
+.admin-main .cm-toast,
+.admin-main .folio-toast {
+  background: #0f182c !important;
+  color: var(--ad-text) !important;
+  border: 1px solid var(--ad-border) !important;
 }

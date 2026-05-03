@@ -11,6 +11,9 @@ const roomSchema = new mongoose.Schema(
     },
     room_no: { type: String, required: true, trim: true },
     image: { type: String, default: "" },
+    images: { type: [String], default: [] },
+    complimentary_services: [{ type: mongoose.Schema.Types.ObjectId, ref: "Service", default: [] }],
+    extra_services: [{ type: mongoose.Schema.Types.ObjectId, ref: "Service", default: [] }],
     price: { type: Number, required: true, min: 0 },
     capacity: { type: Number, required: true, min: 1 },
     status: {

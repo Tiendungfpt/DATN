@@ -20,6 +20,10 @@ function RoomsList() {
     const [availabilityByName, setAvailabilityByName] = useState({});
     const [descriptionByTypeId, setDescriptionByTypeId] = useState({});
     const [descriptionByName, setDescriptionByName] = useState({});
+    const [priceByTypeId, setPriceByTypeId] = useState({});
+    const [priceByName, setPriceByName] = useState({});
+    const [capacityByTypeId, setCapacityByTypeId] = useState({});
+    const [capacityByName, setCapacityByName] = useState({});
 
     const placeholderImage = "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=2070&auto=format&fit=crop";
 useEffect(() => {
@@ -73,21 +77,45 @@ useEffect(() => {
         });
         const descById = {};
         const descByName = {};
+        const priceMapById = {};
+        const priceMapByName = {};
+        const capMapById = {};
+        const capMapByName = {};
         roomTypes.forEach((rt) => {
           const desc = String(rt.description || "").trim();
+          const price = Number(rt.price || 0);
+          const cap = Number(rt.maxGuests ?? rt.max_guests ?? 0) || 0;
+          const typeNameNorm = normalizeRoomTypeName(rt.name);
           descById[String(rt._id)] = desc;
-          descByName[normalizeRoomTypeName(rt.name)] = desc;
-          if (rt.code) descByName[normalizeRoomTypeName(rt.code)] = desc;
+          descByName[typeNameNorm] = desc;
+          priceMapById[String(rt._id)] = price;
+          priceMapByName[typeNameNorm] = price;
+          capMapById[String(rt._id)] = cap;
+          capMapByName[typeNameNorm] = cap;
+          if (rt.code) {
+            const codeNorm = normalizeRoomTypeName(rt.code);
+            descByName[codeNorm] = desc;
+            priceMapByName[codeNorm] = price;
+            capMapByName[codeNorm] = cap;
+          }
         });
         setAvailabilityByTypeId(byId);
         setAvailabilityByName(byName);
         setDescriptionByTypeId(descById);
         setDescriptionByName(descByName);
+        setPriceByTypeId(priceMapById);
+        setPriceByName(priceMapByName);
+        setCapacityByTypeId(capMapById);
+        setCapacityByName(capMapByName);
       } catch {
         setAvailabilityByTypeId({});
         setAvailabilityByName({});
         setDescriptionByTypeId({});
         setDescriptionByName({});
+        setPriceByTypeId({});
+        setPriceByName({});
+        setCapacityByTypeId({});
+        setCapacityByName({});
       }
     } catch {
       setRooms([]);
@@ -151,6 +179,16 @@ useEffect(() => {
                               ? descriptionByTypeId[String(room.roomType)] || "Mô tả đang cập nhật."
                               : descriptionByName[normalizeRoomTypeName(room.name)] ||
                                 "Mô tả đang cập nhật."
+                          }
+                          priceOverride={
+                            room.roomType
+                              ? priceByTypeId[String(room.roomType)]
+                              : priceByName[normalizeRoomTypeName(room.name)]
+                          }
+                          capacityOverride={
+                            room.roomType
+                              ? capacityByTypeId[String(room.roomType)]
+                              : capacityByName[normalizeRoomTypeName(room.name)]
                           }
                           showBookButton={!isAdmin}
                         />

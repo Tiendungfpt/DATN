@@ -10,6 +10,7 @@ import {
   updateRoomType,
   deleteRoomType,
   uploadRoomTypeImage,
+  uploadRoomTypeImages,
 } from "../controllers/roomTypeController.js";
 
 const r = Router();
@@ -22,6 +23,13 @@ r.post(
   checkAdmin,
   upload.single("image"),
   uploadRoomTypeImage,
+);
+r.post(
+  "/upload-images",
+  checkAuth,
+  checkAdmin,
+  upload.array("images", 12),
+  uploadRoomTypeImages,
 );
 r.post("/", checkAuth, checkAdmin, createRoomType);
 r.put("/:id", checkAuth, checkAdmin, updateRoomType);

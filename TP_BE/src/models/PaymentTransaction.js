@@ -14,7 +14,7 @@ const paymentTransactionSchema = new mongoose.Schema(
     },
     provider: {
       type: String,
-      enum: ["momo", "cash", "bank"],
+      enum: ["momo", "vnpay", "cash", "bank"],
       default: "momo",
       index: true,
     },

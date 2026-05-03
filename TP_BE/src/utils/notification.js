@@ -3,6 +3,7 @@ import Notification from "../models/Notification.js";
 export async function createNotification({
   userId,
   bookingId = null,
+  contactMessageId = null,
   type,
   title,
   message,
@@ -16,6 +17,7 @@ export async function createNotification({
       {
         user_id: userId,
         booking_id: bookingId,
+        contact_message_id: contactMessageId,
         type,
         title,
         message,
@@ -31,6 +33,7 @@ export async function createNotification({
   return Notification.create({
     user_id: userId,
     booking_id: bookingId,
+    contact_message_id: contactMessageId,
     type,
     title,
     message,

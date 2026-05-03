@@ -24,27 +24,28 @@ function PaymentFailed() {
     return match?.[1] || "";
   }, [orderId]);
 
-  const handleRetryWithCC = async () => {
+  const handleRetryMoMo = async (requestType) => {
     if (!bookingIdFromOrderId) {
       navigate(-1);
       return;
     }
     try {
       setRetrying(true);
-      const res = await axios.post("http://localhost:3000/api/momo/create", {
+      const res = await axios.post("/api/momo/create", {
         bookingId: bookingIdFromOrderId,
-        requestType: "payWithCC",
+        requestType,
+        type: "deposit",
       });
       if (res?.data?.success && res?.data?.payUrl) {
         window.location.href = res.data.payUrl;
         return;
       }
-      throw new Error(res?.data?.message || "Không tạo được link thanh toán CC");
+      throw new Error(res?.data?.message || "Không tạo được link thanh toán");
     } catch (error) {
       alert(
         error?.response?.data?.message ||
           error.message ||
-          "Không thể tạo lại link thanh toán CC",
+          "Không thể tạo lại link thanh toán",
       );
     } finally {
       setRetrying(false);
@@ -70,9 +71,10 @@ function PaymentFailed() {
                 {isLikelyAtmIssuerDecline && (
                   <div className="alert alert-warning border-0 shadow-sm mb-4">
                     <i className="bi bi-lightbulb-fill me-2"></i>
-                    Gợi ý: Kênh ATM sandbox đôi khi bị từ chối ngẫu nhiên. Bạn có
-                    thể quay lại trang đặt phòng và chọn{" "}
-                    <strong>Thẻ quốc tế (Visa/Master/JCB)</strong> để thử lại.
+                    Kênh thẻ Napas trên sandbox MoMo thường báo &quot;từ chối nhà phát
+                    hành&quot; dù đúng thẻ test. Nên thử lại bằng{" "}
+                    <strong>ví MoMo (quét QR)</strong> — cài MoMo Test App theo tài
+                    liệu MoMo; hoặc thử <strong>thẻ quốc tế (CC)</strong>.
                   </div>
                 )}
 
@@ -94,13 +96,24 @@ function PaymentFailed() {
 
                 <div className="d-grid gap-3">
                   <button
-                    onClick={handleRetryWithCC}
+                    type="button"
+                    onClick={() => handleRetryMoMo("captureWallet")}
+                    className="btn btn-success btn-lg py-3 fw-semibold"
+                    disabled={retrying}
+                  >
+                    {retrying
+                      ? "Đang tạo link..."
+                      : "Thanh toán lại bằng ví MoMo (QR — khuyến nghị)"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRetryMoMo("payWithCC")}
                     className="btn btn-warning btn-lg py-3 fw-semibold"
                     disabled={retrying}
                   >
                     {retrying
-                      ? "Đang tạo link thanh toán CC..."
-                      : "Thanh toán lại bằng thẻ quốc tế (CC)"}
+                      ? "Đang tạo link..."
+                      : "Thử thẻ quốc tế (CC)"}
                   </button>
 
                   <button

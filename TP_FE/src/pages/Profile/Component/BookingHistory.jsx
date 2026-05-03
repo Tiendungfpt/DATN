@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
 import { Link } from "react-router-dom";
+import RefundRequestModal from "../../../components/refund/RefundRequestModal.jsx";
+import { resolveRefundOriginalAmountFromBooking } from "../../../utils/refundPolicy.js";
 
 function isStayFinished(status) {
   return status === "checked_out" || status === "completed";
@@ -16,13 +18,41 @@ function primaryRoomId(booking) {
   return booking.assigned_room_id?._id || booking.room_id?._id;
 }
 
+function depositStatusLabelVi(status) {
+  switch (String(status || "").toLowerCase()) {
+    case "paid":
+      return "Đã nhận cọc";
+    case "pending_refund":
+      return "Chờ hoàn tiền";
+    case "refunded":
+      return "Đã hoàn tiền";
+    case "partial_refunded":
+      return "Hoàn một phần";
+    case "forfeited":
+      return "Mất cọc";
+    default:
+      return "Chưa thanh toán cọc";
+  }
+}
+
 function BookingHistory() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-
+  const [refundModalBooking, setRefundModalBooking] = useState(null);
   const token = localStorage.getItem("token");
+
+  const reloadBookings = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get("/api/bookings/user", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setBookings(res.data);
+    } catch {
+      /* noop */
+    }
+  }, [token]);
 
   const handleDownloadInvoice = async (bookingId) => {
     try {
@@ -89,7 +119,7 @@ function BookingHistory() {
     try {
       const momoRes = await axios.post("/api/momo/create", {
         bookingId,
-        requestType: "payWithATM",
+        requestType: "captureWallet",
         type: "deposit",
       });
       if (momoRes?.data?.success && momoRes?.data?.payUrl) {
@@ -99,6 +129,26 @@ function BookingHistory() {
       alert(momoRes?.data?.message || "Không tạo được link thanh toán MoMo");
     } catch (err) {
       alert(err.response?.data?.message || "Không tạo được link thanh toán cọc");
+    }
+  };
+
+  const handleCancelBooking = async (booking) => {
+    const bookingId = booking?._id;
+    if (!bookingId) return;
+    const reason = window.prompt("Lý do hủy (tùy chọn):", "") || "";
+    if (!window.confirm("Bạn có chắc muốn hủy booking này không?")) return;
+    try {
+      await axios.put(
+        `/api/bookings/${bookingId}/cancel`,
+        { reason },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setBookings((prev) =>
+        prev.map((b) => (b._id === bookingId ? { ...b, status: "cancelled", cancel_reason: reason } : b)),
+      );
+      alert("Đã gửi yêu cầu hủy booking.");
+    } catch (err) {
+      alert(err.response?.data?.message || "Không hủy được booking");
     }
   };
 
@@ -229,6 +279,13 @@ function BookingHistory() {
             !booking.assigned_room_id &&
             !isCancelled &&
             ["pending", "confirmed"].includes(booking.status);
+          const canCancelByUser = ["pending", "confirmed"].includes(booking.status);
+          const paidRefundBase = resolveRefundOriginalAmountFromBooking(booking);
+          const canRefundPolicy =
+            booking.status === "confirmed" && paidRefundBase > 0;
+          const showLegacyCancel =
+            canCancelByUser &&
+            (booking.status !== "confirmed" || paidRefundBase <= 0);
 
           return (
             <div key={booking._id} className="col-12">
@@ -359,8 +416,30 @@ function BookingHistory() {
                         <div className="fw-semibold">
                           {(Number(booking.deposit_paid_amount) || 0).toLocaleString("vi-VN")} ₫ /{" "}
                           {(Number(booking.deposit_amount) || 0).toLocaleString("vi-VN")} ₫{" "}
-                          <small className="text-muted">({booking.deposit_status || "unpaid"})</small>
+                          <small className="text-muted">({depositStatusLabelVi(booking.deposit_status)})</small>
                         </div>
+                        {String(booking.deposit_status) === "pending_refund" ? (
+                          <small className="text-warning d-block mt-1">
+                            Yêu cầu hoàn tiền đang chờ admin xử lý:{" "}
+                            {(Number(booking.refund_requested_amount) || 0).toLocaleString("vi-VN")} ₫
+                          </small>
+                        ) : null}
+                        {String(booking.deposit_status) === "refunded" ||
+                        String(booking.deposit_status) === "partial_refunded" ? (
+                          <small className="text-success d-block mt-1">
+                            Đã hoàn: {(Number(booking.refund_processed_amount) || 0).toLocaleString("vi-VN")} ₫
+                          </small>
+                        ) : null}
+                        {String(booking.deposit_status) === "forfeited" && booking.refund_rejected_reason ? (
+                          <small className="text-danger d-block mt-1">
+                            Hoàn tiền bị từ chối: {booking.refund_rejected_reason}
+                          </small>
+                        ) : null}
+                        {String(booking.refund_status || "") === "requested" ? (
+                          <small className="text-muted d-block mt-1">
+                            Trạng thái xử lý: đang chờ duyệt hoàn tiền.
+                          </small>
+                        ) : null}
                       </div>
 
                       {canPayDeposit && !isCancelled && (
@@ -369,6 +448,25 @@ function BookingHistory() {
                           className="btn btn-primary btn-lg px-5 py-3 rounded-4 w-100 w-lg-auto fw-medium"
                         >
                           Thanh toán tiền cọc
+                        </button>
+                      )}
+
+                      {showLegacyCancel && (
+                        <button
+                          onClick={() => handleCancelBooking(booking)}
+                          className="btn btn-outline-danger btn-lg px-5 py-3 rounded-4 w-100 w-lg-auto fw-medium mt-2"
+                        >
+                          Hủy booking
+                        </button>
+                      )}
+
+                      {canRefundPolicy && !isCancelled && (
+                        <button
+                          type="button"
+                          onClick={() => setRefundModalBooking(booking)}
+                          className="btn btn-danger btn-lg px-5 py-3 rounded-4 w-100 w-lg-auto fw-medium mt-2"
+                        >
+                          Hủy &amp; hoàn tiền (policy mới)
                         </button>
                       )}
 
@@ -455,6 +553,15 @@ function BookingHistory() {
           );
         })}
       </div>
+
+      <RefundRequestModal
+        booking={refundModalBooking}
+        isOpen={Boolean(refundModalBooking)}
+        onClose={() => setRefundModalBooking(null)}
+        onSuccess={() => {
+          reloadBookings();
+        }}
+      />
     </div>
   );
 }

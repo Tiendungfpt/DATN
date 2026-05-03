@@ -1,9 +1,13 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import ChatWidget from "./components/ChatWidget";
 
 import Home from "./pages/Home";
 import Contact from "./pages/Contact";
+import About from "./pages/About";
+import Articles from "./pages/Articles";
+import ArticleDetail from "./pages/ArticleDetail";
 import AdminLayout from "./admin/AdminLayout";
 import UserList from "./admin/pages/UserList";
 import RoomList from "./admin/pages/RoomList";
@@ -13,11 +17,16 @@ import BookingPendingPage from "./admin/pages/BookingPendingPage";
 import BookingConfirmedPage from "./admin/pages/BookingConfirmedPage";
 import BookingCheckedInPage from "./admin/pages/BookingCheckedInPage";
 import BookingCompletedPage from "./admin/pages/BookingCompletedPage";
+import BookingCancelledPage from "./admin/pages/BookingCancelledPage";
+import RefundAdmin from "./admin/pages/RefundAdmin";
+import ContactMessagesAdmin from "./admin/pages/ContactMessagesAdmin";
 import BookingList from "./admin/pages/BookingList";
 import CheckIn from "./admin/pages/CheckIn";
 import CheckOut from "./admin/pages/CheckOut";
 import ServiceManager from "./admin/pages/ServiceManager";
 import ServiceCatalog from "./admin/pages/ServiceCatalog";
+import PostManager from "./admin/pages/PostManager";
+import DiscountCodeAdmin from "./admin/pages/DiscountCodeAdmin";
 import BookingAllPage from "./admin/pages/BookingAllPage";
 import Booking from "./pages/Booking";
 import RoomsEdit from "./admin/pages/RoomEdit";
@@ -38,6 +47,8 @@ import Review from "./pages/Review";
 import AdminDashboard from "./admin/pages/DashboardAdmin";
 import AdminReviews from "./admin/pages/AdminReview";
 import RoomTypeManager from "./admin/pages/RoomTypeManager";
+import RoomTypeCreate from "./admin/pages/RoomTypeCreate";
+import RoomTypeEdit from "./admin/pages/RoomTypeEdit";
 import SelectRoom from "./pages/book/SelectRoom";
 import GuestInfo from "./pages/book/GuestInfo";
 import RoomTypeDetail from "./pages/RoomTypeDetail";
@@ -52,6 +63,9 @@ function Layout() {
 
             <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/gioi-thieu" element={<About />} />
+                <Route path="/bai-viet" element={<Articles />} />
+                <Route path="/bai-viet/:slug" element={<ArticleDetail />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -81,6 +95,8 @@ function Layout() {
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="rooms" element={<RoomList />} />
                     <Route path="room-types" element={<RoomTypeManager />} />
+                    <Route path="room-types/create" element={<RoomTypeCreate />} />
+                    <Route path="room-types/edit/:id" element={<RoomTypeEdit />} />
                     <Route path="reviews" element={<AdminReviews />} />
                     <Route path="users-pagination" element={<UserList />} />
                     <Route path="bookings" element={<BookingAdmin />}>
@@ -90,6 +106,7 @@ function Layout() {
                         <Route path="confirmed" element={<BookingConfirmedPage />} />
                         <Route path="checked-in" element={<BookingCheckedInPage />} />
                         <Route path="completed" element={<BookingCompletedPage />} />
+                        <Route path="cancelled" element={<BookingCancelledPage />} />
                     </Route>
                     <Route path="rooms/create" element={<RoomCreat />} />
                     <Route path="rooms/edit/:id" element={<RoomsEdit />} />
@@ -98,10 +115,15 @@ function Layout() {
                     <Route path="check-out" element={<CheckOut />} />
                     <Route path="service-manager" element={<ServiceManager />} />
                     <Route path="services-catalog" element={<ServiceCatalog />} />
+                    <Route path="posts" element={<PostManager />} />
+                    <Route path="discount-codes" element={<DiscountCodeAdmin />} />
+                    <Route path="refunds" element={<RefundAdmin />} />
+                    <Route path="contact-messages" element={<ContactMessagesAdmin />} />
                 </Route>
             </Routes>
 
             {!isAdmin && <Footer />}
+            {!isAdmin && <ChatWidget />}
         </>
     );
 }

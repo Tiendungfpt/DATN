@@ -9,6 +9,7 @@ function ProfileInfo({ user }) {
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
+    phone: user?.phone || "",
   });
 
   const token = localStorage.getItem("token");
@@ -156,6 +157,23 @@ function ProfileInfo({ user }) {
             />
           ) : (
             <p className="form-control form-control-lg bg-light border-0 py-3">{user?.email}</p>
+          )}
+        </div>
+
+        <div className="col-12">
+          <label className="form-label fw-semibold text-muted">Số điện thoại</label>
+          {isEditing ? (
+            <input
+              type="tel"
+              name="phone"
+              className="form-control form-control-lg"
+              value={formData.phone}
+              onChange={handleInputChange}
+            />
+          ) : (
+            <p className="form-control form-control-lg bg-light border-0 py-3">
+              {user?.phone || "—"}
+            </p>
           )}
         </div>
 

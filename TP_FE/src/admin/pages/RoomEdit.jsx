@@ -14,6 +14,7 @@ function RoomsEdit() {
         roomType: "",
         room_no: "",
         image: "",
+        images: [],
         price: 0,
         capacity: 2,
         status: "available",
@@ -21,6 +22,8 @@ function RoomsEdit() {
 
     const [preview, setPreview] = useState(null);
     const [file, setFile] = useState(null);
+    const [galleryFiles, setGalleryFiles] = useState([]);
+    const [galleryPreviews, setGalleryPreviews] = useState([]);
 
     useEffect(() => {
         const fetchRoomTypes = async () => {
@@ -49,8 +52,9 @@ function RoomsEdit() {
                 roomType: String(data.roomType?._id || data.roomType || ""),
                 room_no: data.room_no || "",
                 image: data.image || "",
+                images: Array.isArray(data.images) ? data.images : [],
                 price: data.price ?? 0,
-                capacity: data.capacity ?? data.maxGuests ?? 2,
+                capacity: data.capacity ?? data.maxGuests ?? data.max_guests ?? 2,
                 status: data.status || "available",
             });
 
@@ -59,6 +63,14 @@ function RoomsEdit() {
             } else {
                 setPreview(`http://localhost:3000/uploads/${data.image}`);
             }
+            const gallery = Array.isArray(data.images) ? data.images : [];
+            setGalleryPreviews(
+                gallery.map((img) =>
+                    String(img || "").startsWith("http")
+                        ? String(img)
+                        : `http://localhost:3000/uploads/${img}`,
+                ),
+            );
         });
     }, [id]);
 
@@ -72,7 +84,7 @@ function RoomsEdit() {
                 roomType: value,
                 room_type: String(selected?.code || selected?.name || "").trim(),
                 price: Number(selected?.price) || room.price,
-                capacity: Number(selected?.maxGuests) || room.capacity,
+                capacity: Number(selected?.maxGuests ?? selected?.max_guests) || room.capacity,
             });
             return;
         }
@@ -83,13 +95,15 @@ function RoomsEdit() {
         });
     };
 
-    const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
+    const handleBatchImagesChange = (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
 
-        if (selectedFile) {
-            setFile(selectedFile);
-            setPreview(URL.createObjectURL(selectedFile));
-        }
+        const [cover, ...gallery] = files;
+        setFile(cover || null);
+        setPreview(cover ? URL.createObjectURL(cover) : preview);
+        setGalleryFiles(gallery);
+        setGalleryPreviews(gallery.map((f) => URL.createObjectURL(f)));
     };
 
     const handleSubmit = async (e) => {
@@ -101,12 +115,16 @@ function RoomsEdit() {
             if (file) {
                 formData.append("image", file);
             }
+            for (const imgFile of galleryFiles) {
+                formData.append("images", imgFile);
+            }
 
             for (let key in room) {
-                if (key !== "image") {
+                if (key !== "image" && key !== "images") {
                     formData.append(key, room[key]);
                 }
             }
+            formData.append("images", (room.images || []).join(","));
 
             const token = localStorage.getItem("token");
             await axios.put(`http://localhost:3000/api/admin/rooms/${id}`, formData, {
@@ -148,9 +166,21 @@ function RoomsEdit() {
                     placeholder="Số phòng"
                 />
 
-                <input type="file" onChange={handleFileChange} />
+                <div className="upload-box">
+                    <input type="file" multiple accept="image/*" onChange={handleBatchImagesChange} />
+                    <small style={{ display: "block", marginTop: 6, opacity: 0.8 }}>
+                        Chọn nhiều ảnh một lần (ảnh đầu tiên sẽ làm ảnh đại diện).
+                    </small>
+                </div>
 
                 {preview && <img src={preview} width="150" alt="" />}
+                {galleryPreviews.length > 0 ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                        {galleryPreviews.map((src) => (
+                            <img key={src} src={src} alt="gallery-preview" style={{ width: "100%", borderRadius: 8 }} />
+                        ))}
+                    </div>
+                ) : null}
 
                 <input
                     name="price"

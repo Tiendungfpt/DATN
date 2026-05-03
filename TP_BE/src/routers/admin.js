@@ -65,7 +65,10 @@ adminRouter.post(
   "/rooms",
   checkAuth,
   checkAdmin,
-  upload.single("image"),
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "images", maxCount: 12 },
+  ]),
   createRoom
 );
 
@@ -73,7 +76,10 @@ adminRouter.put(
   "/rooms/:id",
   checkAuth,
   checkAdmin,
-  upload.single("image"),
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "images", maxCount: 12 },
+  ]),
   updateRoom
 );
 

@@ -22,7 +22,11 @@ export function computeCancellationRefundRate(hoursUntilArrival) {
   return 0;
 }
 
-export function computeRefundAmount({ depositPaidAmount, hoursUntilArrival }) {
+export function computeRefundAmount({ depositPaidAmount, hoursUntilArrival, ratePlanKey }) {
+  const planKey = String(ratePlanKey || "").trim().toLowerCase();
+  if (planKey === "non_refund" || planKey === "nonrefund" || planKey === "non-refundable") {
+    return 0;
+  }
   const paid = Math.max(0, Number(depositPaidAmount) || 0);
   const rate = computeCancellationRefundRate(hoursUntilArrival);
   return Math.round(paid * rate);

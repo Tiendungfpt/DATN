@@ -17,11 +17,13 @@ export default function ServiceCatalog() {
 
   const [q, setQ] = useState("");
   const [showInactive, setShowInactive] = useState(false);
+  const [serviceKind, setServiceKind] = useState("extra");
 
   const [form, setForm] = useState({
     id: "",
     name: "",
     defaultPrice: 0,
+    kind: "extra",
     category_id: "",
     unit: "",
     description: "",
@@ -58,7 +60,9 @@ export default function ServiceCatalog() {
       }
 
       // Load services (blocking for page)
-      const svcRes = await axios.get(`/api/services-catalog?active=${showInactive ? "0" : "1"}`, { headers: token() });
+      const svcRes = await axios.get(`/api/services-catalog?active=${showInactive ? "0" : "1"}&kind=${serviceKind}`, {
+        headers: token(),
+      });
       setItems(Array.isArray(svcRes.data) ? svcRes.data : []);
     } catch (e) {
       const status = Number(e?.response?.status || 0);
@@ -77,7 +81,7 @@ export default function ServiceCatalog() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInactive]);
+  }, [showInactive, serviceKind]);
 
   useEffect(() => {
     if (!err) return;
@@ -89,13 +93,25 @@ export default function ServiceCatalog() {
   }, [err, navigate]);
 
   const filtered = useMemo(() => {
+    const base = (items || []).filter((x) =>
+      showInactive ? !Boolean(x?.isActive) : Boolean(x?.isActive),
+    );
     const keyword = String(q || "").trim().toLowerCase();
-    if (!keyword) return items;
-    return (items || []).filter((x) => String(x?.name || "").toLowerCase().includes(keyword));
-  }, [items, q]);
+    if (!keyword) return base;
+    return base.filter((x) => String(x?.name || "").toLowerCase().includes(keyword));
+  }, [items, q, showInactive]);
 
   const resetForm = () => {
-    setForm({ id: "", name: "", defaultPrice: 0, category_id: "", unit: "", description: "", isActive: true });
+    setForm({
+      id: "",
+      name: "",
+      defaultPrice: 0,
+      kind: serviceKind,
+      category_id: "",
+      unit: "",
+      description: "",
+      isActive: true,
+    });
   };
 
   const pickEdit = (s) => {
@@ -105,6 +121,7 @@ export default function ServiceCatalog() {
       id: String(s?._id || ""),
       name: String(s?.name || ""),
       defaultPrice: Number(s?.defaultPrice || 0),
+      kind: String(s?.kind || "extra") === "complimentary" ? "complimentary" : "extra",
       category_id: String(s?.category_id?._id || s?.category_id || ""),
       unit: String(s?.unit || ""),
       description: String(s?.description || ""),
@@ -112,14 +129,17 @@ export default function ServiceCatalog() {
     });
   };
 
+  const isComplimentaryForm = String(form.kind || "extra") === "complimentary";
+
   const save = async (e) => {
     e.preventDefault();
     setMsg("");
     setErr("");
     const name = String(form.name || "").trim();
-    const price = Math.max(0, Number(form.defaultPrice) || 0);
+    const kind = String(form.kind || "extra") === "complimentary" ? "complimentary" : "extra";
+    const price = kind === "complimentary" ? 0 : Math.max(0, Number(form.defaultPrice) || 0);
     if (!name) return setErr("Tên dịch vụ không được trống");
-    if (price <= 0) return setErr("Giá mặc định phải > 0");
+    if (kind === "extra" && price <= 0) return setErr("Giá mặc định phải > 0");
     try {
       if (form.id) {
         await axios.put(
@@ -127,6 +147,7 @@ export default function ServiceCatalog() {
           {
             name,
             defaultPrice: price,
+            kind,
             category_id: form.category_id || null,
             unit: String(form.unit || "").trim(),
             description: String(form.description || ""),
@@ -141,6 +162,7 @@ export default function ServiceCatalog() {
           {
             name,
             defaultPrice: price,
+            kind,
             category_id: form.category_id || null,
             unit: String(form.unit || "").trim(),
             description: String(form.description || ""),
@@ -175,11 +197,49 @@ export default function ServiceCatalog() {
   return (
     <section className="sc-shell booking-admin-section">
       <div className="booking-admin-section-header">
-        <h3>Quản lý dịch vụ (Catalog)</h3>
+        <h3>
+          {serviceKind === "complimentary"
+            ? "Quản lý dịch vụ tích hợp (miễn phí)"
+            : "Quản lý dịch vụ phát sinh (Catalog)"}
+        </h3>
         <div className="sc-actions">
+          <div className="sc-kind-switch">
+            <button
+              type="button"
+              className={`sc-kind-btn ${serviceKind === "extra" ? "is-active" : ""}`}
+              onClick={() => {
+                setServiceKind("extra");
+                setForm((p) => ({
+                  ...p,
+                  id: "",
+                  kind: "extra",
+                  defaultPrice: p.kind === "complimentary" ? 0 : p.defaultPrice,
+                }));
+              }}
+            >
+              Dịch vụ phát sinh
+            </button>
+            <button
+              type="button"
+              className={`sc-kind-btn ${serviceKind === "complimentary" ? "is-active" : ""}`}
+              onClick={() => {
+                setServiceKind("complimentary");
+                setForm((p) => ({
+                  ...p,
+                  id: "",
+                  kind: "complimentary",
+                  defaultPrice: 0,
+                  category_id: "",
+                  unit: "",
+                }));
+              }}
+            >
+              Dịch vụ tích hợp
+            </button>
+          </div>
           <label className="sc-toggle">
             <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-            <span>Hiện dịch vụ đã tắt</span>
+            <span>Chỉ hiện dịch vụ đã tắt</span>
           </label>
           <button type="button" className="sc-ghost" onClick={resetForm}>
             + Thêm mới
@@ -225,53 +285,91 @@ export default function ServiceCatalog() {
         </div>
 
         <div className="sc-card">
-          <div className="sc-card-head">{form.id ? "Sửa dịch vụ" : "Thêm dịch vụ"}</div>
+          <div className="sc-card-head">
+            {form.id
+              ? form.kind === "complimentary"
+                ? "Sửa dịch vụ tích hợp"
+                : "Sửa dịch vụ phát sinh"
+              : serviceKind === "complimentary"
+                ? "Thêm dịch vụ tích hợp"
+                : "Thêm dịch vụ phát sinh"}
+          </div>
           <div className="sc-card-body">
             <form className="sc-form" onSubmit={save}>
+              <label>
+                Loại dịch vụ
+                <select
+                  value={form.kind}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      kind: e.target.value,
+                      defaultPrice: e.target.value === "complimentary" ? 0 : Number(p.defaultPrice || 0),
+                      category_id: e.target.value === "complimentary" ? "" : p.category_id,
+                      unit: e.target.value === "complimentary" ? "" : p.unit,
+                    }))
+                  }
+                  disabled={serviceKind === "complimentary" && !form.id}
+                >
+                  <option value="extra">Dịch vụ phát sinh (tính tiền)</option>
+                  <option value="complimentary">Dịch vụ tích hợp (miễn phí)</option>
+                </select>
+              </label>
               <label>
                 Tên dịch vụ *
                 <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
               </label>
               <div className="sc-form-grid">
                 <label>
-                  Giá mặc định (₫) *
+                  Giá mặc định (₫) {isComplimentaryForm ? "" : "*"}
                   <input
                     type="number"
                     min={0}
                     value={form.defaultPrice}
                     onChange={(e) => setForm((p) => ({ ...p, defaultPrice: e.target.value }))}
+                    disabled={isComplimentaryForm}
                   />
                 </label>
-                <label>
-                  Nhóm dịch vụ
-                  <select
-                    value={form.category_id}
-                    onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}
-                  >
-                    <option value="">— Chọn nhóm —</option>
-                    {categories.map((c) => (
-                      <option key={c._id} value={c._id}>
-                        {c.name} ({c.code})
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {!isComplimentaryForm ? (
+                  <label>
+                    Nhóm dịch vụ
+                    <select
+                      value={form.category_id}
+                      onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}
+                    >
+                      <option value="">— Chọn nhóm —</option>
+                      {categories.map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.name} ({c.code})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <div className="sc-static-note">Dịch vụ tích hợp là miễn phí, không cần nhóm dịch vụ.</div>
+                )}
               </div>
-              <label>
-                Đơn vị tính (ĐVT)
-                <input
-                  value={form.unit}
-                  onChange={(e) => setForm((p) => ({ ...p, unit: e.target.value }))}
-                  placeholder="VD: chai / lần / người / giờ"
-                />
-              </label>
+              {!isComplimentaryForm ? (
+                <label>
+                  Đơn vị tính (ĐVT)
+                  <input
+                    value={form.unit}
+                    onChange={(e) => setForm((p) => ({ ...p, unit: e.target.value }))}
+                    placeholder="VD: chai / lần / người / giờ"
+                  />
+                </label>
+              ) : null}
               <label>
                 Mô tả
                 <textarea
                   rows={3}
                   value={form.description}
                   onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                  placeholder="VD: Giặt áo sơ mi, trả trong ngày..."
+                  placeholder={
+                    isComplimentaryForm
+                      ? "VD: Dịch vụ miễn phí đi kèm theo loại phòng."
+                      : "VD: Giặt áo sơ mi, trả trong ngày..."
+                  }
                 />
               </label>
               {form.id ? (

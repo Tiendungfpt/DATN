@@ -7,6 +7,8 @@ const serviceSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     defaultPrice: { type: Number, required: true, min: 0 },
+    // Service type: paid extra vs complimentary bundled service.
+    kind: { type: String, enum: ["extra", "complimentary"], default: "extra", index: true },
     // Relational category for reporting/grouping.
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: "ServiceCategory", default: null, index: true },
     // Unit of measure (chai, lần, người, giờ...)

@@ -22,6 +22,7 @@ export default function ServiceManager() {
   const [folio, setFolio] = useState(null);
   const [guests, setGuests] = useState([]);
   const [catalog, setCatalog] = useState([]);
+  const [complimentaryRows, setComplimentaryRows] = useState([]);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -54,7 +55,7 @@ export default function ServiceManager() {
       const [b, f, svc, g] = await Promise.all([
         axios.get(`/api/bookings/${bookingId}`, { headers: token() }),
         axios.get(`/api/bookings/${bookingId}/folio`, { headers: token() }),
-        axios.get("/api/services-catalog", { headers: token() }),
+        axios.get("/api/services-catalog?kind=extra", { headers: token() }),
         axios.get(`/api/bookings/${bookingId}/guests`, { headers: token() }),
       ]);
       setBooking(b.data || null);
@@ -93,7 +94,7 @@ export default function ServiceManager() {
 
   const loadCatalogOnly = async () => {
     try {
-      const svc = await axios.get("/api/services-catalog", { headers: token() });
+      const svc = await axios.get("/api/services-catalog?kind=extra", { headers: token() });
       const list = Array.isArray(svc.data) ? svc.data : [];
       setCatalog(list);
       if (!service_id && list?.[0]?._id) setServiceId(String(list[0]._id));
@@ -119,6 +120,52 @@ export default function ServiceManager() {
     }, 5000);
     return () => clearInterval(t);
   }, [bookingId]);
+
+  useEffect(() => {
+    const resolveAllowedExtraServices = async () => {
+      const lineItems = Array.isArray(booking?.line_items) ? booking.line_items : [];
+      const ids = lineItems
+        .map((li) => String(li?.room_type_id?._id || li?.room_type_id || "").trim())
+        .filter(Boolean);
+      if (!ids.length && booking?.room_type_id) {
+        ids.push(String(booking.room_type_id?._id || booking.room_type_id || "").trim());
+      }
+      if (!ids.length) {
+        setComplimentaryRows([]);
+        return;
+      }
+      try {
+        const details = await Promise.all(
+          Array.from(new Set(ids)).map((rtid) =>
+            axios.get(`/api/room-types/${rtid}`, { headers: token() }).then((r) => r.data).catch(() => null),
+          ),
+        );
+        const complimentaryMap = new Map();
+        details.forEach((rt) => {
+          const roomTypeName = String(rt?.name || "").trim() || "Hạng phòng";
+          const services = Array.isArray(rt?.complimentary_services) ? rt.complimentary_services : [];
+          services.forEach((s) => {
+            const sid = String(s?._id || s || "").trim();
+            if (!sid) return;
+            if (!complimentaryMap.has(sid)) {
+              complimentaryMap.set(sid, {
+                key: sid,
+                label: String(s?.name || "Dịch vụ miễn phí"),
+                roomTypes: [roomTypeName],
+              });
+              return;
+            }
+            const current = complimentaryMap.get(sid);
+            if (!current.roomTypes.includes(roomTypeName)) current.roomTypes.push(roomTypeName);
+          });
+        });
+        setComplimentaryRows(Array.from(complimentaryMap.values()));
+      } catch {
+        setComplimentaryRows([]);
+      }
+    };
+    resolveAllowedExtraServices();
+  }, [booking]);
 
   const headerRooms = useMemo(() => {
     const arr = Array.isArray(booking?.assigned_room_ids) ? booking.assigned_room_ids : [];
@@ -212,9 +259,24 @@ export default function ServiceManager() {
     return () => clearTimeout(t);
   }, [modalOpen, addMode]);
 
+  const billableCatalog = useMemo(() => {
+    const all = Array.isArray(catalog) ? catalog : [];
+    return all;
+  }, [catalog]);
+
+  useEffect(() => {
+    if (!billableCatalog.length) {
+      setServiceId("");
+      return;
+    }
+    if (!billableCatalog.some((s) => String(s?._id) === String(service_id))) {
+      setServiceId(String(billableCatalog[0]._id));
+    }
+  }, [billableCatalog, service_id]);
+
   const selectedService = useMemo(() => {
-    return (catalog || []).find((s) => String(s?._id) === String(service_id)) || null;
-  }, [catalog, service_id]);
+    return (billableCatalog || []).find((s) => String(s?._id) === String(service_id)) || null;
+  }, [billableCatalog, service_id]);
 
   const catalogUnit = Math.max(0, Number(selectedService?.defaultPrice || 0));
   const catalogQty = Math.max(1, Number(quantity) || 1);
@@ -252,10 +314,10 @@ export default function ServiceManager() {
       const catDamage = await ensureCat("DAMAGE", "Đền bù");
 
       const presets = [
-        { name: "Nước suối", defaultPrice: 20000, category_id: catMinibar?._id || null, unit: "chai", description: "1 chai nước suối" },
-        { name: "Ăn sáng", defaultPrice: 80000, category_id: catFood?._id || null, unit: "suất", description: "01 suất ăn sáng" },
-        { name: "Giặt áo (1 cái)", defaultPrice: 30000, category_id: catLaundry?._id || null, unit: "cái", description: "Giặt/là trong ngày" },
-        { name: "Đền bù hư hại", defaultPrice: 200000, category_id: catDamage?._id || null, unit: "lần", description: "Chi phí đền bù theo thực tế" },
+        { name: "Nước suối", kind: "extra", defaultPrice: 20000, category_id: catMinibar?._id || null, unit: "chai", description: "1 chai nước suối" },
+        { name: "Ăn sáng", kind: "extra", defaultPrice: 80000, category_id: catFood?._id || null, unit: "suất", description: "01 suất ăn sáng" },
+        { name: "Giặt áo (1 cái)", kind: "extra", defaultPrice: 30000, category_id: catLaundry?._id || null, unit: "cái", description: "Giặt/là trong ngày" },
+        { name: "Đền bù hư hại", kind: "extra", defaultPrice: 200000, category_id: catDamage?._id || null, unit: "lần", description: "Chi phí đền bù theo thực tế" },
       ];
       await Promise.all(presets.map((p) => axios.post("/api/services-catalog", p, { headers: token() })));
       showToast("✅ Đã tạo dịch vụ mẫu");
@@ -375,6 +437,26 @@ export default function ServiceManager() {
                 <strong>{formatMoney(folio.room_subtotal)}</strong>
               </div>
 
+              <div className="folio-divider" />
+              <div className="folio-row" style={{ borderBottom: "none", paddingBottom: 0 }}>
+                <span>Dịch vụ miễn phí đi kèm</span>
+              </div>
+              {complimentaryRows.length ? (
+                <div className="folio-lines">
+                  {complimentaryRows.map((x) => (
+                    <div key={x.key} className="folio-line">
+                      <div className="folio-line-left">
+                        <div className="folio-line-title">{x.label}</div>
+                        <div className="folio-line-meta">Áp dụng: {x.roomTypes.join(" · ")}</div>
+                      </div>
+                      <div className="folio-line-amount folio-line-amount--free">FREE</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="folio-empty">Không có dịch vụ miễn phí được cấu hình.</div>
+              )}
+
               {mergedExtras.length ? (
                 <div className="folio-lines">
                   {mergedExtras.map((x) => (
@@ -437,12 +519,12 @@ export default function ServiceManager() {
               {Array.isArray(guests) && guests.length > 0 ? (
                 <>
                   <div className="folio-divider" />
-                  <div style={{ fontWeight: 900, fontSize: 12, color: "#0f172a", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  <div style={{ fontWeight: 900, fontSize: 12, color: "#d6e2f8", letterSpacing: "0.06em", textTransform: "uppercase" }}>
                     Danh sách khách
                   </div>
                   <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
                     {guests.slice(0, 6).map((g) => (
-                      <div key={g._id} className="folio-line" style={{ background: "#fff" }}>
+                      <div key={g._id} className="folio-line" style={{ background: "#0f172b", border: "1px solid rgba(214, 182, 112, 0.18)" }}>
                         <div className="folio-line-left">
                           <div className="folio-line-title">
                             {g.full_name} {g.is_primary ? "(Chính)" : ""}
@@ -502,10 +584,10 @@ export default function ServiceManager() {
                       ref={firstFieldRef}
                       value={service_id}
                       onChange={(e) => setServiceId(e.target.value)}
-                      disabled={!Array.isArray(catalog) || catalog.length === 0}
+                      disabled={!Array.isArray(billableCatalog) || billableCatalog.length === 0}
                     >
-                      {Array.isArray(catalog) && catalog.length > 0 ? (
-                        catalog.map((s) => (
+                      {Array.isArray(billableCatalog) && billableCatalog.length > 0 ? (
+                        billableCatalog.map((s) => (
                           <option key={s._id} value={s._id}>
                             {s.name}
                             {s?.unit ? ` / ${s.unit}` : ""} — {Number(s.defaultPrice || 0).toLocaleString("vi-VN")} ₫
@@ -513,13 +595,13 @@ export default function ServiceManager() {
                           </option>
                         ))
                       ) : (
-                        <option value="">Chưa có dịch vụ trong catalog</option>
+                        <option value="">Chưa có dịch vụ phát sinh khả dụng</option>
                       )}
                     </select>
                   </label>
-                  {(!Array.isArray(catalog) || catalog.length === 0) && (
+                  {(!Array.isArray(billableCatalog) || billableCatalog.length === 0) && (
                     <div className="folio-alert folio-alert--danger" style={{ marginTop: -4 }}>
-                      Chưa có dịch vụ nào trong catalog. Vui lòng thêm dịch vụ ở trang quản lý dịch vụ trước hoặc bấm tạo nhanh.
+                      Hạng phòng này chưa cấu hình dịch vụ phát sinh hoặc catalog đang trống. Vui lòng cấu hình ở room type/service catalog.
                       <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
                         <button type="button" className="folio-btn-primary" onClick={quickSeedCatalog}>
                           Tạo nhanh dịch vụ mẫu
@@ -576,7 +658,7 @@ export default function ServiceManager() {
                     <button type="button" className="folio-btn-ghost" onClick={closeAdd}>
                       Hủy
                     </button>
-                    <button type="submit" className="folio-btn-primary" disabled={!service_id || !Array.isArray(catalog) || catalog.length === 0}>
+                    <button type="submit" className="folio-btn-primary" disabled={!service_id || !Array.isArray(billableCatalog) || billableCatalog.length === 0}>
                       Thêm
                     </button>
                   </div>

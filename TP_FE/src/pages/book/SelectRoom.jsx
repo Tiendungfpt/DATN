@@ -14,6 +14,10 @@ function resolveImage(img) {
   return `/uploads/${raw}`;
 }
 
+function computeNightlyPrice(base) {
+  return Number(base) || 0;
+}
+
 export default function SelectRoom() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -52,10 +56,11 @@ export default function SelectRoom() {
       alert("Ngày trả phòng phải sau ngày nhận phòng.");
       return;
     }
+    const totalGuestsDraft = Math.max(1, Number(adultsDraft || 0) + Number(childrenDraft || 0));
     navigate(
       `/book?check_in_date=${encodeURIComponent(checkInDraft)}&check_out_date=${encodeURIComponent(
         checkOutDraft,
-      )}&adults=${encodeURIComponent(adultsDraft)}&children=${encodeURIComponent(childrenDraft)}`,
+      )}&adults=${encodeURIComponent(adultsDraft)}&children=${encodeURIComponent(childrenDraft)}&capacity=${encodeURIComponent(totalGuestsDraft)}`,
       { replace: true },
     );
   };
@@ -64,10 +69,11 @@ export default function SelectRoom() {
   useEffect(() => {
     if (!isDraftValid) return undefined;
     const t = setTimeout(() => {
+      const totalGuestsDraft = Math.max(1, Number(adultsDraft || 0) + Number(childrenDraft || 0));
       navigate(
         `/book?check_in_date=${encodeURIComponent(checkInDraft)}&check_out_date=${encodeURIComponent(
           checkOutDraft,
-        )}&adults=${encodeURIComponent(adultsDraft)}&children=${encodeURIComponent(childrenDraft)}`,
+        )}&adults=${encodeURIComponent(adultsDraft)}&children=${encodeURIComponent(childrenDraft)}&capacity=${encodeURIComponent(totalGuestsDraft)}`,
         { replace: true },
       );
     }, 250);
@@ -78,10 +84,37 @@ export default function SelectRoom() {
   const [availability, setAvailability] = useState([]);
   // Cart items: each item represents 1 room, with its selected room type.
   const [cartRooms, setCartRooms] = useState([]);
-  const [activeImgByType, setActiveImgByType] = useState({});
-  const [planByTypeId, setPlanByTypeId] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sortKey, setSortKey] = useState("priceAsc");
+  const [activeImageByTypeId, setActiveImageByTypeId] = useState({});
+
+  const authState = useMemo(() => {
+    const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
+    let user = null;
+    if (userStr) {
+      try {
+        user = JSON.parse(userStr);
+      } catch {
+        user = null;
+      }
+    }
+    return { token, user };
+  }, []);
+
+  const ensureCanBook = () => {
+    if (!authState?.token || !authState?.user?._id) {
+      alert("Vui lòng đăng nhập để đặt phòng.");
+      navigate("/login", { replace: false, state: { from: "/book" } });
+      return false;
+    }
+    if (authState?.user?.role === "admin") {
+      alert("Tài khoản admin không được phép đặt phòng.");
+      return false;
+    }
+    return true;
+  };
 
   useEffect(() => {
     (async () => {
@@ -116,12 +149,30 @@ export default function SelectRoom() {
 
   const visibleRoomTypes = useMemo(() => {
     const list = Array.isArray(roomTypes) ? roomTypes : [];
+    const byCapacity = list.filter(
+      (rt) => Math.max(1, Number(rt?.maxGuests ?? rt?.max_guests) || 1) >= totalGuests,
+    );
     // When dates are selected, only show types that still have rooms available
     if (checkIn && checkOut) {
-      return list.filter((rt) => (availableByTypeId[String(rt._id)] ?? 0) > 0);
+      return byCapacity.filter((rt) => (availableByTypeId[String(rt._id)] ?? 0) > 0);
     }
-    return list;
+    return byCapacity;
   }, [roomTypes, totalGuests, checkIn, checkOut, availableByTypeId]);
+
+  const sortedRoomTypes = useMemo(() => {
+    const list = [...visibleRoomTypes];
+    if (sortKey === "priceDesc") {
+      return list.sort((a, b) => Number(b?.price || 0) - Number(a?.price || 0));
+    }
+    if (sortKey === "capacityDesc") {
+      return list.sort(
+        (a, b) =>
+          Number((b?.maxGuests ?? b?.max_guests) || 0) -
+          Number((a?.maxGuests ?? a?.max_guests) || 0),
+      );
+    }
+    return list.sort((a, b) => Number(a?.price || 0) - Number(b?.price || 0));
+  }, [visibleRoomTypes, sortKey]);
 
   const nights = useMemo(() => {
     if (!checkIn || !checkOut) return 0;
@@ -132,31 +183,23 @@ export default function SelectRoom() {
   }, [checkIn, checkOut]);
 
   const lineItemsForApi = useMemo(() => {
-    // aggregate cart rooms into line_items (quantity per room type + rate plan)
+    // aggregate cart rooms into line_items by room type
     const counts = new Map();
     for (const row of cartRooms) {
       const id = String(row?.room_type_id || "").trim();
       if (!id) continue;
-      const planKey = String(row?.rate_plan_key || "basic");
-      const k = `${id}::${planKey}`;
-      counts.set(k, (counts.get(k) || 0) + 1);
+      counts.set(id, (counts.get(id) || 0) + 1);
     }
     const lines = [];
-    for (const [k, qty] of counts.entries()) {
-      const [id, planKey] = String(k).split("::");
+    for (const [id, qty] of counts.entries()) {
       const rt = roomTypes.find((x) => String(x._id) === String(id));
       if (!rt) continue;
       const base = Number(rt.price) || 0;
-      const nightly =
-        planKey === "breakfast"
-          ? base + 250000
-          : planKey === "non_refund"
-            ? Math.max(0, Math.round(base * 0.88))
-            : base;
+      const nightly = computeNightlyPrice(base);
       lines.push({
         room_type_id: String(rt._id),
         room_type_name: rt.name,
-        rate_plan_key: planKey,
+        rate_plan_key: "basic",
         quantity: qty,
         price: nightly,
         deposit_amount: Number(rt.deposit_amount) || 0,
@@ -169,6 +212,11 @@ export default function SelectRoom() {
   const total = useMemo(
     () => lineItemsForApi.reduce((s, l) => s + l.price * nights * l.quantity, 0),
     [lineItemsForApi, nights],
+  );
+
+  const depositRequired = useMemo(
+    () => lineItemsForApi.reduce((s, l) => s + (Number(l.deposit_amount) || 0) * (Number(l.quantity) || 0), 0),
+    [lineItemsForApi],
   );
 
   const canNext = cartRooms.length > 0 && lineItemsForApi.length > 0 && total > 0 && checkIn && checkOut;
@@ -187,7 +235,9 @@ export default function SelectRoom() {
   }, [preselectRoomTypeId, visibleRoomTypes.length]);
 
   const hasAnyCapacityOption = useMemo(() => {
-    return visibleRoomTypes.some((rt) => Math.max(1, Number(rt?.maxGuests) || 1) >= totalGuests);
+    return visibleRoomTypes.some(
+      (rt) => Math.max(1, Number(rt?.maxGuests ?? rt?.max_guests) || 1) >= totalGuests,
+    );
   }, [visibleRoomTypes, totalGuests]);
 
   const selectedCountByTypeId = useMemo(() => {
@@ -201,10 +251,10 @@ export default function SelectRoom() {
   }, [cartRooms]);
 
   const addRoomToCart = (roomTypeId) => {
+    if (!ensureCanBook()) return;
     const id = String(roomTypeId || "").trim();
     if (!id) return;
-    const planKey = planByTypeId[id] || "basic";
-    setCartRooms((prev) => [...(prev || []), { key: `room-${Date.now()}`, room_type_id: id, rate_plan_key: planKey }]);
+    setCartRooms((prev) => [...(prev || []), { key: `room-${Date.now()}`, room_type_id: id }]);
     // Keep UX: after adding, user can click "Thêm phòng" to focus list again.
     const el = document.getElementById("be-roomtype-list");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -222,344 +272,351 @@ export default function SelectRoom() {
     return Array.from(new Set(merged)).slice(0, 6);
   };
 
+  const getComplimentaryServices = (rt) => {
+    const list = Array.isArray(rt?.complimentary_services) ? rt.complimentary_services : [];
+    const names = list
+      .map((s) => String(s?.name || s || "").trim())
+      .filter(Boolean);
+    if (names.length > 0) return Array.from(new Set(names)).slice(0, 6);
+    return ["Wifi miễn phí", "Nước suối mỗi ngày", "Dọn phòng hàng ngày"];
+  };
+
+  const stepGuest = (type, delta) => {
+    if (type === "adult") {
+      setAdultsDraft((v) => Math.min(6, Math.max(1, Number(v || 1) + delta)));
+      return;
+    }
+    setChildrenDraft((v) => Math.min(4, Math.max(0, Number(v || 0) + delta)));
+  };
+
+  const setActiveImage = (roomTypeId, nextIndex, galleryLength) => {
+    if (!galleryLength) return;
+    const normalized = ((Number(nextIndex) || 0) + galleryLength) % galleryLength;
+    setActiveImageByTypeId((prev) => ({ ...prev, [roomTypeId]: normalized }));
+  };
+
+  const shiftActiveImage = (roomTypeId, delta, galleryLength) => {
+    if (!galleryLength) return;
+    const current = Number(activeImageByTypeId?.[roomTypeId] || 0);
+    setActiveImage(roomTypeId, current + delta, galleryLength);
+  };
+
   return (
     <div className="be-shell">
-      <div className="be-topbar">
-        <div className="hh-container be-topbar-inner">
-          <div className="be-top-item">
-            🗓
-            <input
-              type="date"
-              className="hh-input"
-              style={{ width: 150 }}
-              value={checkInDraft}
-              min={today}
-              onChange={(e) => setCheckInDraft(e.target.value)}
-            />
-            <span>→</span>
-            <input
-              type="date"
-              className="hh-input"
-              style={{ width: 150 }}
-              value={checkOutDraft}
-              min={checkInDraft || today}
-              onChange={(e) => setCheckOutDraft(e.target.value)}
-            />
-          </div>
-          <div className="be-top-item">
-            👤
-            <select
-              className="hh-input"
-              style={{ width: 90 }}
-              value={adultsDraft}
-              onChange={(e) => setAdultsDraft(Number(e.target.value || 1))}
-            >
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <span>người lớn</span>
-          </div>
-          <div className="be-top-item">
-            🧒
-            <select
-              className="hh-input"
-              style={{ width: 90 }}
-              value={childrenDraft}
-              onChange={(e) => setChildrenDraft(Number(e.target.value || 0))}
-            >
-              {[0, 1, 2, 3, 4].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <span>trẻ em</span>
-          </div>
-          <div className="be-top-item">
-            <button type="button" className="home-book-btn" style={{ width: 130 }} onClick={applySearchParams}>
-              Đặt phòng
-            </button>
-          </div>
-        </div>
-      </div>
-
       <main className="be-main">
-        <div className="hh-container be-grid">
-          <section>
-            <h1 className="be-title">Chọn phòng</h1>
-            <div className="be-subtitle">Tự tin đặt phòng: bạn đang trên trang web của khách sạn.</div>
-            {!checkIn || !checkOut ? (
-              <div style={{ marginBottom: 12, color: "rgba(17,24,39,0.75)", fontSize: 13 }}>
-                Vui lòng chọn <strong>ngày nhận phòng</strong> và <strong>ngày trả phòng</strong> để hệ thống tính tổng tiền.
-              </div>
-            ) : null}
-            {loading ? <p>Đang tải…</p> : null}
-            {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
+        <div className="hh-container be-search-layout">
+          <aside className="be-filter-panel">
+            <div className="be-filter-card">
+              <div className="be-filter-title">Tìm Kiếm Phòng Hoàn Hảo</div>
+              <label className="hh-label">Thời gian lưu trú</label>
+              <input
+                type="date"
+                className="hh-input"
+                value={checkInDraft}
+                min={today}
+                onChange={(e) => setCheckInDraft(e.target.value)}
+              />
+              <input
+                type="date"
+                className="hh-input"
+                value={checkOutDraft}
+                min={checkInDraft || today}
+                onChange={(e) => setCheckOutDraft(e.target.value)}
+                style={{ marginTop: 8 }}
+              />
 
-            {visibleRoomTypes.length === 0 && !loading && (
-              <div style={{ marginTop: 12, color: "rgba(17,24,39,0.75)", fontSize: 14 }}>
+              <label className="hh-label" style={{ marginTop: 12 }}>Số lượng khách</label>
+              <div className="be-guest-row">
+                <div className="be-guest-box">
+                  <span>Người lớn</span>
+                  <div className="be-guest-stepper">
+                    <button type="button" onClick={() => stepGuest("adult", -1)}>−</button>
+                    <strong>{adultsDraft}</strong>
+                    <button type="button" onClick={() => stepGuest("adult", 1)}>+</button>
+                  </div>
+                </div>
+                <div className="be-guest-box">
+                  <span>Trẻ em</span>
+                  <div className="be-guest-stepper">
+                    <button type="button" onClick={() => stepGuest("child", -1)}>−</button>
+                    <strong>{childrenDraft}</strong>
+                    <button type="button" onClick={() => stepGuest("child", 1)}>+</button>
+                  </div>
+                </div>
+              </div>
+              <button type="button" className="be-search-btn" onClick={applySearchParams}>
+                Tìm Kiếm Phòng
+              </button>
+            </div>
+          </aside>
+
+          <section className="be-results-panel">
+            <div className="be-booking-hero">
+              <p className="be-booking-hero-kicker">Booking Engine</p>
+              <h1 className="be-title">Chọn phòng phù hợp cho chuyến đi của bạn</h1>
+              <p className="be-booking-hero-desc">
+                So sánh nhanh hạng phòng, kiểm tra phòng trống theo ngày và hoàn tất đặt phòng chỉ trong vài bước.
+              </p>
+            </div>
+
+            <div className="be-results-head">
+              <div>
+                <h2 className="be-results-title">Phòng có sẵn ({sortedRoomTypes.length})</h2>
+                <div className="be-subtitle">
+                  {checkIn && checkOut ? `Từ ${checkIn} đến ${checkOut}` : "Vui lòng chọn ngày"} •{" "}
+                  {adultsDraft} người lớn, {childrenDraft} trẻ em
+                </div>
+              </div>
+              <div className="be-sort-box">
+                <span>Sắp xếp theo:</span>
+                <select className="hh-input" value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
+                  <option value="priceAsc">Giá từ thấp đến cao</option>
+                  <option value="priceDesc">Giá từ cao đến thấp</option>
+                  <option value="capacityDesc">Sức chứa nhiều nhất</option>
+                </select>
+              </div>
+            </div>
+            {loading ? <p className="be-note">Đang tải danh sách phòng…</p> : null}
+            {error ? <p className="be-note be-note--error">{error}</p> : null}
+
+            {sortedRoomTypes.length === 0 && !loading && (
+              <div className="be-note">
                 Không còn phòng trống{checkIn && checkOut ? " trong khoảng ngày đã chọn" : ""}. Vui lòng đổi ngày để đặt lại.
               </div>
             )}
-            {visibleRoomTypes.length > 0 && !hasAnyCapacityOption && !loading ? (
-              <div style={{ marginTop: 12, color: "rgba(17,24,39,0.75)", fontSize: 14 }}>
+            {sortedRoomTypes.length > 0 && !hasAnyCapacityOption && !loading ? (
+              <div className="be-note">
                 Không có hạng phòng nào đủ sức chứa cho <strong>{totalGuests}</strong> khách. Vui lòng giảm số khách hoặc chọn ngày khác.
               </div>
             ) : null}
 
+            <div className="be-inline-cart">
+              <div className="be-sidebar-head">Giỏ hàng của bạn</div>
+              <div className="be-sidebar-body">
+                <div className="be-sidebar-row">
+                  <span>Số phòng</span>
+                  <strong>{cartRooms.length}</strong>
+                </div>
+                <div className="be-sidebar-row">
+                  <span>Tổng tạm tính</span>
+                  <strong>{total > 0 ? `${total.toLocaleString("vi-VN")} ₫` : "0 ₫"}</strong>
+                </div>
+                <div className="be-sidebar-row">
+                  <span>Tiền cọc (ước tính)</span>
+                  <strong>{depositRequired > 0 ? `${depositRequired.toLocaleString("vi-VN")} ₫` : "—"}</strong>
+                </div>
+                {cartRooms.length > 0 ? (
+                  <div className="be-summary-list">
+                    {cartRooms.map((r, idx) => {
+                      const rt = roomTypes.find((x) => String(x._id) === String(r.room_type_id));
+                      const nightly = computeNightlyPrice(Number(rt?.price || 0));
+                      const price = nightly * nights;
+                      const deposit = Number(rt?.deposit_amount || 0);
+                      return (
+                        <div key={r.key} className="be-cart-room">
+                          <div className="be-cart-room-left">
+                            <div className="be-cart-room-title">Phòng {idx + 1}</div>
+                            <div className="be-cart-room-sub">{rt?.name || "—"}</div>
+                            <div className="be-cart-room-meta">
+                              <span>Giá cơ bản</span>
+                              <span>•</span>
+                              <span>{nights} đêm</span>
+                              {deposit > 0 ? (
+                                <>
+                                  <span>•</span>
+                                  <span>Cọc {deposit.toLocaleString("vi-VN")}₫</span>
+                                </>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="be-cart-room-right">
+                            <div className="be-cart-room-price">{price > 0 ? `${price.toLocaleString("vi-VN")} ₫` : "—"}</div>
+                            <button type="button" className="be-cart-remove" onClick={() => removeCartRoom(r.key)}>
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="be-empty-cart">
+                    <div className="be-alert" style={{ marginTop: 0 }}>
+                      Chưa có phòng nào trong giỏ hàng.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div id="be-roomtype-list" className="be-roomtype-list" style={{ marginTop: 14 }}>
-              {visibleRoomTypes.map((rt) => {
+              {sortedRoomTypes.map((rt) => {
                 const id = String(rt._id);
                 const maxAvail = availableByTypeId[id] ?? 0;
                 const selectedCount = selectedCountByTypeId[id] ?? 0;
                 const left = checkIn && checkOut ? Math.max(0, maxAvail - selectedCount) : maxAvail;
-                const cap = Math.max(1, Number(rt?.maxGuests) || 1);
+                const cap = Math.max(1, Number(rt?.maxGuests ?? rt?.max_guests) || 1);
                 const area = Math.max(0, Number(rt?.area_sqm) || 0);
                 const bed = String(rt?.bed_type || "").trim();
                 const notEnoughCapacity = cap < totalGuests;
                 const canAdd = Boolean(checkIn && checkOut) && !notEnoughCapacity && left > 0;
-                const gallery = getGallery(rt);
-                const activeImg = activeImgByType[id] || gallery[0] || resolveImage(rt.image);
+                const galleryRaw = getGallery(rt);
+                const gallery = galleryRaw.length > 0 ? galleryRaw : [resolveImage(rt.image)];
+                const complimentary = getComplimentaryServices(rt);
+                const activeImageIndex = Math.min(
+                  Math.max(0, Number(activeImageByTypeId?.[id] || 0)),
+                  Math.max(0, gallery.length - 1),
+                );
+                const activeImg = gallery[activeImageIndex] || gallery[0];
                 const base = Number(rt.price) || 0;
-                const breakfastPrice = base + 250000;
-                const nonRefundPrice = Math.max(0, Math.round(base * 0.88));
-                const selectedPlan = planByTypeId[id] || "basic";
                 return (
                   <article
                     id={`be-rt-${id}`}
                     key={id}
-                    className="be-room-card be-roomtype-card"
+                    className="be-room-card be-roomtype-card be-roomtype-card--horizontal"
                     style={{ marginBottom: 18 }}
                   >
-                    <div className="be-room-head">
-                      <div className="be-room-head-title">{rt.name}</div>
-                      <div className="be-room-head-actions">
-                        <button
-                          type="button"
-                          className="be-link"
-                          onClick={() => navigate(`/hang-phong/${encodeURIComponent(id)}`)}
-                        >
-                          Xem chi tiết
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="be-room-body">
-                      <div className="be-gallery">
-                        <img
-                          className="be-room-img"
-                          src={activeImg}
-                          alt={rt.name}
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = fallbackImage;
-                          }}
-                        />
-                        {gallery.length > 1 ? (
-                          <div className="be-thumbs" aria-label="Ảnh phòng">
-                            {gallery.map((src) => {
-                              const active = src === activeImg;
-                              return (
-                                <button
-                                  key={src}
-                                  type="button"
-                                  className={`be-thumb${active ? " is-active" : ""}`}
-                                  onClick={() => setActiveImgByType((p) => ({ ...(p || {}), [id]: src }))}
-                                  title="Xem ảnh"
-                                >
-                                  <img src={src} alt="thumb" />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="be-rate">
-                      <div className="be-rate-head">Chọn gói giá</div>
-                      <div className="be-rate-list">
-                        <label className={`be-rate-item${selectedPlan === "basic" ? " is-selected" : ""}`}>
-                          <input
-                            type="radio"
-                            name={`plan-${id}`}
-                            checked={selectedPlan === "basic"}
-                            onChange={() => setPlanByTypeId((p) => ({ ...(p || {}), [id]: "basic" }))}
-                          />
-                          <div className="be-rate-main">
-                            <div className="be-rate-title">Giá cơ bản</div>
-                            <div className="be-rate-tags">
-                              <span className="be-tag be-tag--ok">✓ Hoàn tiền</span>
-                              <span className="be-tag">Không ăn sáng</span>
-                            </div>
-                          </div>
-                          <div className="be-rate-price">
-                            <div className="be-rate-now">{base.toLocaleString("vi-VN")}đ</div>
-                            <div className="be-rate-sub">/đêm</div>
-                          </div>
-                        </label>
-
-                        <label className={`be-rate-item${selectedPlan === "breakfast" ? " is-selected" : ""}`}>
-                          <input
-                            type="radio"
-                            name={`plan-${id}`}
-                            checked={selectedPlan === "breakfast"}
-                            onChange={() => setPlanByTypeId((p) => ({ ...(p || {}), [id]: "breakfast" }))}
-                          />
-                          <div className="be-rate-main">
-                            <div className="be-rate-title">Có ăn sáng</div>
-                            <div className="be-rate-tags">
-                              <span className="be-tag be-tag--ok">✓ Hoàn tiền</span>
-                              <span className="be-tag be-tag--pill">🍳 Ăn sáng 2 người</span>
-                            </div>
-                          </div>
-                          <div className="be-rate-price">
-                            <div className="be-rate-was">{base.toLocaleString("vi-VN")}đ</div>
-                            <div className="be-rate-now">{breakfastPrice.toLocaleString("vi-VN")}đ</div>
-                            <div className="be-rate-sub">/đêm</div>
-                          </div>
-                        </label>
-
-                        <label className={`be-rate-item${selectedPlan === "non_refund" ? " is-selected" : ""}`}>
-                          <input
-                            type="radio"
-                            name={`plan-${id}`}
-                            checked={selectedPlan === "non_refund"}
-                            onChange={() => setPlanByTypeId((p) => ({ ...(p || {}), [id]: "non_refund" }))}
-                          />
-                          <div className="be-rate-main">
-                            <div className="be-rate-title">Giá không hoàn tiền</div>
-                            <div className="be-rate-tags">
-                              <span className="be-tag be-tag--no">✗ Không hoàn tiền</span>
-                              <span className="be-tag">Không ăn sáng</span>
-                            </div>
-                          </div>
-                          <div className="be-rate-price">
-                            <div className="be-rate-now be-rate-now--save">{nonRefundPrice.toLocaleString("vi-VN")}đ</div>
-                            <div className="be-rate-sub">/đêm · Tiết kiệm 12%</div>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="be-room-foot">
-                      <div className="be-room-meta">
-                        <div className="be-room-price">
-                          {Number(rt.price || 0).toLocaleString("vi-VN")} ₫{" "}
-                          <span style={{ opacity: 0.7, fontWeight: 700 }}>/đêm</span>
+                    <div className="be-card-media">
+                      <img
+                        className="be-room-img"
+                        src={activeImg}
+                        alt={rt.name}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = fallbackImage;
+                        }}
+                      />
+                      {gallery.length > 1 ? (
+                        <>
+                          <button
+                            type="button"
+                            className="be-gallery-nav be-gallery-nav--prev"
+                            onClick={() => shiftActiveImage(id, -1, gallery.length)}
+                            aria-label="Ảnh trước"
+                          >
+                            ‹
+                          </button>
+                          <button
+                            type="button"
+                            className="be-gallery-nav be-gallery-nav--next"
+                            onClick={() => shiftActiveImage(id, 1, gallery.length)}
+                            aria-label="Ảnh tiếp theo"
+                          >
+                            ›
+                          </button>
+                        </>
+                      ) : null}
+                      <span className="be-card-photo-count">{gallery.length} ảnh</span>
+                      {gallery.length > 1 ? (
+                        <div className="be-card-thumbs">
+                          {gallery.map((img, index) => (
+                            <button
+                              key={`${id}-thumb-${index}`}
+                              type="button"
+                              className={`be-card-thumb${activeImageIndex === index ? " is-active" : ""}`}
+                              onClick={() => setActiveImage(id, index, gallery.length)}
+                              aria-label={`Xem ảnh ${index + 1}`}
+                            >
+                              <img src={img} alt={`${rt.name} ${index + 1}`} />
+                            </button>
+                          ))}
                         </div>
-                        <div className="be-room-badges">
-                          <span className="be-badge">Tối đa {cap} khách</span>
-                          {area > 0 ? <span className="be-badge">{area}m²</span> : null}
-                          {bed ? <span className="be-badge">{bed}</span> : null}
-                          {checkIn && checkOut ? (
-                            <span className={`be-badge${left <= 2 ? " be-badge--warn" : ""}`}>
-                              Còn {left}/{maxAvail} phòng
+                      ) : null}
+                    </div>
+
+                    <div className="be-card-content">
+                      <div className="be-room-head">
+                        <div className="be-room-head-title">{rt.name}</div>
+                        <div className="be-room-head-actions">
+                          <button
+                            type="button"
+                            className="be-link"
+                            onClick={() => navigate(`/hang-phong/${encodeURIComponent(id)}`)}
+                          >
+                            Chi tiết
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="be-amenities">
+                        <div className="be-amenities-title">Tiện nghi</div>
+                        <div className="be-amenities-list">
+                          {complimentary.map((serviceName) => (
+                            <span key={`${id}-${serviceName}`} className="be-amenity-chip">
+                              {serviceName}
                             </span>
-                          ) : (
-                            <span className="be-badge be-badge--muted">Chọn ngày để xem phòng trống</span>
-                          )}
-                          {notEnoughCapacity ? <span className="be-badge be-badge--danger">Không đủ sức chứa</span> : null}
+                          ))}
                         </div>
                       </div>
-                      <div className="be-qty">
-                        <button
-                          type="button"
-                          className="be-add-to-cart-btn"
-                          disabled={!canAdd}
-                          title={
-                            !checkIn || !checkOut
-                              ? "Vui lòng chọn ngày trước"
-                              : notEnoughCapacity
-                                ? "Không đủ sức chứa"
-                                : left <= 0
-                                  ? "Hết phòng"
-                                  : ""
-                          }
-                          onClick={() => addRoomToCart(id)}
-                        >
-                          Chọn phòng
-                        </button>
+
+                      <div className="be-room-foot">
+                        <div className="be-room-meta">
+                          <div className="be-room-price">
+                            {base.toLocaleString("vi-VN")} ₫ <span>/đêm</span>
+                          </div>
+                          <div className="be-room-badges">
+                            <span className="be-badge">Tối đa {cap} khách</span>
+                            {area > 0 ? <span className="be-badge">{area}m²</span> : null}
+                            {bed ? <span className="be-badge">{bed}</span> : null}
+                            {checkIn && checkOut ? (
+                              <span className={`be-badge${left <= 2 ? " be-badge--warn" : ""}`}>
+                                Còn {left}/{maxAvail} phòng
+                              </span>
+                            ) : (
+                              <span className="be-badge be-badge--muted">Chọn ngày để xem phòng trống</span>
+                            )}
+                            {notEnoughCapacity ? <span className="be-badge be-badge--danger">Không đủ sức chứa</span> : null}
+                          </div>
+                        </div>
+                        <div className="be-qty">
+                          <button
+                            type="button"
+                            className="be-add-to-cart-btn"
+                            disabled={!canAdd}
+                            title={
+                              !checkIn || !checkOut
+                                ? "Vui lòng chọn ngày trước"
+                                : notEnoughCapacity
+                                  ? "Không đủ sức chứa"
+                                  : left <= 0
+                                    ? "Hết phòng"
+                                    : ""
+                            }
+                            onClick={() => addRoomToCart(id)}
+                          >
+                            Đặt ngay
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </article>
                 );
               })}
             </div>
-          </section>
-
-          <aside className="be-sidebar">
-            <div className="be-sidebar-head">Giỏ hàng</div>
-            <div className="be-sidebar-body">
+            <div className="be-bottom-sticky">
               <div className="be-sidebar-row">
-                <span>Số phòng</span>
+                <span>Số phòng đã chọn</span>
                 <strong>{cartRooms.length}</strong>
               </div>
               <div className="be-sidebar-row">
-                <span>Tổng</span>
+                <span>Tổng tạm tính</span>
                 <strong>{total > 0 ? `${total.toLocaleString("vi-VN")} ₫` : "0 ₫"}</strong>
               </div>
-              {cartRooms.length > 0 ? (
-                <div className="be-summary-list">
-                  {cartRooms.map((r, idx) => {
-                    const rt = roomTypes.find((x) => String(x._id) === String(r.room_type_id));
-                    const price = Number(rt?.price || 0) * nights;
-                    return (
-                      <div key={r.key} className="be-cart-room">
-                        <div className="be-cart-room-left">
-                          <div className="be-cart-room-title">Phòng {idx + 1}</div>
-                          <div className="be-cart-room-sub">{rt?.name || "—"}</div>
-                        </div>
-                        <div className="be-cart-room-right">
-                          <div className="be-cart-room-price">{price > 0 ? `${price.toLocaleString("vi-VN")} ₫` : "—"}</div>
-                          <button type="button" className="be-cart-remove" onClick={() => removeCartRoom(r.key)}>
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    className="be-add-room-btn"
-                    onClick={() => {
-                      const el = document.getElementById("be-roomtype-list");
-                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
-                  >
-                    Thêm phòng
-                  </button>
-                </div>
-              ) : (
-                <div className="be-empty-cart">
-                  <div className="be-alert" style={{ marginTop: 0 }}>
-                    <strong>Chưa có phòng nào được giữ chỗ.</strong>
-                    <div style={{ marginTop: 6 }}>
-                      Chọn <strong>ngày</strong> → chọn <strong>phòng</strong> → bấm <strong>Kế tiếp</strong> để nhập thông tin khách.
-                    </div>
-                  </div>
-                  <div className="be-tip">
-                    Mẹo: nếu đặt nhiều phòng, hãy bấm <strong>Chọn phòng</strong> nhiều lần (mỗi lần thêm 1 phòng).
-                  </div>
-                </div>
-              )}
               <button
                 className="be-next-btn"
                 type="button"
                 disabled={!canNext}
-                onClick={() =>
+                onClick={() => {
+                  if (!ensureCanBook()) return;
                   navigate("/book/guest", {
                     state: { checkIn, checkOut, adults, children, nights, lines: lineItemsForApi, total },
-                  })
-                }
+                  });
+                }}
               >
-                Kế tiếp
+                Tiến hành thanh toán
               </button>
             </div>
-          </aside>
+          </section>
         </div>
       </main>
     </div>

@@ -12,8 +12,11 @@ import BookingCharge from "../models/BookingCharge.js";
 import Service from "../models/Service.js";
 import { parseStayDates } from "../utils/bookingAvailability.js";
 import { createNotification } from "../utils/notification.js";
+import { sendRefundStatusEmail } from "../services/emailService.js";
 import { ROOM_OCCUPYING_BOOKING_STATUSES } from "../utils/bookingSchedule.js";
 import PaymentTransaction from "../models/PaymentTransaction.js";
+import DiscountCode from "../models/DiscountCode.js";
+import { evaluateDiscountCode } from "./discountCodeController.js";
 import {
   computeHoursUntilArrival,
   computeRefundAmount,
@@ -55,26 +58,21 @@ function normalizePhone(value) {
   return String(value || "").replace(/\D/g, "");
 }
 
-function resolveHourlyPrice(roomTypeDoc) {
-  const configured = Number(roomTypeDoc?.hourly_price) || 0;
-  if (configured > 0) return configured;
-  const nightly = Number(roomTypeDoc?.price) || 0;
-  if (nightly <= 0) return 0;
-  return Math.max(1000, Math.ceil(nightly / 10));
+function normalizeRatePlanKey(value) {
+  return "basic";
 }
 
-function normalizeRatePlanKey(value) {
-  const k = String(value || "").trim().toLowerCase();
-  if (k === "breakfast") return "breakfast";
-  if (k === "non_refund" || k === "nonrefund" || k === "non-refundable" || k === "nonrefundable") return "non_refund";
+function resolveBookingRatePlanKey(booking) {
+  if (Array.isArray(booking?.line_items) && booking.line_items.length > 0) {
+    const first = booking.line_items[0];
+    return normalizeRatePlanKey(first?.rate_plan_key);
+  }
   return "basic";
 }
 
 function resolveNightlyPriceByRatePlan(baseNightly, ratePlanKey) {
   const base = Math.max(0, Number(baseNightly) || 0);
-  const key = normalizeRatePlanKey(ratePlanKey);
-  if (key === "breakfast") return base + 250000; // +250k per night includes breakfast
-  if (key === "non_refund") return Math.max(0, Math.round(base * 0.88)); // 12% off
+  normalizeRatePlanKey(ratePlanKey);
   return base;
 }
 
@@ -120,20 +118,27 @@ export const getAllBookingsAdmin = async (req, res) => {
   try {
     const sort = String(req.query.sort || "createdAt_desc");
     const statusFilter = req.query.status ? String(req.query.status) : null;
+    const depositStatusFilter = req.query.deposit_status
+      ? String(req.query.deposit_status).trim()
+      : null;
 
-    const q = {
+    const q = {};
+    if (!depositStatusFilter) {
       // Default policy: admin chỉ thấy booking đã thanh toán (full hoặc đủ cọc)
-      $or: [
+      q.$or = [
         { payment_mode: "full", is_paid: true },
         { payment_mode: "deposit", deposit_status: "paid" },
-      ],
-    };
+      ];
+    }
     if (statusFilter) {
       if (statusFilter === OUT_COMPLETED) {
         q.status = { $in: [OUT_COMPLETED, LEGACY_COMPLETED] };
       } else {
         q.status = statusFilter;
       }
+    }
+    if (depositStatusFilter) {
+      q.deposit_status = depositStatusFilter;
     }
 
     const sortObj =
@@ -170,8 +175,8 @@ export const createBooking = async (req, res) => {
       guest_email: guestEmailRaw,
       payment_mode = "full",
       prepaid_amount: prepaidRaw,
-      booking_type: bookingTypeRaw = "overnight",
-      stay_hours: stayHoursRaw,
+      booking_type: bookingTypeRaw,
+      discount_code: discountCodeRaw,
     } = req.body;
 
     const forbiddenRoom =
@@ -204,38 +209,23 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const bookingType = String(bookingTypeRaw || "overnight").trim().toLowerCase();
-    if (!["overnight", "hourly"].includes(bookingType)) {
-      return res.status(400).json({ message: "booking_type phải là overnight hoặc hourly" });
+    const requestedBookingType = String(bookingTypeRaw || "overnight").trim().toLowerCase();
+    if (requestedBookingType !== "overnight") {
+      return res.status(400).json({ message: "Hệ thống hiện chỉ hỗ trợ đặt theo đêm" });
     }
+    const bookingType = "overnight";
 
     let start;
     let end;
     let stayUnits;
-    let stayHours = null;
 
-    if (bookingType === "hourly") {
-      const startAt = new Date(checkInRaw);
-      if (Number.isNaN(startAt.getTime())) {
-        return res.status(400).json({ message: "Giờ nhận phòng không hợp lệ" });
-      }
-      const parsedHours = Number.parseInt(String(stayHoursRaw), 10);
-      if (!Number.isInteger(parsedHours) || parsedHours < 1 || parsedHours > 24) {
-        return res.status(400).json({ message: "stay_hours phải là số nguyên từ 1 đến 24" });
-      }
-      start = startAt;
-      end = new Date(startAt.getTime() + parsedHours * 60 * 60 * 1000);
-      stayUnits = parsedHours;
-      stayHours = parsedHours;
-    } else {
-      const parsed = parseStayDates(checkInRaw, checkOutRaw);
-      if (parsed.error) {
-        return res.status(400).json({ message: parsed.error });
-      }
-      start = parsed.start;
-      end = parsed.end;
-      stayUnits = nightsBetween(start, end);
+    const parsed = parseStayDates(checkInRaw, checkOutRaw);
+    if (parsed.error) {
+      return res.status(400).json({ message: parsed.error });
     }
+    start = parsed.start;
+    end = parsed.end;
+    stayUnits = nightsBetween(start, end);
 
     const prepaid = Math.max(0, Number(prepaidRaw) || 0);
 
@@ -244,6 +234,9 @@ export const createBooking = async (req, res) => {
     let totalQty = 0;
     let estimated = 0;
     let depositAmount = 0;
+    let discountAmount = 0;
+    let discountCode = "";
+    let discountCodeId = null;
 
     if (Array.isArray(rawLineItems) && rawLineItems.length > 0) {
       const merged = new Map();
@@ -252,8 +245,8 @@ export const createBooking = async (req, res) => {
         if (!mongoose.isValidObjectId(tid)) continue;
         const ratePlanKey = normalizeRatePlanKey(row.rate_plan_key ?? row.ratePlanKey ?? row.rate_plan);
         const q = Math.max(1, Number.parseInt(String(row.quantity), 10) || 1);
-        const k = `${String(tid)}::${ratePlanKey}`;
-        const prev = merged.get(k) || { room_type_id: String(tid), rate_plan_key: ratePlanKey, quantity: 0 };
+        const k = String(tid);
+        const prev = merged.get(k) || { room_type_id: String(tid), rate_plan_key: "basic", quantity: 0 };
         merged.set(k, { ...prev, quantity: prev.quantity + q });
       }
       if (merged.size === 0) {
@@ -287,10 +280,7 @@ export const createBooking = async (req, res) => {
             message: `Khong du phong trong khoang ngay da chon cho loai "${roomTypeDoc.name}" (dat ${q} phong). Co the chon them loai phong khac trong cung don.`,
           });
         }
-        const unitPrice =
-          bookingType === "hourly"
-            ? resolveHourlyPrice(roomTypeDoc)
-            : resolveNightlyPriceByRatePlan(Number(roomTypeDoc.price) || 0, ratePlanKey);
+        const unitPrice = resolveNightlyPriceByRatePlan(Number(roomTypeDoc.price) || 0, ratePlanKey);
         const lineSub = computeSubtotal(unitPrice, stayUnits, q);
         estimated += lineSub;
         depositAmount += rtDeposit * q;
@@ -343,10 +333,10 @@ export const createBooking = async (req, res) => {
       }
       roomTypeIdStr = roomTypeIdSingle;
       totalQty = quantity;
-      const unitPrice =
-        bookingType === "hourly"
-          ? resolveHourlyPrice(roomType)
-          : resolveNightlyPriceByRatePlan(Number(roomType.price) || 0, req.body.rate_plan_key ?? req.body.ratePlanKey);
+      const unitPrice = resolveNightlyPriceByRatePlan(
+        Number(roomType.price) || 0,
+        req.body.rate_plan_key ?? req.body.ratePlanKey,
+      );
       estimated = computeSubtotal(unitPrice, stayUnits, quantity);
       // Policy: tiền cọc không được vượt quá tổng tiền phòng ước tính
       depositAmount = Math.min(rtDeposit * quantity, estimated);
@@ -361,6 +351,18 @@ export const createBooking = async (req, res) => {
 
     if (!["deposit", "full"].includes(payment_mode)) {
       return res.status(400).json({ message: "payment_mode phải là deposit hoặc full" });
+    }
+
+    if (discountCodeRaw) {
+      const discountEval = await evaluateDiscountCode(discountCodeRaw, estimated);
+      if (!discountEval.ok) {
+        return res.status(400).json({ message: discountEval.message });
+      }
+      discountAmount = Math.max(0, Number(discountEval.discount_amount) || 0);
+      discountCode = String(discountEval.code || "").trim().toUpperCase();
+      discountCodeId = discountEval.discount_code_id;
+      estimated = Math.max(0, estimated - discountAmount);
+      depositAmount = Math.min(depositAmount, estimated);
     }
     // HanoiHotel policy: deposit is required to secure/confirm. Full prepay is allowed, but must match estimated.
     if (payment_mode === "full") {
@@ -401,7 +403,6 @@ export const createBooking = async (req, res) => {
       check_in_date: start,
       check_out_date: end,
       booking_type: bookingType,
-      stay_hours: stayHours,
       room_quantity: totalQty,
       payment_mode,
       prepaid_amount: prepaid,
@@ -409,6 +410,9 @@ export const createBooking = async (req, res) => {
       deposit_paid_amount: depositPaidAmount,
       deposit_status: depositOk ? "paid" : "unpaid",
       estimated_room_total: estimated,
+      discount_code_id: discountCodeId,
+      discount_code: discountCode,
+      discount_amount: discountAmount,
       total_price: estimated,
       service_fee: 0,
       services: [],
@@ -423,6 +427,10 @@ export const createBooking = async (req, res) => {
       .populate("line_items.room_type_id", "name price description maxGuests")
       .lean();
 
+    if (discountCodeId) {
+      await DiscountCode.findByIdAndUpdate(discountCodeId, { $inc: { used_count: 1 } });
+    }
+
     return res.status(201).json({
       message: "Đặt phòng thành công",
       booking: attachCanReview(populated),
@@ -434,7 +442,7 @@ export const createBooking = async (req, res) => {
 
 /**
  * Public availability checker for booking screen.
- * GET /api/bookings/availability?check_in_date=...&check_out_date=...&booking_type=overnight|hourly&stay_hours=...
+ * GET /api/bookings/availability?check_in_date=...&check_out_date=...&booking_type=overnight
  * Optional query: line_items (JSON), room_type_ids (comma-separated), room_type_id, quantity
  */
 export const checkBookingAvailability = async (req, res) => {
@@ -442,39 +450,22 @@ export const checkBookingAvailability = async (req, res) => {
     const bookingType = String(req.query.booking_type || "overnight")
       .trim()
       .toLowerCase();
-    if (!["overnight", "hourly"].includes(bookingType)) {
-      return res.status(400).json({ message: "booking_type phải là overnight hoặc hourly" });
+    if (bookingType !== "overnight") {
+      return res.status(400).json({ message: "Hệ thống hiện chỉ hỗ trợ đặt theo đêm" });
     }
 
     const checkInRaw = req.query.check_in_date;
     const checkOutRaw = req.query.check_out_date;
-    const stayHoursRaw = req.query.stay_hours;
 
     let start;
     let end;
-    if (bookingType === "hourly") {
-      const startAt = new Date(String(checkInRaw || ""));
-      if (Number.isNaN(startAt.getTime())) {
-        return res.status(400).json({ message: "Giờ nhận phòng không hợp lệ" });
-      }
-      let hours = Number.parseInt(String(stayHoursRaw || ""), 10);
-      if (!Number.isInteger(hours) || hours < 1) {
-        const endAt = new Date(String(checkOutRaw || ""));
-        if (Number.isNaN(endAt.getTime()) || endAt <= startAt) {
-          return res.status(400).json({ message: "stay_hours không hợp lệ" });
-        }
-        hours = Math.ceil((endAt.getTime() - startAt.getTime()) / (1000 * 60 * 60));
-      }
-      start = startAt;
-      end = new Date(startAt.getTime() + hours * 60 * 60 * 1000);
-    } else {
-      const parsed = parseStayDates(checkInRaw, checkOutRaw);
-      if (parsed.error) {
-        return res.status(400).json({ message: parsed.error });
-      }
-      start = parsed.start;
-      end = parsed.end;
+
+    const parsed = parseStayDates(checkInRaw, checkOutRaw);
+    if (parsed.error) {
+      return res.status(400).json({ message: parsed.error });
     }
+    start = parsed.start;
+    end = parsed.end;
 
     const requestedMap = new Map();
     const lineItemsRaw = req.query.line_items;
@@ -1088,8 +1079,10 @@ export const checkOutBooking = async (req, res) => {
     const serviceSubtotal = lines.reduce((s, l) => s + Number(l.line_total || 0), 0);
 
     const grand = roomSubtotal + serviceSubtotal;
+    const bookingDiscount = Math.max(0, Number(booking.discount_amount) || 0);
+    const discountedGrand = Math.max(0, grand - bookingDiscount);
     const prepaid = Math.max(0, Number(booking.prepaid_amount) || 0);
-    const balanceDue = Math.max(0, grand - prepaid);
+    const balanceDue = Math.max(0, discountedGrand - prepaid);
 
     const invNumber = `INV-${Date.now()}-${String(booking._id).slice(-6).toUpperCase()}`;
 
@@ -1098,7 +1091,8 @@ export const checkOutBooking = async (req, res) => {
       invoice_number: invNumber,
       room_subtotal: roomSubtotal,
       service_subtotal: serviceSubtotal,
-      grand_total: grand,
+      discount_amount: bookingDiscount,
+      grand_total: discountedGrand,
       prepaid_amount: prepaid,
       balance_due: balanceDue,
       status: settle_balance ? "paid" : "unpaid",
@@ -1107,7 +1101,7 @@ export const checkOutBooking = async (req, res) => {
     });
 
     booking.invoice_id = invoice._id;
-    booking.total_price = grand;
+    booking.total_price = discountedGrand;
     booking.status = OUT_COMPLETED;
     booking.is_paid = Boolean(settle_balance);
     booking.actual_check_out_at = now;
@@ -1124,7 +1118,7 @@ export const checkOutBooking = async (req, res) => {
       bookingId: booking._id,
       type: "checked_out",
       title: "Đã check-out",
-      message: `Booking #${String(booking._id).slice(-6).toUpperCase()} checked out. Total: ${grand} VND.`,
+      message: `Booking #${String(booking._id).slice(-6).toUpperCase()} checked out. Total: ${discountedGrand} VND.`,
       eventKey: `checked_out_${booking._id}`,
     });
 
@@ -1404,11 +1398,23 @@ export const cancelBooking = async (req, res) => {
     if (!booking) {
       return res.status(404).json({ message: "Không tìm thấy booking" });
     }
+    const actor = await User.findById(req.userId).select("role").lean();
+    const isOwner = String(booking.user_id || "") === String(req.userId || "");
+    const isAdmin = String(actor?.role || "").toLowerCase() === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Bạn không có quyền hủy booking này" });
+    }
     const st = mapStatusForApi(booking.status);
     if (st === "checked_in" || st === OUT_COMPLETED) {
       return res.status(400).json({
         message: "Cannot cancel after check-in or check-out",
       });
+    }
+    if (!isAdmin && !["pending", "confirmed"].includes(st)) {
+      return res.status(400).json({ message: "Bạn chỉ có thể hủy booking đang chờ xác nhận hoặc đã xác nhận" });
+    }
+    if (st === "cancelled") {
+      return res.status(400).json({ message: "Booking đã được hủy trước đó" });
     }
 
     const now = new Date();
@@ -1416,27 +1422,32 @@ export const cancelBooking = async (req, res) => {
     const refundAmount = computeRefundAmount({
       depositPaidAmount: booking.deposit_paid_amount,
       hoursUntilArrival: hoursUntil,
+      ratePlanKey: resolveBookingRatePlanKey(booking),
     });
 
-    // Apply cancellation policy and update deposit ledger.
+    // Apply cancellation policy. Refund > 0 will be pending for admin approval.
     const paidDeposit = Math.max(0, Number(booking.deposit_paid_amount) || 0);
     if (refundAmount > 0) {
-      booking.deposit_paid_amount = Math.max(0, paidDeposit - refundAmount);
-      booking.prepaid_amount = Math.max(0, Math.max(0, Number(booking.prepaid_amount) || 0) - refundAmount);
-      booking.deposit_status = refundAmount + 1 >= paidDeposit ? "refunded" : "partial_refunded";
-      await PaymentTransaction.create({
-        booking_id: booking._id,
-        provider: "momo",
-        type: "refund",
-        amount: refundAmount,
-        status: "refunded",
-        provider_order_id: `REFUND_${booking._id}_${Date.now()}`,
-        provider_message: "Policy refund (manual/ops)",
-        provider_payload: { hoursUntilArrival: hoursUntil },
-      });
+      booking.deposit_status = "pending_refund";
+      booking.refund_requested_amount = refundAmount;
+      booking.refund_requested_at = now;
+      booking.refund_status = "requested";
+      booking.refund_requested_by = req.userId || null;
+      booking.refund_processed_at = null;
+      booking.refund_processed_amount = 0;
+      booking.refund_rejected_reason = "";
+      booking.refund_approved_by = null;
+      booking.refund_rejected_by = null;
+      booking.refund_approved_at = null;
+      booking.refund_rejected_at = null;
     } else if (paidDeposit > 0) {
       // <=48h or no-show: forfeit deposit
       booking.deposit_status = "forfeited";
+      booking.refund_requested_amount = 0;
+      booking.refund_requested_at = null;
+      booking.refund_processed_at = now;
+      booking.refund_processed_amount = 0;
+      booking.refund_status = "none";
     }
 
     booking.status = "cancelled";
@@ -1462,6 +1473,31 @@ export const cancelBooking = async (req, res) => {
     await booking.save();
     for (const p of prev) {
       await syncRoomStatus(p);
+    }
+    try {
+      await createNotification({
+        userId: booking.user_id,
+        bookingId: booking._id,
+        type: "booking_cancelled",
+        title: "Booking đã hủy",
+        message:
+          refundAmount > 0
+            ? `Booking #${String(booking._id).slice(-6).toUpperCase()} đã hủy. Yêu cầu hoàn ${formatCurrencyVND(refundAmount)} đang chờ xử lý.`
+            : `Booking #${String(booking._id).slice(-6).toUpperCase()} đã hủy theo chính sách.`,
+        eventKey: `booking_cancelled_${booking._id}`,
+      });
+      if (booking.guest_email) {
+        await sendRefundStatusEmail({
+          to: booking.guest_email,
+          guestName: booking.guest_name || "",
+          bookingId: booking._id,
+          stage: refundAmount > 0 ? "pending_refund" : "forfeited",
+          amount: refundAmount,
+          reason: booking.cancel_reason,
+        });
+      }
+    } catch {
+      // Non-blocking notification/email.
     }
     return res.json({ message: "Booking cancelled", booking });
   } catch (error) {
@@ -1509,6 +1545,138 @@ export const markNoShowBooking = async (req, res) => {
     });
 
     return res.json({ message: "Đã đánh dấu no-show", booking, invoice });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+/** PUT /api/bookings/:id/confirm-refund — admin only */
+export const confirmRefundBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: "Không tìm thấy booking" });
+    if (String(booking.deposit_status) !== "pending_refund") {
+      return res.status(400).json({ message: "Booking không ở trạng thái chờ hoàn tiền" });
+    }
+
+    const now = new Date();
+    const hoursUntil = computeHoursUntilArrival(now, booking.check_in_date);
+    const refundAmount = computeRefundAmount({
+      depositPaidAmount: booking.deposit_paid_amount,
+      hoursUntilArrival: hoursUntil,
+      ratePlanKey: resolveBookingRatePlanKey(booking),
+    });
+    const requestedAmount = Math.max(0, Number(booking.refund_requested_amount) || 0);
+    const refundToProcess = requestedAmount > 0 ? requestedAmount : refundAmount;
+    if (refundToProcess <= 0) {
+      booking.deposit_status = "forfeited";
+      await booking.save();
+      return res.status(400).json({ message: "Số tiền hoàn không hợp lệ, booking đã bị chuyển forfeited" });
+    }
+
+    const paidDeposit = Math.max(0, Number(booking.deposit_paid_amount) || 0);
+    booking.deposit_paid_amount = Math.max(0, paidDeposit - refundToProcess);
+    booking.prepaid_amount = Math.max(
+      0,
+      Math.max(0, Number(booking.prepaid_amount) || 0) - refundToProcess,
+    );
+    booking.deposit_status = refundToProcess + 1 >= paidDeposit ? "refunded" : "partial_refunded";
+    booking.refund_status = "paid";
+    booking.refund_processed_amount = refundToProcess;
+    booking.refund_processed_at = now;
+    booking.refund_approved_by = req.userId || null;
+    booking.refund_approved_at = now;
+    booking.refund_rejected_by = null;
+    booking.refund_rejected_at = null;
+    booking.refund_rejected_reason = "";
+    await booking.save();
+
+    await PaymentTransaction.create({
+      booking_id: booking._id,
+      provider: "momo",
+      type: "refund",
+      amount: refundToProcess,
+      status: "refunded",
+      provider_order_id: `REFUND_${booking._id}_${Date.now()}`,
+      provider_message: "Refund approved by admin",
+      provider_payload: { approvedBy: req.userId },
+    });
+
+    await createNotification({
+      userId: booking.user_id,
+      bookingId: booking._id,
+      type: "refund_result",
+      title: "Hoàn tiền thành công",
+      message: `Booking #${String(booking._id).slice(-6).toUpperCase()} đã được hoàn ${formatCurrencyVND(refundToProcess)}.`,
+      eventKey: `refund_result_${booking._id}`,
+    });
+    try {
+      if (booking.guest_email) {
+        await sendRefundStatusEmail({
+          to: booking.guest_email,
+          guestName: booking.guest_name || "",
+          bookingId: booking._id,
+          stage: "refunded",
+          amount: refundToProcess,
+        });
+      }
+    } catch {
+      // Non-blocking email
+    }
+
+    return res.json({ message: "Đã xác nhận hoàn tiền", booking, refundAmount: refundToProcess });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+/** PUT /api/bookings/:id/reject-refund — admin only */
+export const rejectRefundBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: "Không tìm thấy booking" });
+    if (String(booking.deposit_status) !== "pending_refund") {
+      return res.status(400).json({ message: "Booking không ở trạng thái chờ hoàn tiền" });
+    }
+
+    const reason = String(req.body?.reason || "").trim();
+    booking.deposit_status = "forfeited";
+    booking.refund_status = "rejected";
+    booking.refund_processed_amount = 0;
+    booking.refund_processed_at = new Date();
+    booking.refund_rejected_by = req.userId || null;
+    booking.refund_rejected_at = booking.refund_processed_at;
+    booking.refund_approved_by = null;
+    booking.refund_approved_at = null;
+    booking.refund_rejected_reason = reason;
+    booking.cancel_reason = reason
+      ? `${String(booking.cancel_reason || "").trim()} | refund_reject: ${reason}`.trim()
+      : booking.cancel_reason;
+    await booking.save();
+
+    await createNotification({
+      userId: booking.user_id,
+      bookingId: booking._id,
+      type: "refund_result",
+      title: "Yêu cầu hoàn tiền bị từ chối",
+      message: `Booking #${String(booking._id).slice(-6).toUpperCase()} không đủ điều kiện hoàn tiền.`,
+      eventKey: `refund_result_${booking._id}`,
+    });
+    try {
+      if (booking.guest_email) {
+        await sendRefundStatusEmail({
+          to: booking.guest_email,
+          guestName: booking.guest_name || "",
+          bookingId: booking._id,
+          stage: "rejected",
+          reason,
+        });
+      }
+    } catch {
+      // Non-blocking email
+    }
+
+    return res.json({ message: "Đã từ chối hoàn tiền", booking });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -1644,11 +1812,13 @@ export const getCheckOutPreview = async (req, res) => {
     }
     const lines = await BookingService.find({ booking_id: booking._id }).lean();
     const serviceSubtotal = lines.reduce((s, l) => s + Number(l.line_total || 0), 0);
-    const grand = roomSubtotal + serviceSubtotal;
+    const bookingDiscount = Math.max(0, Number(booking.discount_amount) || 0);
+    const grand = Math.max(0, roomSubtotal + serviceSubtotal - bookingDiscount);
     const prepaid = Math.max(0, Number(booking.prepaid_amount) || 0);
     return res.json({
       room_subtotal: roomSubtotal,
       service_subtotal: serviceSubtotal,
+      discount_amount: bookingDiscount,
       grand_total: grand,
       prepaid_amount: prepaid,
       balance_due: Math.max(0, grand - prepaid),
@@ -1713,7 +1883,8 @@ export const getBookingFolio = async (req, res) => {
     const chargeSubtotal = charges.reduce((s, c) => s + Number(c.total_price || 0), 0);
 
     const extrasTotal = Math.max(0, serviceSubtotal) + Math.max(0, chargeSubtotal);
-    const grand = Math.max(0, roomSubtotal) + extrasTotal;
+    const bookingDiscount = Math.max(0, Number(booking.discount_amount) || 0);
+    const grand = Math.max(0, Math.max(0, roomSubtotal) + extrasTotal - bookingDiscount);
     const prepaid = Math.max(0, Number(booking.prepaid_amount) || 0);
     const depositPaid = Math.max(0, Number(booking.deposit_paid_amount) || 0);
     const depositRequired = Math.max(0, Number(booking.deposit_amount) || 0);
@@ -1726,6 +1897,7 @@ export const getBookingFolio = async (req, res) => {
       check_out_date: booking.check_out_date,
       room_subtotal: Math.max(0, roomSubtotal),
       service_subtotal: extrasTotal,
+      discount_amount: bookingDiscount,
       grand_total: grand,
       prepaid_amount: prepaid,
       deposit_paid_amount: depositPaid,

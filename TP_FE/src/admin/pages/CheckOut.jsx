@@ -13,6 +13,8 @@ export default function CheckOut() {
   const navigate = useNavigate();
   const [preview, setPreview] = useState(null);
   const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState("cash");
   const [overrideTimeWindow, setOverrideTimeWindow] = useState(false);
 
@@ -32,59 +34,105 @@ export default function CheckOut() {
 
   const settle = async () => {
     setErr("");
+    setMsg("");
+    setSubmitting(true);
     try {
       await axios.put(
         `/api/bookings/${bookingId}/check-out`,
         { payment_method: payMethod, settle_balance: true, override_time_window: overrideTimeWindow },
         { headers: token() },
       );
-      navigate("/admin/bookings/completed");
+      setMsg("Checkout thành công, hóa đơn đã được tạo.");
+      setTimeout(() => navigate("/admin/bookings/completed"), 700);
     } catch (e) {
       setErr(e.response?.data?.message || "Check-out failed");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  if (!bookingId) return <p>Missing bookingId</p>;
+  if (!bookingId) return <p className="booking-admin-empty">Missing bookingId</p>;
+
+  const currency = (v) => `${Number(v || 0).toLocaleString("vi-VN")} đ`;
 
   return (
-    <section style={{ maxWidth: 520 }} className="booking-admin-section">
-      <h3>Check-out & invoice</h3>
-      {!preview && !err && <p>Loading...</p>}
-      {preview && (
-        <>
-          <p>Room subtotal: {preview.room_subtotal?.toLocaleString("vi-VN")} đ</p>
-          <p>Services: {preview.service_subtotal?.toLocaleString("vi-VN")} đ</p>
-          <p>Prepaid: {preview.prepaid_amount?.toLocaleString("vi-VN")} đ</p>
-          <p>
-            <strong>Grand total: {preview.grand_total?.toLocaleString("vi-VN")} đ</strong>
-          </p>
-          <p>
-            <strong>Balance due: {preview.balance_due?.toLocaleString("vi-VN")} đ</strong>
-          </p>
-          <label>
-            Payment method{" "}
-            <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)}>
-              <option value="cash">cash</option>
-              <option value="card">card</option>
-              <option value="momo">momo</option>
-            </select>
-          </label>
-          <label style={{ display: "block", marginTop: 12 }}>
-            <input
-              type="checkbox"
-              checked={overrideTimeWindow}
-              onChange={(e) => setOverrideTimeWindow(e.target.checked)}
-            />{" "}
-            Override khung giờ check-out (trước 12:00)
-          </label>
-          <p>
-            <button type="button" onClick={settle}>
-              Pay balance & create invoice
-            </button>
-          </p>
-        </>
-      )}
-      {err && <p style={{ color: "crimson" }}>{err}</p>}
+    <section className="booking-admin-section co-shell">
+      <div className="booking-admin-section-header">
+        <h3>Check-out & invoice</h3>
+        <span className="booking-admin-section-count">#{bookingId.slice(-6).toUpperCase()}</span>
+      </div>
+      <div className="booking-admin-section-subtitle">
+        Xác nhận thanh toán số dư, đóng booking và tạo hóa đơn tự động.
+      </div>
+
+      {!preview && !err ? <div className="booking-admin-empty">Đang tải dữ liệu thanh toán...</div> : null}
+
+      {preview ? (
+        <div className="co-grid">
+          <article className="co-card">
+            <div className="co-card-head">Tổng quan thanh toán</div>
+            <div className="co-card-body">
+              <div className="co-row">
+                <span>Tiền phòng</span>
+                <strong>{currency(preview.room_subtotal)}</strong>
+              </div>
+              <div className="co-row">
+                <span>Dịch vụ phát sinh</span>
+                <strong>{currency(preview.service_subtotal)}</strong>
+              </div>
+              <div className="co-row">
+                <span>Khách đã trả trước</span>
+                <strong>{currency(preview.prepaid_amount)}</strong>
+              </div>
+              <div className="co-divider" />
+              <div className="co-row co-row--grand">
+                <span>Grand total</span>
+                <strong>{currency(preview.grand_total)}</strong>
+              </div>
+              <div className="co-row co-row--due">
+                <span>Balance due</span>
+                <strong>{currency(preview.balance_due)}</strong>
+              </div>
+            </div>
+          </article>
+
+          <article className="co-card">
+            <div className="co-card-head">Xác nhận checkout</div>
+            <div className="co-card-body">
+              <div className="co-field">
+                <label className="co-label">Phương thức thanh toán</label>
+                <select
+                  className="co-select"
+                  value={payMethod}
+                  onChange={(e) => setPayMethod(e.target.value)}
+                  disabled={submitting}
+                >
+                  <option value="cash">Tiền mặt (cash)</option>
+                  <option value="card">Thẻ (card)</option>
+                  <option value="momo">MoMo</option>
+                </select>
+              </div>
+
+              <label className="co-checkbox">
+                <input
+                  type="checkbox"
+                  checked={overrideTimeWindow}
+                  onChange={(e) => setOverrideTimeWindow(e.target.checked)}
+                  disabled={submitting}
+                />
+                <span>Override khung giờ check-out (trước 12:00)</span>
+              </label>
+
+              <button type="button" className="co-submit" onClick={settle} disabled={submitting}>
+                {submitting ? "Đang xử lý..." : "Pay balance & create invoice"}
+              </button>
+            </div>
+          </article>
+        </div>
+      ) : null}
+
+      {msg ? <div className="co-alert co-alert--ok">{msg}</div> : null}
+      {err ? <div className="co-alert co-alert--err">{err}</div> : null}
     </section>
   );
 }

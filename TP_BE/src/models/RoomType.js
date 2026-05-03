@@ -11,7 +11,6 @@ const roomTypeSchema = new mongoose.Schema(
     /** Tên hiển thị (tiếng Việt) */
     name: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0 },
-    hourly_price: { type: Number, default: 0, min: 0 },
     /** Fixed deposit amount per physical room for this category (VND). */
     deposit_amount: { type: Number, default: 0, min: 0 },
     description: { type: String, default: "" },
@@ -23,6 +22,10 @@ const roomTypeSchema = new mongoose.Schema(
     image: { type: String, default: "" },
     /** Optional gallery images (filenames in /uploads or full URLs) */
     images: { type: [String], default: [] },
+    /** Complimentary services bundled with this room type (free). */
+    complimentary_services: [{ type: mongoose.Schema.Types.ObjectId, ref: "Service", default: [] }],
+    /** Optional paid add-on services (charged separately). */
+    extra_services: [{ type: mongoose.Schema.Types.ObjectId, ref: "Service", default: [] }],
   },
   { timestamps: true, versionKey: false }
 );

@@ -1,0 +1,40 @@
+import dayjs from "dayjs";
+
+/**
+ * Frontend mirror backend refundPolicy.js — đồng bộ % hoàn để preview trước khi POST.
+ */
+
+export function computeRefundRateByDaysUntilCheckIn(now, checkInDate) {
+  const today = dayjs(now).startOf("day");
+  const ci = dayjs(checkInDate).startOf("day");
+  const d = ci.diff(today, "day");
+  if (d >= 7) return 1;
+  if (d >= 3) return 0.7;
+  if (d >= 1) return 0.3;
+  return 0;
+}
+
+/**
+ * @param {Date|string|number} now
+ * @param {Date|string|number} checkInDate
+ * @param {number} originalAmountRaw
+ */
+export function computeRefundBreakdown(now, checkInDate, originalAmountRaw) {
+  const originalAmount = Math.max(0, Math.round(Number(originalAmountRaw) || 0));
+  const rate = computeRefundRateByDaysUntilCheckIn(now, checkInDate);
+  const refundAmount = Math.round(originalAmount * rate);
+  const cancellationFee = Math.round(originalAmount - refundAmount);
+  return { refundAmount, cancellationFee, originalAmount, rate };
+}
+
+/** @param {Record<string, unknown>} booking */
+export function resolveRefundOriginalAmountFromBooking(booking) {
+  const prepaid = Math.round(Math.max(0, Number(booking.prepaid_amount) || 0));
+  const depositPaid = Math.round(Math.max(0, Number(booking.deposit_paid_amount) || 0));
+  let base = prepaid;
+  if (base <= 0) base = depositPaid;
+  if (base <= 0 && booking.is_paid === true) {
+    base = Math.round(Math.max(0, Number(booking.total_price) || 0));
+  }
+  return Math.max(0, base);
+}
