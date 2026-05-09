@@ -88,7 +88,7 @@ function BookingCheckout() {
       alert("Không có dòng đặt phòng hợp lệ. Vui lòng thử lại.");
       return;
     }
-    if (requiredDeposit <= 0) {
+    if (payDepositNow && requiredDeposit <= 0) {
       alert("Loại phòng chưa được cấu hình tiền cọc. Vui lòng liên hệ khách sạn.");
       return;
     }

@@ -7,14 +7,14 @@ function formatDate(d) {
   return new Date(d).toLocaleString("vi-VN");
 }
 
-/** Admin: luồng Refund module — POST mock gateway `/api/refunds/process/:refundId` */
+/** Admin: luồng Refund module — manual approve/reject */
 export default function RefundAdmin() {
   const [items, setItems] = useState([]);
   const [legacyItems, setLegacyItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
-  const [simulateFail, setSimulateFail] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("pending");
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
 
@@ -25,6 +25,7 @@ export default function RefundAdmin() {
       const [rNew, rLegacy] = await Promise.all([
         axios.get("/api/refunds/admin/list", {
           headers: { Authorization: `Bearer ${token}` },
+          params: { status: statusFilter },
         }),
         axios.get("/api/bookings", {
           headers: { Authorization: `Bearer ${token}` },
@@ -42,20 +43,42 @@ export default function RefundAdmin() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [statusFilter]);
 
-  const processRefund = async (refundId) => {
-    if (!window.confirm("Xử lý hoàn tiền qua cổng giả lập (1 giây)?")) return;
+  const approveRefund = async (refundId) => {
+    if (!window.confirm("Xác nhận đã hoàn tiền (duyệt tay) cho khách?")) return;
     try {
       setBusyId(refundId);
+      const manualRef = window.prompt("Mã giao dịch/ghi chú đối soát (tuỳ chọn):", "") || "";
+      const adminNote = window.prompt("Ghi chú admin (tuỳ chọn):", "") || "";
       await axios.post(
-        `/api/refunds/process/${refundId}`,
-        { simulateFailure: simulateFail },
+        `/api/refunds/admin/approve/${refundId}`,
+        { manualRef, adminNote },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       await load();
     } catch (err) {
-      alert(err.response?.data?.message || err.message || "Process refund thất bại");
+      alert(err.response?.data?.message || err.message || "Duyệt hoàn tiền thất bại");
+      await load();
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const rejectRefund = async (refundId) => {
+    const reason = window.prompt("Lý do từ chối hoàn tiền:", "") || "";
+    if (!window.confirm("Xác nhận từ chối hoàn tiền?")) return;
+    try {
+      setBusyId(refundId);
+      const adminNote = window.prompt("Ghi chú admin (tuỳ chọn):", "") || "";
+      await axios.post(
+        `/api/refunds/admin/reject/${refundId}`,
+        { reason, adminNote },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      await load();
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || "Từ chối hoàn tiền thất bại");
       await load();
     } finally {
       setBusyId("");
@@ -104,22 +127,25 @@ export default function RefundAdmin() {
     <div className="booking-admin-page">
       <h2>Quản lý hoàn tiền</h2>
 
-      <div className="booking-admin-section-subtitle mb-3">
-        <label className="d-inline-flex align-items-center gap-2">
-          <input
-            type="checkbox"
-            checked={simulateFail}
-            onChange={(e) => setSimulateFail(e.target.checked)}
-          />
-          <span>
-            Giả lập <strong>thất bại</strong> khi process (để test)
-          </span>
-        </label>
+      <div className="booking-admin-section-subtitle mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <span className="text-muted">Lọc:</span>
+        <select
+          className="form-select"
+          style={{ maxWidth: 240 }}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          disabled={loading}
+        >
+          <option value="pending">Đang chờ duyệt</option>
+          <option value="success">Đã hoàn xong</option>
+          <option value="failed">Đã từ chối / lỗi</option>
+          <option value="all">Tất cả</option>
+        </select>
       </div>
 
       <h3 className="h5 mt-4 mb-3">Yêu cầu hoàn tiền (policy &amp; document Refund)</h3>
       {items.length === 0 ? (
-        <div className="booking-admin-empty mb-4">Không có refund đang chờ xử lý.</div>
+        <div className="booking-admin-empty mb-4">Không có dữ liệu theo bộ lọc hiện tại.</div>
       ) : (
         <div className="booking-admin-grid mb-5">
           {items.map((row) => {
@@ -160,6 +186,18 @@ export default function RefundAdmin() {
                     <span>Lý do</span>
                     <span>{String(row.reason || "—")}</span>
                   </div>
+                  <div className="ba-money-row ba-money-row--sub">
+                    <span>Thông tin nhận tiền</span>
+                    <span>
+                      {row.payoutMethod
+                        ? String(row.payoutMethod).toUpperCase()
+                        : "—"}
+                      {row.payoutPhone ? ` · ${row.payoutPhone}` : ""}
+                      {row.payoutBankName ? ` · ${row.payoutBankName}` : ""}
+                      {row.payoutBankAccountNumber ? ` · ${row.payoutBankAccountNumber}` : ""}
+                      {row.payoutBankAccountName ? ` · ${row.payoutBankAccountName}` : ""}
+                    </span>
+                  </div>
                   {String(row.failureMessage || "").trim() ? (
                     <div className="ba-money-row ba-money-row--sub text-danger">
                       <span>Lỗi</span>
@@ -173,9 +211,17 @@ export default function RefundAdmin() {
                     type="button"
                     className="ba-btn ba-btn--primary"
                     disabled={busyId === row.id || row.status !== "pending"}
-                    onClick={() => processRefund(row.id)}
+                    onClick={() => approveRefund(row.id)}
                   >
-                    {busyId === row.id ? "Đang xử lý…" : "Process (mock gateway)"}
+                    {busyId === row.id ? "Đang xử lý…" : "Duyệt (đã hoàn tiền)"}
+                  </button>
+                  <button
+                    type="button"
+                    className="ba-btn ba-btn--danger"
+                    disabled={busyId === row.id || row.status !== "pending"}
+                    onClick={() => rejectRefund(row.id)}
+                  >
+                    Từ chối
                   </button>
                 </div>
               </article>

@@ -5,6 +5,8 @@ THẺ / THÔNG TIN THỬ NGHIỆM THANH TOÁN — CHỈ DÙNG SANDBOX
 Lưu ý:
   - Thanh toán qua MoMo test (test-payment.momo.vn — MOMO_* trong TP_BE/.env).
   - Tài liệu gốc: https://developers.momo.vn/v3/docs/payment/onboarding/test-instructions
+  - Backend đã bật verify chữ ký IPN/callback (MOMO_VERIFY_SIGNATURE=true) để đúng chuẩn.
+  - Hoàn tiền MoMo dùng endpoint refund v2 (MOMO_REFUND_ENDPOINT) và có thể bật/tắt qua MOMO_ENABLE_REFUND.
 
 --------------------------------------------------------------------------------
 Khuyến nghị: Ví MoMo + QR (requestType captureWallet)
@@ -19,6 +21,20 @@ Trang đặt phòng mặc định dùng captureWallet — luồng MoMo "Thanh to
     - Không mở app MoMo CHÍNH THỨC để thanh toán QR sandbox — sẽ không có user trên env test.
 
   Sau khi cập nhật backend (.env/code): nhớ restart TP_BE và tạo lại link thanh toán (đơn mới).
+
+--------------------------------------------------------------------------------
+IPN / Callback (Result handling) — ghi chú kỹ thuật
+--------------------------------------------------------------------------------
+- /api/momo/ipn:
+  - MoMo gọi server-to-server bằng POST JSON, có trường signature.
+  - Backend verify signature và trả HTTP 204 trong 15s để MoMo không retry.
+  - Booking chỉ được cộng tiền 1 lần (idempotent) ngay cả khi MoMo gọi cả callback + IPN.
+  - Lưu ý local-only: MoMo không gọi IPN về localhost. Nếu bạn không dùng ngrok/deploy,
+    hệ thống sẽ chủ yếu xác minh qua callback (trình duyệt).
+
+- /api/momo/callback:
+  - MoMo redirect về backend bằng query string (thường cũng có signature). Backend verify chữ ký
+    nếu bật MOMO_VERIFY_CALLBACK_SIGNATURE=true. Local-only có thể để false để demo ổn định.
 
 --------------------------------------------------------------------------------
 Nếu vẫn chọn thẻ ATM / Napas (payWithATM)
@@ -54,6 +70,22 @@ Kết luận
 --------------------------------------------------------------------------------
 Nếu API /api/momo/create trả payUrl thành công mà chỉ bước nhập thẻ Napas bị từ chối,
 ưu tiên chuyển sang thanh toán ví (captureWallet) thay vì spend thời gian sửa backend.
+
+--------------------------------------------------------------------------------
+Hoàn tiền (Refund) — sandbox
+--------------------------------------------------------------------------------
+Luồng hiện tại:
+  1) User tạo yêu cầu hủy/hoàn qua API: POST /api/refunds/request (frontend có modal).
+  2) Admin xử lý hoàn tiền:
+     - POST /api/refunds/process/:refundId
+     - Nếu refund.payment_method = momo và MOMO_ENABLE_REFUND=true:
+         Backend gọi MoMo refund API (MOMO_REFUND_ENDPOINT) với transId giao dịch gốc.
+     - Nếu không phải momo (hoặc MOMO_ENABLE_REFUND=false):
+         Backend dùng mock gateway để demo (simulateFailure=true để test fail).
+
+Yêu cầu để MoMo refund chạy được:
+  - Booking phải có giao dịch thanh toán MoMo succeeded và có transId (MoMo transaction id).
+  - TP_BE/.env phải có MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, MOMO_SECRET_KEY và MOMO_REFUND_ENDPOINT.
 
 ================================================================================
 HẾT FILE

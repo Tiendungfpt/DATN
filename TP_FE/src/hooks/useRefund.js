@@ -14,13 +14,32 @@ export function useRefund() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const requestRefund = useCallback(async (bookingId, reason) => {
+  const requestRefund = useCallback(
+    async (
+      bookingId,
+      reason,
+      payout = {
+        payoutMethod: "",
+        payoutPhone: "",
+        payoutBankName: "",
+        payoutBankAccountName: "",
+        payoutBankAccountNumber: "",
+      },
+    ) => {
     setLoading(true);
     setError("");
     try {
       const res = await axios.post(
         "/api/refunds/request",
-        { bookingId, reason },
+        {
+          bookingId,
+          reason,
+          payoutMethod: payout?.payoutMethod || "",
+          payoutPhone: payout?.payoutPhone || "",
+          payoutBankName: payout?.payoutBankName || "",
+          payoutBankAccountName: payout?.payoutBankAccountName || "",
+          payoutBankAccountNumber: payout?.payoutBankAccountNumber || "",
+        },
         { headers: authHeaders() },
       );
       setData(res.data);
@@ -32,7 +51,9 @@ export function useRefund() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  },
+    [],
+  );
 
   const getMyRefunds = useCallback(async () => {
     setLoading(true);

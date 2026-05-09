@@ -53,6 +53,54 @@ class MoMoController {
     this.requestType = process.env.MOMO_REQUEST_TYPE || "captureWallet";
   }
 
+  /**
+   * Verify signature for MoMo result handling (IPN / redirect callback).
+   *
+   * MoMo signature docs (v2/v3 gateway):
+   * rawSignature = accessKey=...&amount=...&extraData=...&message=...&orderId=...&orderInfo=...&orderType=...&partnerCode=...&payType=...&requestId=...&responseTime=...&resultCode=...&transId=...
+   *
+   * @param {Record<string, unknown>} payload
+   */
+  verifyResultSignature(payload) {
+    const accessKey = this.accessKey;
+    const secretKey = this.secretKey;
+    if (!accessKey || !secretKey) return { ok: false, err: "missing_keys" };
+
+    const sig = String(payload?.signature || "").trim();
+    if (!sig) return { ok: false, err: "missing_signature" };
+
+    const amount = String(payload?.amount ?? "");
+    const extraData = String(payload?.extraData ?? "");
+    const message = String(payload?.message ?? "");
+    const orderId = String(payload?.orderId ?? "");
+    const orderInfo = String(payload?.orderInfo ?? "");
+    const orderType = String(payload?.orderType ?? "");
+    const partnerCode = String(payload?.partnerCode ?? "");
+    const payType = String(payload?.payType ?? "");
+    const requestId = String(payload?.requestId ?? "");
+    const responseTime = String(payload?.responseTime ?? "");
+    const resultCode = String(payload?.resultCode ?? "");
+    const transId = String(payload?.transId ?? "");
+
+    const rawSignature =
+      `accessKey=${accessKey}` +
+      `&amount=${amount}` +
+      `&extraData=${extraData}` +
+      `&message=${message}` +
+      `&orderId=${orderId}` +
+      `&orderInfo=${orderInfo}` +
+      `&orderType=${orderType}` +
+      `&partnerCode=${partnerCode}` +
+      `&payType=${payType}` +
+      `&requestId=${requestId}` +
+      `&responseTime=${responseTime}` +
+      `&resultCode=${resultCode}` +
+      `&transId=${transId}`;
+
+    const expected = crypto.createHmac("sha256", secretKey).update(rawSignature).digest("hex");
+    return { ok: expected === sig, err: expected === sig ? "" : "signature_mismatch", expected };
+  }
+
   createPayment = async (req, res) => {
     try {
       const { bookingId, requestType: requestTypeFromClient, type = "deposit" } = req.body;
@@ -322,48 +370,87 @@ class MoMoController {
       const isSuccess = Number(resultCode) === 0;
 
       if (isSuccess) {
+        // Local-only mode commonly relies on redirect callback (browser) and may not receive IPN.
+        // Make callback signature verification configurable (default: false for local).
+        const shouldVerifyCallback =
+          String(process.env.MOMO_VERIFY_CALLBACK_SIGNATURE || "false").toLowerCase() === "true";
+        if (shouldVerifyCallback) {
+          const ver = this.verifyResultSignature(req.query || {});
+          if (!ver.ok) {
+            await PaymentTransaction.findOneAndUpdate(
+              { booking_id: booking._id, provider: "momo", provider_order_id: String(orderId) },
+              {
+                status: "failed",
+                provider_trans_id: String(transId ?? ""),
+                provider_message: `Invalid signature (callback): ${ver.err}`,
+                provider_payload: { callbackQuery: req.query, signatureVerify: ver },
+              },
+            );
+            return res.redirect(
+              `${process.env.FRONTEND_URL}/payment-failed?message=${encodeURIComponent(
+                "Chữ ký thanh toán không hợp lệ",
+              )}&resultCode=${encodeURIComponent(String(resultCode ?? ""))}&orderId=${encodeURIComponent(
+                String(orderId ?? ""),
+              )}`,
+            );
+          }
+        }
+
+        // Idempotency: don't apply booking ledger twice when both callback + IPN hit.
+        const existingTx = await PaymentTransaction.findOne({
+          booking_id: booking._id,
+          provider: "momo",
+          provider_order_id: String(orderId),
+        });
+        const alreadySucceeded = String(existingTx?.status || "") === "succeeded";
+
         const tx = await PaymentTransaction.findOneAndUpdate(
           { booking_id: booking._id, provider: "momo", provider_order_id: String(orderId) },
           {
             status: "succeeded",
             provider_trans_id: String(transId ?? ""),
             provider_message: String(message || ""),
-            provider_payload: { callbackQuery: req.query },
+            provider_payload: {
+              ...(existingTx?.provider_payload || {}),
+              callbackQuery: req.query,
+            },
           },
           { new: true },
         );
 
         const txType = String(tx?.type || "deposit");
-        if (txType === "deposit") {
-          const inc = Math.max(0, Number(tx?.amount) || 0);
-          booking.deposit_paid_amount = Math.max(0, Number(booking.deposit_paid_amount) || 0) + inc;
-          booking.prepaid_amount = Math.max(0, Number(booking.prepaid_amount) || 0) + inc;
-          const paidOk = isDepositSufficient({
-            depositAmount: booking.deposit_amount,
-            depositPaidAmount: booking.deposit_paid_amount,
-          });
-          booking.deposit_status = paidOk ? "paid" : "unpaid";
-          // Policy: after payment, booking stays pending for admin confirmation
-        } else if (txType === "balance") {
-          const inc = Math.max(0, Number(tx?.amount) || 0);
-          booking.prepaid_amount = Math.max(0, Number(booking.prepaid_amount) || 0) + inc;
-          // If customer pays full upfront via "balance" at booking time:
-          // - still count it toward deposit (capped by required deposit)
-          // - confirm booking when deposit requirement is met
-          const requiredDeposit = Math.max(0, Number(booking.deposit_amount) || 0);
-          const currentDepositPaid = Math.max(0, Number(booking.deposit_paid_amount) || 0);
-          const remainingDeposit = Math.max(0, requiredDeposit - currentDepositPaid);
-          const depositInc = Math.min(remainingDeposit, inc);
-          booking.deposit_paid_amount = currentDepositPaid + depositInc;
-          const paidOk = isDepositSufficient({
-            depositAmount: requiredDeposit,
-            depositPaidAmount: booking.deposit_paid_amount,
-          });
-          booking.deposit_status = paidOk ? "paid" : booking.deposit_status;
-          // Policy: after payment, booking stays pending for admin confirmation
+        if (!alreadySucceeded) {
+          if (txType === "deposit") {
+            const inc = Math.max(0, Number(tx?.amount) || 0);
+            booking.deposit_paid_amount = Math.max(0, Number(booking.deposit_paid_amount) || 0) + inc;
+            booking.prepaid_amount = Math.max(0, Number(booking.prepaid_amount) || 0) + inc;
+            const paidOk = isDepositSufficient({
+              depositAmount: booking.deposit_amount,
+              depositPaidAmount: booking.deposit_paid_amount,
+            });
+            booking.deposit_status = paidOk ? "paid" : "unpaid";
+            // Policy: after payment, booking stays pending for admin confirmation
+          } else if (txType === "balance") {
+            const inc = Math.max(0, Number(tx?.amount) || 0);
+            booking.prepaid_amount = Math.max(0, Number(booking.prepaid_amount) || 0) + inc;
+            // If customer pays full upfront via "balance" at booking time:
+            // - still count it toward deposit (capped by required deposit)
+            // - confirm booking when deposit requirement is met
+            const requiredDeposit = Math.max(0, Number(booking.deposit_amount) || 0);
+            const currentDepositPaid = Math.max(0, Number(booking.deposit_paid_amount) || 0);
+            const remainingDeposit = Math.max(0, requiredDeposit - currentDepositPaid);
+            const depositInc = Math.min(remainingDeposit, inc);
+            booking.deposit_paid_amount = currentDepositPaid + depositInc;
+            const paidOk = isDepositSufficient({
+              depositAmount: requiredDeposit,
+              depositPaidAmount: booking.deposit_paid_amount,
+            });
+            booking.deposit_status = paidOk ? "paid" : booking.deposit_status;
+            // Policy: after payment, booking stays pending for admin confirmation
 
-          const total = Math.max(0, Number(booking.total_price) || 0);
-          booking.is_paid = booking.prepaid_amount + 1 >= total;
+            const total = Math.max(0, Number(booking.total_price) || 0);
+            booking.is_paid = booking.prepaid_amount + 1 >= total;
+          }
         }
 
         booking.payment_provider = booking.payment_provider || "momo";
@@ -371,14 +458,16 @@ class MoMoController {
         if (tidSt) booking.payment_transaction_id = tidSt;
 
         await booking.save();
-        await createNotification({
-          userId: booking.user_id,
-          bookingId: booking._id,
-          type: "payment_success",
-          title: "Thanh toán thành công",
-          message: `Booking #${String(booking._id).slice(-6).toUpperCase()} đã thanh toán thành công. Trạng thái: ${booking.status}.`,
-          eventKey: `payment_success_${booking._id}`,
-        });
+        if (!alreadySucceeded) {
+          await createNotification({
+            userId: booking.user_id,
+            bookingId: booking._id,
+            type: "payment_success",
+            title: "Thanh toán thành công",
+            message: `Booking #${String(booking._id).slice(-6).toUpperCase()} đã thanh toán thành công. Trạng thái: ${booking.status}.`,
+            eventKey: `payment_success_${booking._id}`,
+          });
+        }
 
         const paidAmount = Math.max(0, Number(tx?.amount) || 0);
         return res.redirect(
@@ -431,6 +520,21 @@ class MoMoController {
         });
       }
 
+      // IPN is server-to-server. In local-only setups, MoMo cannot reach localhost.
+      // Keep verification configurable for deployments; default true.
+      const shouldVerifyIpn =
+        String(process.env.MOMO_VERIFY_IPN_SIGNATURE || "true").toLowerCase() === "true";
+      let ver = { ok: true, err: "" };
+      if (shouldVerifyIpn) {
+        ver = this.verifyResultSignature(req.body || {});
+        if (!ver.ok) {
+          return res.status(400).json({ success: false, message: "Invalid signature" });
+        }
+        if (String(req.body?.partnerCode || "") !== String(this.partnerCode || "")) {
+          return res.status(400).json({ success: false, message: "partnerCode mismatch" });
+        }
+      }
+
       const idMatch = String(orderId).match(/^BOOK_([a-fA-F0-9]{24})_/);
       const bookingId = idMatch?.[1];
       if (!bookingId) {
@@ -449,18 +553,25 @@ class MoMoController {
       }
 
       const isSuccess = Number(resultCode) === 0;
+      const existingTx = await PaymentTransaction.findOne({
+        booking_id: booking._id,
+        provider: "momo",
+        provider_order_id: String(orderId),
+      });
+      const alreadySucceeded = String(existingTx?.status || "") === "succeeded";
+
       const tx = await PaymentTransaction.findOneAndUpdate(
         { booking_id: booking._id, provider: "momo", provider_order_id: String(orderId) },
         {
           status: isSuccess ? "succeeded" : "failed",
           provider_trans_id: String(req.body?.transId || ""),
           provider_message: String(req.body?.message || ""),
-          provider_payload: { ipnBody: req.body },
+          provider_payload: { ...(existingTx?.provider_payload || {}), ipnBody: req.body, signatureVerify: shouldVerifyIpn ? ver : null },
         },
-        { new: true },
+        { new: true, upsert: false },
       );
 
-      if (isSuccess) {
+      if (isSuccess && !alreadySucceeded) {
         const txType = String(tx?.type || "deposit");
         const inc = Math.max(0, Number(tx?.amount) || 0);
         booking.prepaid_amount = Math.max(0, Number(booking.prepaid_amount) || 0) + inc;
@@ -500,7 +611,8 @@ class MoMoController {
         await booking.save();
       }
 
-      return res.json({ success: true });
+      // MoMo khuyến nghị trả 204 trong 15s để dừng retry IPN
+      return res.status(204).send();
     } catch (error) {
       console.error("MoMo IPN Error:", error);
       return res.status(500).json({

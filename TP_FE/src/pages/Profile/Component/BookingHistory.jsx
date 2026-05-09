@@ -40,7 +40,20 @@ function BookingHistory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refundModalBooking, setRefundModalBooking] = useState(null);
+  const [pageAlert, setPageAlert] = useState({ type: "", message: "" });
   const token = localStorage.getItem("token");
+
+  const showAlert = useCallback((message, type = "info") => {
+    const msg = String(message || "").trim();
+    if (!msg) return;
+    const payload = { type: type || "info", message: msg };
+    setPageAlert(payload);
+    try {
+      sessionStorage.setItem("bookingHistoryAlert", JSON.stringify(payload));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const reloadBookings = useCallback(async () => {
     if (!token) return;
@@ -115,6 +128,19 @@ function BookingHistory() {
     }
   }, [token]);
 
+  // restore last action alert after reload
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("bookingHistoryAlert");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.message) setPageAlert({ type: parsed.type || "info", message: String(parsed.message) });
+      sessionStorage.removeItem("bookingHistoryAlert");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const handlePayDeposit = async (bookingId) => {
     try {
       const momoRes = await axios.post("/api/momo/create", {
@@ -146,9 +172,9 @@ function BookingHistory() {
       setBookings((prev) =>
         prev.map((b) => (b._id === bookingId ? { ...b, status: "cancelled", cancel_reason: reason } : b)),
       );
-      alert("Đã gửi yêu cầu hủy booking.");
+      showAlert("Đã hủy booking (luồng hủy thường, không tự hoàn tiền).", "warning");
     } catch (err) {
-      alert(err.response?.data?.message || "Không hủy được booking");
+      showAlert(err.response?.data?.message || "Không hủy được booking", "danger");
     }
   };
 
@@ -254,21 +280,31 @@ function BookingHistory() {
         </div>
       </div>
 
+      {pageAlert?.message ? (
+        <div className={`alert alert-${pageAlert.type || "info"} alert-dismissible fade show`} role="alert">
+          {pageAlert.message}
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setPageAlert({ type: "", message: "" })} />
+        </div>
+      ) : null}
+
       <div className="row g-4">
         {bookings.map((booking) => {
           const checkIn = new Date(booking.check_in_date);
           const checkOut = new Date(booking.check_out_date);
           const nights = Math.ceil((checkOut - checkIn) / (1000 * 3600 * 24));
 
- const isCancelled = booking.status === "cancelled";
+          const isCancelled = booking.status === "cancelled";
+          const paymentMode = String(booking.payment_mode || booking.paymentMode || "deposit").toLowerCase();
+          const isFullPayment = paymentMode === "full";
+          const totalPrice = Math.max(0, Number(booking.total_price ?? booking.totalPrice ?? 0) || 0);
+          const prepaidAmount = Math.max(0, Number(booking.prepaid_amount ?? booking.prepaidAmount ?? 0) || 0);
+          const isPaid = Boolean(booking.is_paid) || prepaidAmount + 1 >= totalPrice;
           const canPayDeposit =
+            !isFullPayment &&
             booking.status === "pending" &&
             String(booking.deposit_status || "unpaid") !== "paid" &&
             (Number(booking.deposit_amount) || 0) > 0;
-          const showPaidHint =
-            booking.status === "confirmed" ||
-            booking.status === "checked_in" ||
-            isStayFinished(booking.status);
+          const showPaidHint = isPaid;
 
           const firstAr = booking.assigned_room_ids?.[0];
           const showRoomNo =
@@ -281,8 +317,15 @@ function BookingHistory() {
             ["pending", "confirmed"].includes(booking.status);
           const canCancelByUser = ["pending", "confirmed"].includes(booking.status);
           const paidRefundBase = resolveRefundOriginalAmountFromBooking(booking);
+          const refundState = String(booking.refund_status || "");
+          const depositState = String(booking.deposit_status || "");
+          const hasRefundInProgressOrDone = ["requested", "paid"].includes(refundState) ||
+            ["pending_refund", "refunded", "partial_refunded", "forfeited"].includes(depositState);
+
           const canRefundPolicy =
-            booking.status === "confirmed" && paidRefundBase > 0;
+            ["pending", "confirmed", "cancelled"].includes(String(booking.status || "")) &&
+            paidRefundBase > 0 &&
+            !hasRefundInProgressOrDone;
           const showLegacyCancel =
             canCancelByUser &&
             (booking.status !== "confirmed" || paidRefundBase <= 0);
@@ -406,41 +449,58 @@ function BookingHistory() {
                       <div className="mb-4">
                         <small className="text-muted">Tổng thanh toán</small>
                         <h3 className="fw-bold text-primary mb-1">
-                          {(booking.total_price ?? 0).toLocaleString("vi-VN")} ₫
+                          {totalPrice.toLocaleString("vi-VN")} ₫
                         </h3>
                         <small className="text-muted">({nights} đêm)</small>
                       </div>
 
-                      <div className="mb-3">
-                        <small className="text-muted d-block">Tiền cọc</small>
-                        <div className="fw-semibold">
-                          {(Number(booking.deposit_paid_amount) || 0).toLocaleString("vi-VN")} ₫ /{" "}
-                          {(Number(booking.deposit_amount) || 0).toLocaleString("vi-VN")} ₫{" "}
-                          <small className="text-muted">({depositStatusLabelVi(booking.deposit_status)})</small>
+                      {!isFullPayment ? (
+                        <div className="mb-3">
+                          <small className="text-muted d-block">Tiền cọc</small>
+                          <div className="fw-semibold">
+                            {(Number(booking.deposit_paid_amount) || 0).toLocaleString("vi-VN")} ₫ /{" "}
+                            {(Number(booking.deposit_amount) || 0).toLocaleString("vi-VN")} ₫{" "}
+                            <small className="text-muted">({depositStatusLabelVi(booking.deposit_status)})</small>
+                          </div>
+                          {String(booking.deposit_status) === "pending_refund" ? (
+                            <small className="text-warning d-block mt-1">
+                              Yêu cầu hoàn tiền đang chờ admin xử lý:{" "}
+                              {(Number(booking.refund_requested_amount) || 0).toLocaleString("vi-VN")} ₫
+                            </small>
+                          ) : null}
+                          {String(booking.deposit_status) === "refunded" ||
+                          String(booking.deposit_status) === "partial_refunded" ? (
+                            <small className="text-success d-block mt-1">
+                              Đã hoàn: {(Number(booking.refund_processed_amount) || 0).toLocaleString("vi-VN")} ₫
+                            </small>
+                          ) : null}
+                          {String(booking.deposit_status) === "forfeited" && booking.refund_rejected_reason ? (
+                            <small className="text-danger d-block mt-1">
+                              Hoàn tiền bị từ chối: {booking.refund_rejected_reason}
+                            </small>
+                          ) : null}
+                          {String(booking.refund_status || "") === "requested" ? (
+                            <small className="text-muted d-block mt-1">
+                              Trạng thái xử lý: đang chờ duyệt hoàn tiền.
+                            </small>
+                          ) : null}
                         </div>
-                        {String(booking.deposit_status) === "pending_refund" ? (
-                          <small className="text-warning d-block mt-1">
-                            Yêu cầu hoàn tiền đang chờ admin xử lý:{" "}
-                            {(Number(booking.refund_requested_amount) || 0).toLocaleString("vi-VN")} ₫
-                          </small>
-                        ) : null}
-                        {String(booking.deposit_status) === "refunded" ||
-                        String(booking.deposit_status) === "partial_refunded" ? (
-                          <small className="text-success d-block mt-1">
-                            Đã hoàn: {(Number(booking.refund_processed_amount) || 0).toLocaleString("vi-VN")} ₫
-                          </small>
-                        ) : null}
-                        {String(booking.deposit_status) === "forfeited" && booking.refund_rejected_reason ? (
-                          <small className="text-danger d-block mt-1">
-                            Hoàn tiền bị từ chối: {booking.refund_rejected_reason}
-                          </small>
-                        ) : null}
-                        {String(booking.refund_status || "") === "requested" ? (
-                          <small className="text-muted d-block mt-1">
-                            Trạng thái xử lý: đang chờ duyệt hoàn tiền.
-                          </small>
-                        ) : null}
-                      </div>
+                      ) : (
+                        <div className="mb-3">
+                          <small className="text-muted d-block">Thanh toán</small>
+                          <div className="fw-semibold">
+                            {prepaidAmount.toLocaleString("vi-VN")} ₫ / {totalPrice.toLocaleString("vi-VN")} ₫{" "}
+                            <small className="text-muted">
+                              ({isPaid ? "Đã thanh toán" : "Chưa thanh toán"})
+                            </small>
+                          </div>
+                          {!isPaid ? (
+                            <small className="text-muted d-block mt-1">
+                              Bạn đã hủy/đóng trang MoMo hoặc chưa thanh toán nên đơn vẫn ở trạng thái chưa trả tiền.
+                            </small>
+                          ) : null}
+                        </div>
+                      )}
 
                       {canPayDeposit && !isCancelled && (
                         <button
@@ -460,20 +520,63 @@ function BookingHistory() {
                         </button>
                       )}
 
-                      {canRefundPolicy && !isCancelled && (
+                      {canRefundPolicy && (
                         <button
                           type="button"
                           onClick={() => setRefundModalBooking(booking)}
                           className="btn btn-danger btn-lg px-5 py-3 rounded-4 w-100 w-lg-auto fw-medium mt-2"
                         >
-                          Hủy &amp; hoàn tiền (policy mới)
+                          {isCancelled ? "Yêu cầu hoàn tiền" : "Hủy & hoàn tiền (policy mới)"}
                         </button>
                       )}
 
                       {isCancelled && (
-                        <div className="text-danger fw-semibold fs-5 py-3">
-                          <i className="bi bi-x-circle-fill me-2"></i>
-                          Đã hủy
+                        <div className="py-3">
+                          <div className="text-danger fw-semibold fs-5">
+                            <i className="bi bi-x-circle-fill me-2"></i>
+                            Đã hủy
+                          </div>
+                          {(String(booking.deposit_status) === "pending_refund" ||
+                            String(booking.refund_status || "") === "requested") &&
+                          String(booking.refund_status || "") !== "rejected" ? (
+                            <small className="text-warning d-block mt-1">
+                              <i className="bi bi-arrow-repeat me-1"></i>
+                              Đang xử lý hoàn tiền:{" "}
+                              {(Number(booking.refund_requested_amount) || 0).toLocaleString("vi-VN")} ₫
+                            </small>
+                          ) : null}
+                          {String(booking.deposit_status) === "refunded" ||
+                          String(booking.deposit_status) === "partial_refunded" ||
+                          String(booking.refund_status || "") === "paid" ? (
+                            <small className="text-success d-block mt-1">
+                              <i className="bi bi-check-circle me-1"></i>
+                              Đã hoàn:{" "}
+                              {(Number(booking.refund_processed_amount) || 0).toLocaleString("vi-VN")} ₫
+                            </small>
+                          ) : null}
+                          {String(booking.deposit_status) === "forfeited" ? (
+                            <small className="text-danger d-block mt-1">
+                              <i className="bi bi-exclamation-triangle me-1"></i>
+                              Không được hoàn (mất cọc theo chính sách)
+                            </small>
+                          ) : null}
+                          {String(booking.refund_status || "") === "rejected" && booking.refund_rejected_reason ? (
+                            <small className="text-danger d-block mt-1">
+                              <i className="bi bi-x-octagon me-1"></i>
+                              Hoàn tiền thất bại: {booking.refund_rejected_reason}
+                            </small>
+                          ) : null}
+                          {![
+                            "pending_refund",
+                            "refunded",
+                            "partial_refunded",
+                            "forfeited",
+                          ].includes(String(booking.deposit_status || "")) &&
+                          !["requested", "paid", "rejected"].includes(String(booking.refund_status || "")) ? (
+                            <small className="text-muted d-block mt-1">
+                              Chưa có trạng thái hoàn tiền (bạn có thể đã hủy theo luồng thường).
+                            </small>
+                          ) : null}
                         </div>
                       )}
 
@@ -558,7 +661,16 @@ function BookingHistory() {
         booking={refundModalBooking}
         isOpen={Boolean(refundModalBooking)}
         onClose={() => setRefundModalBooking(null)}
-        onSuccess={() => {
+        onSuccess={(message) => {
+          const msg = String(message || "").trim();
+          if (msg) {
+            const lower = msg.toLowerCase();
+            const type =
+              lower.includes("thành công") || lower.includes("đã hủy") ? "success" : lower.includes("lỗi") || lower.includes("thất bại") ? "danger" : "info";
+            showAlert(msg, type);
+          } else {
+            showAlert("Đã xử lý yêu cầu hủy/hoàn tiền.", "success");
+          }
           reloadBookings();
         }}
       />

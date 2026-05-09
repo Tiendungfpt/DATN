@@ -453,7 +453,7 @@ export default function GuestInfo() {
       setError("Vui lòng nhập đầy đủ email, họ tên và số điện thoại.");
       return;
     }
-    if (depositRequired <= 0) {
+    if (payMode === "deposit" && depositRequired <= 0) {
       setError("Loại phòng chưa được cấu hình tiền cọc. Vui lòng liên hệ khách sạn.");
       return;
     }
@@ -473,7 +473,7 @@ export default function GuestInfo() {
         booking_type: "overnight",
         check_in_date: booking.checkIn,
         check_out_date: booking.checkOut,
-        payment_mode: "deposit",
+        payment_mode: payMode === "full" ? "full" : "deposit",
         prepaid_amount: 0,
         discount_code: String(discountCode || "").trim().toUpperCase(),
       };

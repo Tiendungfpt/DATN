@@ -263,7 +263,7 @@ export const createBooking = async (req, res) => {
           return res.status(404).json({ message: "Khong tim thay loai phong" });
         }
         const rtDeposit = Math.max(0, Number(roomTypeDoc.deposit_amount) || 0);
-        if (rtDeposit <= 0) {
+        if (payment_mode === "deposit" && rtDeposit <= 0) {
           return res.status(400).json({
             message: `Loai "${roomTypeDoc.name}" chua cau hinh tien coc (deposit_amount).`,
           });
@@ -307,7 +307,7 @@ export const createBooking = async (req, res) => {
         return res.status(404).json({ message: "Không tìm thấy loại phòng" });
       }
       const rtDeposit = Math.max(0, Number(roomType.deposit_amount) || 0);
-      if (rtDeposit <= 0) {
+      if (payment_mode === "deposit" && rtDeposit <= 0) {
         return res.status(400).json({
           message: `Loai "${roomType.name}" chua cau hinh tien coc (deposit_amount).`,
         });
@@ -364,12 +364,17 @@ export const createBooking = async (req, res) => {
       estimated = Math.max(0, estimated - discountAmount);
       depositAmount = Math.min(depositAmount, estimated);
     }
-    // HanoiHotel policy: deposit is required to secure/confirm. Full prepay is allowed, but must match estimated.
+    // HanoiHotel policy:
+    // - deposit: customer may pay later (prepaid can be 0 at booking creation)
+    // - full: allow paying later via payment gateway (prepaid can be 0); if prepaid > 0 then it must equal estimated
     if (payment_mode === "full") {
-      if (Math.abs(prepaid - estimated) > 1) {
+      if (prepaid > 0 && Math.abs(prepaid - estimated) > 1) {
         return res.status(400).json({
-          message: `Full payment must equal estimated room total ${estimated} VND`,
+          message: `Full payment must equal estimated room total ${estimated} VND (or 0 to pay later)`,
         });
+      }
+      if (prepaid > estimated) {
+        return res.status(400).json({ message: "Full payment cannot exceed estimated room total" });
       }
     } else if (payment_mode === "deposit") {
       // deposit may be paid later (prepaid can be 0 at booking creation)
@@ -383,14 +388,11 @@ export const createBooking = async (req, res) => {
       }
     }
 
-    const depositPaidAmount =
+    const depositPaidAmount = Math.min(depositAmount, prepaid);
+    const depositOk =
       payment_mode === "full"
-        ? depositAmount
-        : Math.min(depositAmount, prepaid);
-    const depositOk = isDepositSufficient({
-      depositAmount,
-      depositPaidAmount,
-    });
+        ? prepaid + 1 >= estimated
+        : isDepositSufficient({ depositAmount, depositPaidAmount });
 
     const booking = await Booking.create({
       user_id: userId,
