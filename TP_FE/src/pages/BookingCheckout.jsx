@@ -13,12 +13,10 @@ function BookingCheckout() {
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("payWithATM"); 
+  const [paymentMethod, setPaymentMethod] = useState("captureWallet");
   const [payDepositNow, setPayDepositNow] = useState(true);
 
   const total = Number(checkoutData?.total) || 0;
-  const bookingType = checkoutData?.bookingType === "hourly" ? "hourly" : "overnight";
-  const stayHours = Math.max(1, Number.parseInt(String(checkoutData?.stayHours || 0), 10) || 1);
   const requiredDeposit = Math.max(0, Number(checkoutData?.depositTotal) || 0);
   const prepaidAmount = payDepositNow ? requiredDeposit : 0;
   const checkInDate = checkoutData?.checkInDate ? new Date(checkoutData.checkInDate) : null;
@@ -90,7 +88,7 @@ function BookingCheckout() {
       alert("Không có dòng đặt phòng hợp lệ. Vui lòng thử lại.");
       return;
     }
-    if (requiredDeposit <= 0) {
+    if (payDepositNow && requiredDeposit <= 0) {
       alert("Loại phòng chưa được cấu hình tiền cọc. Vui lòng liên hệ khách sạn.");
       return;
     }
@@ -104,16 +102,9 @@ function BookingCheckout() {
       guest_name: guestName.trim(),
       guest_phone: guestPhone.trim(),
       guest_email: guestEmail.trim(),
-      booking_type: bookingType,
-      stay_hours: bookingType === "hourly" ? stayHours : undefined,
-      check_in_date:
-        bookingType === "hourly"
-          ? checkInDate.toISOString()
-          : checkInDate.toISOString().split("T")[0],
-      check_out_date:
-        bookingType === "hourly"
-          ? checkOutDate.toISOString()
-          : checkOutDate.toISOString().split("T")[0],
+      booking_type: "overnight",
+      check_in_date: checkInDate.toISOString().split("T")[0],
+      check_out_date: checkOutDate.toISOString().split("T")[0],
       // HanoiHotel policy: deposit required to confirm; allow creating pending booking when paying later
       payment_mode: "deposit",
       prepaid_amount: 0,
@@ -226,11 +217,7 @@ function BookingCheckout() {
               </div>
               <div>
                 <span>Lưu trú</span>
-                <strong>
-                  {bookingType === "hourly"
-                    ? `${stayHours} giờ`
-                    : `${checkoutData.nights || 0} đêm`}
-                </strong>
+                <strong>{`${checkoutData.nights || 0} đêm`}</strong>
               </div>
             </div>
 
@@ -326,17 +313,28 @@ function BookingCheckout() {
             </div>
 
             <div className="checkout-form-group">
-              <label>Cổng thanh toán MoMo</label>
+              <label>Cổng MoMo</label>
               <div className="checkout-momo-brand">
                 <div className="checkout-momo-logo" aria-label="MoMo logo">
                   MoMo
                 </div>
                 <div>
                   <strong>Ví điện tử MoMo</strong>
-                  <p>Thanh toán bảo mật qua cổng MoMo</p>
+                  <p>Thanh toán bảo mật qua cổng MoMo (sandbox)</p>
                 </div>
               </div>
               <div className="checkout-radio-list">
+                <label className={paymentMethod === "captureWallet" ? "active" : ""}>
+                  <input
+                    type="radio"
+                    name="momo_method"
+                    value="captureWallet"
+                    checked={paymentMethod === "captureWallet"}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    disabled={loading}
+                  />
+                  <span>Ví MoMo / QR — khuyến nghị khi test</span>
+                </label>
                 <label className={paymentMethod === "payWithATM" ? "active" : ""}>
                   <input
                     type="radio"
@@ -360,6 +358,24 @@ function BookingCheckout() {
                   <span>Thẻ quốc tế (Visa/Master/JCB)</span>
                 </label>
               </div>
+              {paymentMethod === "captureWallet" ? (
+                <p className="text-muted small mb-0" style={{ lineHeight: 1.45, marginTop: 8 }}>
+                  Sandbox: thường ổn định hơn thẻ Napas — cài <strong>MoMo Test App</strong>, ví test mật khẩu/OTP hay dùng{" "}
+                  <strong>000000</strong>. Hướng dẫn:{" "}
+                  <a href="https://developers.momo.vn/v3/docs/payment/onboarding/test-instructions" target="_blank" rel="noopener noreferrer">
+                    MoMo test instructions
+                  </a>
+                  .
+                </p>
+              ) : (
+                <p className="text-muted small mb-0" style={{ lineHeight: 1.45, marginTop: 8 }}>
+                  ATM/Napas: nhập <strong>SĐT VN 10 số</strong> trên cổng + OTP/thẻ theo&nbsp;
+                  <a href="https://developers.momo.vn/v3/docs/payment/onboarding/test-instructions" target="_blank" rel="noopener noreferrer">
+                    tài liệu
+                  </a>
+                  . Thẻ: <strong>9704000000000018</strong> — NGUYEN VAN A — 03/07.
+                </p>
+              )}
             </div>
 
             <div className="checkout-line-row checkout-pay-now">

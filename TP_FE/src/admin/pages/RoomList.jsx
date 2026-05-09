@@ -75,7 +75,7 @@ function RoomsList() {
                             </p>
 
                             <p className="capacity">
-                                👤 Tối đa {room.capacity ?? room.maxGuests ?? "—"} người
+                                👤 Tối đa {room.capacity ?? room.maxGuests ?? room.max_guests ?? "—"} người
                             </p>
 
                             <p className={`status ${room.status || "unknown"}`}>

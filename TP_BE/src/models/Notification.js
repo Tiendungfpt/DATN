@@ -14,6 +14,12 @@ const notificationSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    contact_message_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ContactMessage",
+      default: null,
+      index: true,
+    },
     type: {
       type: String,
       required: true,

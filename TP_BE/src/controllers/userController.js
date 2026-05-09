@@ -22,11 +22,21 @@ export const getUserProfile = async (req, res) => {
 // Cập nhật profile
 export const updateUserProfile = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, phone } = req.body;
 
-    if (email) {
+    const updateFields = {};
+    if (name !== undefined) updateFields.name = name;
+    if (email !== undefined) updateFields.email = email;
+    if (phone !== undefined) updateFields.phone = String(phone).trim();
+
+    // Require at least name/email update to avoid accidental empty updates.
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: "Không có dữ liệu để cập nhật" });
+    }
+
+    if (updateFields.email) {
       const emailExists = await User.findOne({ 
-        email, 
+        email: updateFields.email,
         _id: { $ne: req.user.id || req.userId } 
       });
       if (emailExists) {
@@ -36,7 +46,7 @@ export const updateUserProfile = async (req, res) => {
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id || req.userId,
-      { name, email },
+      updateFields,
       { new: true, runValidators: true }
     ).select("-password");
 

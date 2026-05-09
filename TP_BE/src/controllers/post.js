@@ -3,7 +3,7 @@ import Post from "../models/Post.js";
 export async function getPosts(req, res) {
   // Post.find()
   try {
-    const posts = await Post.find();
+    const posts = await Post.find().sort({ createdAt: -1 });
     return res.json(posts);
   } catch (error) {
     return res.json({ error: error.message });

@@ -72,20 +72,9 @@ useEffect(() => {
 
   const [checkInDate, setCheckInDate] = useState(null);
   const [checkOutDate, setCheckOutDate] = useState(null);
-  const [bookingType, setBookingType] = useState("overnight");
-  const [hourlyCheckIn, setHourlyCheckIn] = useState("");
-  const [stayHours, setStayHours] = useState(3);
   /** Gio hang nhieu loai phong: dong dau = loai tu URL */
   const [cartLines, setCartLines] = useState([]);
   const [roomTypes, setRoomTypes] = useState([]);
-
-  const getHourlyRate = (roomType) => {
-    const configured = Number(roomType?.hourly_price) || 0;
-    if (configured > 0) return configured;
-    const nightly = Number(roomType?.price) || 0;
-    if (nightly <= 0) return 0;
-    return Math.max(1000, Math.ceil(nightly / 10));
-  };
 
   useEffect(() => {
     if (!roomId) return;
@@ -121,38 +110,6 @@ useEffect(() => {
   }, [room?.roomType, room?._id]);
 
   useEffect(() => {
-    if (bookingType === "hourly") {
-      if (!hourlyCheckIn || roomTypes.length === 0 || cartLines.length === 0) {
-        setNights(0);
-        setTotal(0);
-        setCheckInDate(null);
-        setCheckOutDate(null);
-        return;
-      }
-      const start = new Date(hourlyCheckIn);
-      if (Number.isNaN(start.getTime())) {
-        setNights(0);
-        setTotal(0);
-        setCheckInDate(null);
-        setCheckOutDate(null);
-        return;
-      }
-      const hours = Math.max(1, Number.parseInt(String(stayHours), 10) || 1);
-      const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
-      setCheckInDate(start);
-      setCheckOutDate(end);
-      setNights(0);
-      let sum = 0;
-      for (const line of cartLines) {
-        const rt = roomTypes.find((r) => String(r._id) === String(line.room_type_id));
-        const p = getHourlyRate(rt);
-        const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
-        sum += hours * p * q;
-      }
-      setTotal(sum);
-      return;
-    }
-
     if (checkInDate && checkOutDate && roomTypes.length > 0 && cartLines.length > 0) {
       const diffDays = Math.ceil(
         Math.abs(checkOutDate - checkInDate) / (1000 * 60 * 60 * 24),
@@ -170,7 +127,7 @@ useEffect(() => {
       setNights(0);
       setTotal(0);
     }
-  }, [bookingType, hourlyCheckIn, stayHours, checkInDate, checkOutDate, roomTypes, cartLines]);
+  }, [checkInDate, checkOutDate, roomTypes, cartLines]);
 
   const formatDateDisplay = (date) => {
     if (!date) return "Chưa chọn";
@@ -219,10 +176,7 @@ useEffect(() => {
     return sum + (Number(rt?.deposit_amount) || 0) * q;
   }, 0);
 
-  const hasValidStayTime =
-    bookingType === "hourly"
-      ? Boolean(hourlyCheckIn) && Number.parseInt(String(stayHours), 10) >= 1
-      : Boolean(checkInDate) && Boolean(checkOutDate);
+  const hasValidStayTime = Boolean(checkInDate) && Boolean(checkOutDate);
 
   const canContinueToGuestInfo =
     hasValidStayTime &&
@@ -242,13 +196,7 @@ useEffect(() => {
         quantity: Math.max(1, Number.parseInt(String(l.quantity), 10) || 1),
       }));
 
-    const canCheckOvernight = bookingType === "overnight" && checkInDate && checkOutDate;
-    const canCheckHourly =
-      bookingType === "hourly" &&
-      hourlyCheckIn &&
-      Number.parseInt(String(stayHours), 10) >= 1;
-
-    if (!validLines.length || (!canCheckOvernight && !canCheckHourly)) {
+    if (!validLines.length || !checkInDate || !checkOutDate) {
       setAvailabilityItems([]);
       setAvailabilityError("");
       setAvailabilityOk(true);
@@ -261,16 +209,11 @@ useEffect(() => {
         setAvailabilityLoading(true);
         setAvailabilityError("");
         const params = {
-          booking_type: bookingType,
+          booking_type: "overnight",
           line_items: JSON.stringify(validLines),
+          check_in_date: checkInDate.toISOString().split("T")[0],
+          check_out_date: checkOutDate.toISOString().split("T")[0],
         };
-        if (bookingType === "hourly") {
-          params.check_in_date = new Date(hourlyCheckIn).toISOString();
-          params.stay_hours = Math.max(1, Number.parseInt(String(stayHours), 10) || 1);
-        } else {
-          params.check_in_date = checkInDate.toISOString().split("T")[0];
-          params.check_out_date = checkOutDate.toISOString().split("T")[0];
-        }
         const res = await axios.get("http://localhost:3000/api/bookings/availability", {
           params,
         });
@@ -294,7 +237,7 @@ useEffect(() => {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [bookingType, hourlyCheckIn, stayHours, checkInDate, checkOutDate, cartLines]);
+  }, [checkInDate, checkOutDate, cartLines]);
 
   if (!room) {
     return <div className="booking-loading">Đang tải thông tin phòng...</div>;
@@ -347,77 +290,31 @@ useEffect(() => {
             {error && <p className="error-message">{error}</p>}
 
             <div className="date-range-group">
-              <label>Hình thức đặt</label>
-              <select
-                value={bookingType}
-                className="custom-date-input"
-                onChange={(e) => setBookingType(e.target.value)}
-                disabled={loading}
-              >
-                <option value="overnight">Đặt theo đêm</option>
-                <option value="hourly">Đặt theo giờ</option>
-              </select>
-            </div>
-
-            {bookingType === "overnight" ? (
-              <div className="date-range-group">
-                <label>Chọn ngày nhận - trả phòng</label>
-                <div className="date-picker-wrapper">
-                  <DatePicker
-                    selected={checkInDate}
-                    onChange={(dates) => {
-                      const [start, end] = dates;
-                      setCheckInDate(start);
-                      setCheckOutDate(end);
-                    }}
-                    startDate={checkInDate}
-                    endDate={checkOutDate}
-                    minDate={new Date()}
-                    selectsRange
-                    monthsShown={2}
-                    locale="vi"
-                    dateFormat="dd/MM/yyyy"
-                    placeholderText="Chọn khoảng thời gian lưu trú"
-                    className="custom-date-input"
-                    calendarClassName="custom-calendar"
-                    showPopperArrow={false}
-                    isClearable={true}
-                    disabled={loading}
-                  />
-                </div>
+              <label>Chọn ngày nhận - trả phòng</label>
+              <div className="date-picker-wrapper">
+                <DatePicker
+                  selected={checkInDate}
+                  onChange={(dates) => {
+                    const [start, end] = dates;
+                    setCheckInDate(start);
+                    setCheckOutDate(end);
+                  }}
+                  startDate={checkInDate}
+                  endDate={checkOutDate}
+                  minDate={new Date()}
+                  selectsRange
+                  monthsShown={2}
+                  locale="vi"
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="Chọn khoảng thời gian lưu trú"
+                  className="custom-date-input"
+                  calendarClassName="custom-calendar"
+                  showPopperArrow={false}
+                  isClearable={true}
+                  disabled={loading}
+                />
               </div>
-            ) : (
-              <>
-                <div className="date-range-group">
-                  <label>Giờ nhận phòng</label>
-                  <input
-                    type="datetime-local"
-                    className="custom-date-input"
-                    value={hourlyCheckIn}
-                    min={new Date().toISOString().slice(0, 16)}
-                    onChange={(e) => setHourlyCheckIn(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-                <div className="date-range-group">
-                  <label>Số giờ sử dụng</label>
-                  <select
-                    className="custom-date-input"
-                    value={stayHours}
-                    onChange={(e) =>
-                      setStayHours(Math.max(1, Number.parseInt(e.target.value, 10) || 1))
-                    }
-                    disabled={loading}
-                  >
-                    {[1, 2, 3, 4, 5, 6, 8, 10, 12, 24].map((h) => (
-                      <option key={h} value={h}>
-                        {h} giờ
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
+            </div>
 
             <div className="selected-dates">
               <div className="date-box">
@@ -445,10 +342,8 @@ useEffect(() => {
                 );
                 const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
                 const unit =
-                  bookingType === "hourly"
-                    ? getHourlyRate(rt)
-                    : Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
-                const duration = bookingType === "hourly" ? Math.max(1, Number(stayHours) || 1) : nights;
+                  Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
+                const duration = nights;
                 const lineSubtotal = duration * unit * q;
                 return (
                   <div
@@ -570,10 +465,8 @@ useEffect(() => {
 
               <div className="summary">
                 <div className="summary-row">
-                  <span>{bookingType === "hourly" ? "Số giờ:" : "Số đêm:"}</span>
-                  <strong>
-                    {bookingType === "hourly" ? `${stayHours} giờ` : `${nights} đêm`}
-                  </strong>
+                  <span>Số đêm:</span>
+                  <strong>{`${nights} đêm`}</strong>
                 </div>
                 {cartLines.map((line, idx) => {
                   const rt = roomTypes.find(
@@ -582,10 +475,8 @@ useEffect(() => {
                   const name = idx === 0 ? rt?.name || room.name : rt?.name || "—";
                   const q = Math.max(1, Number.parseInt(String(line.quantity), 10) || 1);
                   const p =
-                    bookingType === "hourly"
-                      ? getHourlyRate(rt)
-                      : Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
-                  const duration = bookingType === "hourly" ? Math.max(1, Number(stayHours) || 1) : nights;
+                    Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
+                  const duration = nights;
                   const sub = duration * p * q;
                   return (
                     <div key={line.key} className="summary-row summary-row--line">
@@ -640,11 +531,8 @@ useEffect(() => {
                         Number.parseInt(String(l.quantity), 10) || 1,
                       );
                       const price =
-                        bookingType === "hourly"
-                          ? getHourlyRate(rt)
-                          : Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
-                      const duration =
-                        bookingType === "hourly" ? Math.max(1, Number(stayHours) || 1) : nights;
+                        Number(rt?.price) || (idx === 0 ? Number(room.price) || 0 : 0);
+                      const duration = nights;
                       return {
                         room_type_id: String(l.room_type_id),
                         room_type_name: idx === 0 ? rt?.name || room.name : rt?.name || "—",
@@ -659,8 +547,7 @@ useEffect(() => {
                       roomId,
                       roomName: room.name,
                       roomImage: room.image,
-                      bookingType,
-                      stayHours: bookingType === "hourly" ? Math.max(1, Number(stayHours) || 1) : null,
+                      bookingType: "overnight",
                       checkInDate: checkInDate.toISOString(),
                       checkOutDate: checkOutDate.toISOString(),
                       nights,

@@ -55,8 +55,6 @@ export default function ResetPassword() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.background} />
-
       <div style={styles.card}>
         <h1 style={styles.title}>Đặt lại mật khẩu</h1>
         <p style={styles.subtitle}>Nhập mật khẩu mới cho tài khoản của bạn</p>
@@ -99,69 +97,63 @@ export default function ResetPassword() {
 
 const styles = {
   container: {
-    position: "relative",
-    minHeight: "100vh",
+    minHeight: "calc(100vh - 180px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
+    padding: "32px 16px",
+    background:
+      "radial-gradient(circle at 10% 10%, rgba(37,99,235,0.10), transparent 35%), radial-gradient(circle at 90% 0%, rgba(124,58,237,0.10), transparent 32%), #f8fafc",
     fontFamily: "'Segoe UI', system-ui, sans-serif",
   },
-  background: {
-    position: "absolute",
-    inset: 0,
-    backgroundImage:
-      "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2073&auto=format&fit=crop')",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    filter: "brightness(0.75) contrast(1.1)",
-    zIndex: -1,
-  },
   card: {
-    background: "rgba(255, 255, 255, 0.15)",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
-    padding: "36px 32px",
-    borderRadius: "18px",
+    background: "#ffffff",
+    padding: "30px 26px",
+    borderRadius: "16px",
     width: "100%",
-    maxWidth: "400px",
-    border: "1px solid rgba(255,255,255,0.3)",
-    color: "white",
+    maxWidth: "460px",
+    border: "1px solid rgba(15,23,42,0.10)",
+    boxShadow: "0 16px 34px rgba(15,23,42,0.10)",
+    color: "#0f172a",
     textAlign: "center",
   },
-  title: { margin: 0, fontSize: "30px" },
-  subtitle: { marginTop: "8px", marginBottom: "20px", opacity: 0.9 },
+  title: { margin: 0, fontSize: "30px", fontWeight: 900, color: "#0f172a" },
+  subtitle: { marginTop: "8px", marginBottom: "20px", color: "rgba(15,23,42,0.68)" },
   form: { display: "flex", flexDirection: "column", gap: "14px" },
   input: {
     width: "100%",
     padding: "14px 16px",
-    borderRadius: "10px",
-    border: "1px solid rgba(255,255,255,0.4)",
-    background: "rgba(255,255,255,0.25)",
-    color: "white",
+    borderRadius: "11px",
+    border: "1px solid rgba(15,23,42,0.18)",
+    background: "#ffffff",
+    color: "#0f172a",
     outline: "none",
+    fontSize: "15px",
   },
   button: {
     padding: "14px",
-    borderRadius: "10px",
+    borderRadius: "11px",
     border: "none",
     background: "linear-gradient(135deg, #f59e0b, #ea580c)",
     color: "white",
     fontWeight: "700",
     cursor: "pointer",
+    boxShadow: "0 10px 20px rgba(234,88,12,0.28)",
   },
   error: {
-    background: "rgba(255, 107, 107, 0.2)",
-    color: "#ff6b6b",
+    background: "rgba(239, 68, 68, 0.08)",
+    color: "#b91c1c",
+    border: "1px solid rgba(239, 68, 68, 0.25)",
     borderRadius: "8px",
     padding: "10px",
   },
   success: {
-    background: "rgba(34, 197, 94, 0.2)",
-    color: "#86efac",
+    background: "rgba(34, 197, 94, 0.09)",
+    color: "#166534",
+    border: "1px solid rgba(34, 197, 94, 0.22)",
     borderRadius: "8px",
     padding: "10px",
   },
-  back: { marginTop: "16px", fontSize: "14px" },
-  link: { color: "#fde047", textDecoration: "none" },
+  back: { marginTop: "16px", fontSize: "14px", color: "rgba(15,23,42,0.72)" },
+  link: { color: "#1d4ed8", textDecoration: "none", fontWeight: 700 },
 };

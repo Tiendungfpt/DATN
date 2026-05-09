@@ -27,6 +27,12 @@ function HotelList() {
   const [availabilityByName, setAvailabilityByName] = useState({});
   const [descriptionByTypeId, setDescriptionByTypeId] = useState({});
   const [descriptionByName, setDescriptionByName] = useState({});
+  const [complimentaryByTypeId, setComplimentaryByTypeId] = useState({});
+  const [complimentaryByName, setComplimentaryByName] = useState({});
+  const [priceByTypeId, setPriceByTypeId] = useState({});
+  const [priceByName, setPriceByName] = useState({});
+  const [capacityByTypeId, setCapacityByTypeId] = useState({});
+  const [capacityByName, setCapacityByName] = useState({});
 
   // ================= FETCH REVIEWS =================
   useEffect(() => {
@@ -108,8 +114,14 @@ function HotelList() {
   useEffect(() => {
     const checkIn = searchParams.get("check_in_date");
     const checkOut = searchParams.get("check_out_date");
-    const capacity = searchParams.get("capacity");
-    const isSearching = Boolean(checkIn && checkOut && capacity);
+    const capacityRaw = searchParams.get("capacity");
+    const adultsRaw = searchParams.get("adults");
+    const childrenRaw = searchParams.get("children");
+    const derivedCapacity = Math.max(
+      1,
+      Number(capacityRaw) || (Number(adultsRaw || 0) + Number(childrenRaw || 0)) || 1,
+    );
+    const isSearching = Boolean(checkIn && checkOut);
 
     axios
       .get(
@@ -121,7 +133,7 @@ function HotelList() {
             ? {
               check_in_date: checkIn,
               check_out_date: checkOut,
-              capacity,
+              capacity: derivedCapacity,
             }
             : undefined,
         }
@@ -165,21 +177,57 @@ function HotelList() {
         });
         const descById = {};
         const descByName = {};
+        const compById = {};
+        const compByName = {};
+        const priceMapById = {};
+        const priceMapByName = {};
+        const capMapById = {};
+        const capMapByName = {};
         roomTypes.forEach((rt) => {
           const desc = String(rt.description || "").trim();
+          const comp = Array.isArray(rt.complimentary_services)
+            ? rt.complimentary_services.map((s) => String(s?.name || "").trim()).filter(Boolean)
+            : [];
+          const price = Number(rt.price || 0);
+          const cap = Number(rt.maxGuests ?? rt.max_guests ?? 0) || 0;
+          const typeNameNorm = normalizeTypeName(rt.name);
           descById[String(rt._id)] = desc;
-          descByName[normalizeTypeName(rt.name)] = desc;
-          if (rt.code) descByName[normalizeTypeName(rt.code)] = desc;
+          descByName[typeNameNorm] = desc;
+          compById[String(rt._id)] = comp;
+          compByName[typeNameNorm] = comp;
+          priceMapById[String(rt._id)] = price;
+          priceMapByName[typeNameNorm] = price;
+          capMapById[String(rt._id)] = cap;
+          capMapByName[typeNameNorm] = cap;
+          if (rt.code) {
+            const codeNorm = normalizeTypeName(rt.code);
+            descByName[codeNorm] = desc;
+            compByName[codeNorm] = comp;
+            priceMapByName[codeNorm] = price;
+            capMapByName[codeNorm] = cap;
+          }
         });
         setAvailabilityByTypeId(byId);
         setAvailabilityByName(byName);
         setDescriptionByTypeId(descById);
         setDescriptionByName(descByName);
+        setComplimentaryByTypeId(compById);
+        setComplimentaryByName(compByName);
+        setPriceByTypeId(priceMapById);
+        setPriceByName(priceMapByName);
+        setCapacityByTypeId(capMapById);
+        setCapacityByName(capMapByName);
       } catch {
         setAvailabilityByTypeId({});
         setAvailabilityByName({});
         setDescriptionByTypeId({});
         setDescriptionByName({});
+        setComplimentaryByTypeId({});
+        setComplimentaryByName({});
+        setPriceByTypeId({});
+        setPriceByName({});
+        setCapacityByTypeId({});
+        setCapacityByName({});
       }
     };
     fetchAvailability();
@@ -229,6 +277,21 @@ function HotelList() {
                   ? descriptionByTypeId[String(room.roomType)] || "Mô tả đang cập nhật."
                   : descriptionByName[normalizeTypeName(room.name)] ||
                     "Mô tả đang cập nhật."
+              }
+              complimentaryServices={
+                room.roomType
+                  ? complimentaryByTypeId[String(room.roomType)] || []
+                  : complimentaryByName[normalizeTypeName(room.name)] || []
+              }
+              priceOverride={
+                room.roomType
+                  ? priceByTypeId[String(room.roomType)]
+                  : priceByName[normalizeTypeName(room.name)]
+              }
+              capacityOverride={
+                room.roomType
+                  ? capacityByTypeId[String(room.roomType)]
+                  : capacityByName[normalizeTypeName(room.name)]
               }
               showBookButton={!isAdmin}
             />

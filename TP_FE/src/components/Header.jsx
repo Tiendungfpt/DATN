@@ -3,6 +3,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import "./HanoiHeader.css";
 
+function getNotificationMessagePreview(n) {
+  // Contact replies can include sensitive user-provided text.
+  // We show only the intro portion on-site; full content is already sent via email.
+  if (n?.type === "contact_reply" && typeof n.message === "string") {
+    const marker = "Nội dung phản hồi:";
+    const idx = n.message.indexOf(marker);
+    if (idx !== -1) return n.message.slice(0, idx).trim();
+  }
+  return n?.message || "";
+}
+
 export default function Header() {
   const [logo, setLogo] = useState("");
   const [user, setUser] = useState(null);
@@ -121,6 +132,8 @@ export default function Header() {
   const navItems = useMemo(
     () => [
       { to: "/", label: "Trang chủ" },
+      { to: "/gioi-thieu", label: "Giới thiệu" },
+      { to: "/bai-viet", label: "Bài viết" },
       { to: "/khach-san", label: "Hạng phòng" },
       { to: "/lien-he", label: "Liên hệ" },
     ],
@@ -145,10 +158,10 @@ export default function Header() {
     <>
       <header className="hh-header">
         <div className="hh-container hh-header-inner">
-          <Link className="hh-logo" to="/">
+          <Link className="hh-logo" to="/" aria-label="Thịnh Phát Hotel">
             <img
               src={logo ? `/uploads/${logo}` : "/uploads/Logo.jpg"}
-              alt="Hanoi Hotel"
+              alt="Thịnh Phát Hotel"
             />
           </Link>
 
@@ -217,17 +230,19 @@ export default function Header() {
                     >
                       Thông tin tài khoản
                     </button>
-                    <button
-                      type="button"
-                      className="hh-menu-item"
-                      onClick={() => {
-                        setOpenMenu(false);
-                        navigate("/thong-tin-tai-khoan?tab=history");
-                      }}
-                      role="menuitem"
-                    >
-                      Lịch sử đặt phòng
-                    </button>
+                    {!isAdmin ? (
+                      <button
+                        type="button"
+                        className="hh-menu-item"
+                        onClick={() => {
+                          setOpenMenu(false);
+                          navigate("/thong-tin-tai-khoan?tab=history");
+                        }}
+                        role="menuitem"
+                      >
+                        Lịch sử đặt phòng
+                      </button>
+                    ) : null}
                     <div className="hh-menu-sep" />
                     <div className="hh-menu-head">
                       <span>Thông báo</span>
@@ -245,7 +260,7 @@ export default function Header() {
                             onClick={() => handleNotificationClick(n)}
                           >
                             <div className="hh-noti-title">{n.title || "Thông báo"}</div>
-                            <div className="hh-noti-msg">{n.message || ""}</div>
+                        <div className="hh-noti-msg">{getNotificationMessagePreview(n)}</div>
                           </button>
                         ))}
                       </div>
@@ -260,7 +275,32 @@ export default function Header() {
                 ) : null}
               </div>
             )}
-            <button type="button" className="hh-btn-gold" onClick={() => navigate("/book")}>
+            <button
+              type="button"
+              className="hh-btn-gold"
+              onClick={() => {
+                const token = localStorage.getItem("token");
+                const userStr = localStorage.getItem("user");
+                let currentUser = null;
+                if (userStr) {
+                  try {
+                    currentUser = JSON.parse(userStr);
+                  } catch {
+                    currentUser = null;
+                  }
+                }
+                if (!token || !currentUser?._id) {
+                  alert("Vui lòng đăng nhập để đặt phòng.");
+                  navigate("/login", { state: { from: "/book" } });
+                  return;
+                }
+                if (currentUser?.role === "admin") {
+                  alert("Tài khoản admin không được phép đặt phòng.");
+                  return;
+                }
+                navigate("/book");
+              }}
+            >
               Đặt phòng
             </button>
           </div>

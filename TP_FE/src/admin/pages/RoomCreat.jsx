@@ -13,13 +13,16 @@ function RoomsCreate() {
         roomType: "",
         room_no: "",
         image: "",
+        images: [],
         price: 0,
         capacity: 2,
         status: "available",
     });
 
     const [file, setFile] = useState(null);
+    const [galleryFiles, setGalleryFiles] = useState([]);
     const [preview, setPreview] = useState("");
+    const [galleryPreviews, setGalleryPreviews] = useState([]);
 
     useEffect(() => {
         const fetchRoomTypes = async () => {
@@ -34,7 +37,7 @@ function RoomsCreate() {
                         roomType: String(first._id),
                         room_type: String(first.code || first.name || "").trim(),
                         price: Number(first.price) || prev.price,
-                        capacity: Number(first.maxGuests) || prev.capacity,
+                        capacity: Number(first.maxGuests ?? first.max_guests) || prev.capacity,
                     }));
                 }
             } catch (error) {
@@ -55,7 +58,7 @@ function RoomsCreate() {
                 roomType: value,
                 room_type: String(selected?.code || selected?.name || "").trim(),
                 price: Number(selected?.price) || room.price,
-                capacity: Number(selected?.maxGuests) || room.capacity,
+                capacity: Number(selected?.maxGuests ?? selected?.max_guests) || room.capacity,
             });
             return;
         }
@@ -71,18 +74,19 @@ function RoomsCreate() {
         }
     };
 
-    const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
+    const handleBatchImagesChange = (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
 
-        if (selectedFile) {
-            setFile(selectedFile);
-            setPreview(URL.createObjectURL(selectedFile));
-
-            setRoom({
-                ...room,
-                image: "",
-            });
-        }
+        const [cover, ...gallery] = files;
+        setFile(cover || null);
+        setPreview(cover ? URL.createObjectURL(cover) : "");
+        setGalleryFiles(gallery);
+        setGalleryPreviews(gallery.map((f) => URL.createObjectURL(f)));
+        setRoom({
+            ...room,
+            image: "",
+        });
     };
 
     const handleSubmit = async (e) => {
@@ -96,9 +100,12 @@ function RoomsCreate() {
             } else {
                 formData.append("image", room.image);
             }
+            for (const imgFile of galleryFiles) {
+                formData.append("images", imgFile);
+            }
 
             for (let key in room) {
-                if (key !== "image") {
+                if (key !== "image" && key !== "images") {
                     formData.append(key, room[key]);
                 }
             }
@@ -143,8 +150,18 @@ function RoomsCreate() {
                 />
 
                 <div className="upload-box">
-                    <input type="file" onChange={handleFileChange} />
+                    <input type="file" multiple accept="image/*" onChange={handleBatchImagesChange} />
+                    <small style={{ display: "block", marginTop: 6, opacity: 0.8 }}>
+                        Chọn nhiều ảnh một lần (ảnh đầu tiên sẽ làm ảnh đại diện).
+                    </small>
                 </div>
+                {galleryPreviews.length > 0 ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                        {galleryPreviews.map((src) => (
+                            <img key={src} src={src} alt="gallery-preview" style={{ width: "100%", borderRadius: 8 }} />
+                        ))}
+                    </div>
+                ) : null}
 
                 <p className="or-text">Hoặc nhập link ảnh</p>
 

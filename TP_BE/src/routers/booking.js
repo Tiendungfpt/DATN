@@ -11,6 +11,8 @@ import {
   cancelBooking,
   confirmBooking,
   markNoShowBooking,
+  confirmRefundBooking,
+  rejectRefundBooking,
   deleteBooking,
   paymentBooking,
   checkInBooking,
@@ -39,8 +41,10 @@ bookingRouter.put("/payment/:id", checkAuth, paymentBooking);
 bookingRouter.put("/cancel/:id", checkAuth, checkAdmin, cancelBooking);
 
 bookingRouter.put("/:id/confirm", checkAuth, checkAdmin, confirmBooking);
-bookingRouter.put("/:id/cancel", checkAuth, checkAdmin, cancelBooking);
+bookingRouter.put("/:id/cancel", checkAuth, cancelBooking);
 bookingRouter.put("/:id/no-show", checkAuth, checkAdmin, markNoShowBooking);
+bookingRouter.put("/:id/confirm-refund", checkAuth, checkAdmin, confirmRefundBooking);
+bookingRouter.put("/:id/reject-refund", checkAuth, checkAdmin, rejectRefundBooking);
 
 bookingRouter.put("/:id/check-in", checkAuth, checkAdmin, checkInBooking);
 bookingRouter.put("/:id/check-out", checkAuth, checkAdmin, checkOutBooking);

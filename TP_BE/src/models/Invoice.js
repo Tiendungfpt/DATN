@@ -14,6 +14,7 @@ const invoiceSchema = new mongoose.Schema(
     invoice_number: { type: String, required: true, unique: true, trim: true },
     room_subtotal: { type: Number, required: true, min: 0 },
     service_subtotal: { type: Number, required: true, min: 0 },
+    discount_amount: { type: Number, default: 0, min: 0 },
     grand_total: { type: Number, required: true, min: 0 },
     prepaid_amount: { type: Number, default: 0, min: 0 },
     balance_due: { type: Number, required: true, min: 0 },

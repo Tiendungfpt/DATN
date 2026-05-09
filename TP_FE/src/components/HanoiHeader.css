@@ -23,7 +23,7 @@
 }
 
 .hh-logo img {
-  height: 54px;
+  height: 64px;
   width: auto;
   object-fit: contain;
 }
@@ -225,7 +225,7 @@
 
 @media (max-width: 1024px) {
   .hh-header-inner {
-    grid-template-columns: 180px 1fr;
+    grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto;
     height: auto;
     padding: 10px 0;

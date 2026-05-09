@@ -445,3 +445,226 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ===== Checkout page UI ===== */
+.co-shell {
+  max-width: 980px;
+}
+
+.co-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.co-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.co-card-head {
+  padding: 12px 14px;
+  font-weight: 900;
+  color: #0f172a;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 1px solid #eef2f7;
+}
+
+.co-card-body {
+  padding: 14px;
+}
+
+.co-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #334155;
+  padding: 7px 0;
+}
+
+.co-row strong {
+  color: #0f172a;
+}
+
+.co-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 6px 0;
+}
+
+.co-row--grand {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.co-row--due {
+  font-size: 16px;
+  font-weight: 900;
+  color: #1e3a8a;
+}
+
+.co-row--due strong {
+  color: #1d4ed8;
+}
+
+.co-field {
+  margin-bottom: 12px;
+}
+
+.co-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.co-select {
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  padding: 0 10px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+}
+
+.co-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+  margin-bottom: 14px;
+}
+
+.co-checkbox input {
+  margin-top: 2px;
+}
+
+.co-submit {
+  width: 100%;
+  height: 42px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.28);
+}
+
+.co-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.co-alert {
+  margin-top: 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.co-alert--ok {
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.09);
+  color: #166534;
+}
+
+.co-alert--err {
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+}
+
+@media (max-width: 900px) {
+  .co-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Premium dark overrides ===== */
+.booking-admin-page h2,
+.booking-admin-section-header h3,
+.ba-card-title,
+.ba-k,
+.ba-v,
+.ba-money-row strong {
+  color: #f4f7ff !important;
+}
+
+.booking-admin-subtitle,
+.booking-admin-section-subtitle,
+.ba-card-sub,
+.booking-admin-flow-label,
+.ba-money-row,
+.ba-money-row--sub {
+  color: #9aa8c4 !important;
+}
+
+.booking-admin-tab {
+  background: #17243f !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #cfdaf2 !important;
+}
+
+.booking-admin-tab.active {
+  background: rgba(214, 182, 112, 0.22) !important;
+  border-color: rgba(214, 182, 112, 0.48) !important;
+  color: #f7e8c5 !important;
+}
+
+.booking-admin-tab-count {
+  background: #101a2f !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #d8e3fb !important;
+}
+
+.booking-admin-card {
+  background: linear-gradient(180deg, #131f37 0%, #101b30 100%) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34) !important;
+}
+
+.ba-card-head {
+  background: #0f182c !important;
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.ba-card-id {
+  background: #101a2f !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #cfdaf2 !important;
+}
+
+.booking-admin-flow,
+.ba-kv,
+.ba-money {
+  background: #0f182c !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.booking-admin-flow-line {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.booking-admin-actions .ba-btn--secondary {
+  background: #17243f !important;
+  color: #dfe8fb !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.booking-admin-actions .ba-btn--primary {
+  background: linear-gradient(135deg, #d6b670, #b89454) !important;
+  color: #0b1020 !important;
+  border-color: rgba(214, 182, 112, 0.55) !important;
+}

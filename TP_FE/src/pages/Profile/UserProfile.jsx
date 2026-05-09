@@ -6,6 +6,7 @@ import ProfileSidebar from "./Component/ProfileSidebar";
 import ProfileInfo from "./Component/ProfileInfo";
 import BookingHistory from "./Component/BookingHistory";
 import NotificationList from "./Component/NotificationList";
+import RefundHistoryPage from "./RefundHistoryPage";
 
 function UserProfile() {
   const [user, setUser] = useState(null);
@@ -79,6 +80,7 @@ function UserProfile() {
               <div className="card-body p-5">
                 {activeTab === "profile" && <ProfileInfo user={user} />}
                 {activeTab === "history" && <BookingHistory />}
+                {activeTab === "refunds" && <RefundHistoryPage />}
                 {activeTab === "notifications" && <NotificationList />}
               </div>
             </div>

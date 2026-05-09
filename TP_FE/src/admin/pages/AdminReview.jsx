@@ -110,11 +110,13 @@ function AdminReviews() {
 
 const styles = {
     card: {
-        background: "#fff",
+        background: "#121a2f",
+        color: "#e6ecf8",
+        border: "1px solid rgba(214, 182, 112, 0.22)",
         padding: 20,
         marginBottom: 20,
         borderRadius: 12,
-        boxShadow: "0 5px 15px rgba(0,0,0,0.1)",
+        boxShadow: "0 14px 32px rgba(0,0,0,0.34)",
     },
 
     textarea: {
@@ -122,6 +124,9 @@ const styles = {
         marginTop: 10,
         padding: 10,
         borderRadius: 8,
+        border: "1px solid rgba(214, 182, 112, 0.24)",
+        background: "#0f172b",
+        color: "#e6ecf8",
     },
 
     hideBtn: {
@@ -134,18 +139,21 @@ const styles = {
 
     replyBtn: {
         padding: "8px 14px",
-        background: "#3b82f6",
-        color: "#fff",
-        border: "none",
+        background: "linear-gradient(135deg, #caa45f, #9f7b3d)",
+        color: "#0b1020",
+        border: "1px solid #caa45f",
         borderRadius: 8,
         cursor: "pointer",
+        fontWeight: 800,
     },
 
     replyBox: {
-        background: "#f1f5f9",
+        background: "#0f172b",
+        border: "1px solid rgba(214, 182, 112, 0.2)",
         padding: 10,
         borderRadius: 8,
         marginTop: 10,
+        color: "#e6ecf8",
     },
 };
 

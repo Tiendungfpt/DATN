@@ -12,14 +12,15 @@
     "preview": "cross-env NODE_ENV=production node server"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
     "axios": "^1.13.6",
     "compression": "^1.8.1",
     "date-fns": "^4.1.0",
+    "dayjs": "^1.11.20",
     "express": "^5.2.1",
     "json-server": "^1.0.0-beta.12",
+    "react": "^19.2.0",
     "react-datepicker": "^9.1.0",
+    "react-dom": "^19.2.0",
     "react-icons": "^5.6.0",
     "react-router-dom": "^7.13.0",
     "recharts": "^3.8.1",

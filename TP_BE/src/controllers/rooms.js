@@ -117,7 +117,17 @@ export async function searchRooms(req, res) {
 // GET /api/rooms/:id - chi tiết phòng
 export async function getRoomsById(req, res) {
   try {
-    const room = await Rooms.findById(req.params.id);
+    const room = await Rooms.findById(req.params.id)
+      .populate("complimentary_services", "name defaultPrice unit isActive")
+      .populate("extra_services", "name defaultPrice unit isActive")
+      .populate({
+        path: "roomType",
+        select: "name code complimentary_services extra_services",
+        populate: [
+          { path: "complimentary_services", select: "name defaultPrice unit isActive" },
+          { path: "extra_services", select: "name defaultPrice unit isActive" },
+        ],
+      });
 
     if (!room) {
       return res.status(404).json({ error: "Không tìm thấy phòng" });

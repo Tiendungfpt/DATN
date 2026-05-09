@@ -7,6 +7,17 @@ function formatDateTime(value) {
   return new Date(value).toLocaleString("vi-VN");
 }
 
+function getNotificationMessagePreview(n) {
+  // For contact replies, we don't want to expose the full reply content in-site
+  // because the user already received it via email.
+  if (n?.type === "contact_reply" && typeof n.message === "string") {
+    const marker = "Nội dung phản hồi:";
+    const idx = n.message.indexOf(marker);
+    if (idx !== -1) return n.message.slice(0, idx).trim();
+  }
+  return n?.message || "";
+}
+
 export default function NotificationList() {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -117,7 +128,7 @@ export default function NotificationList() {
                   >
                     {n.title}
                   </button>
-                  <div className="text-muted small">{n.message}</div>
+                  <div className="text-muted small">{getNotificationMessagePreview(n)}</div>
                   <div className="text-secondary small mt-1">
                     {formatDateTime(n.createdAt)}
                   </div>

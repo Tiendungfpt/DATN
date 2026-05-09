@@ -11,19 +11,54 @@ function formatDate(d) {
 function statusLabelVi(status) {
   switch (status) {
     case "pending":
-      return "Cho xac nhan";
+      return "Chờ xác nhận";
     case "confirmed":
       return "Đã xác nhận";
     case "checked_in":
-      return "Dang o (da check-in)";
+      return "Đang ở (đã check-in)";
     case "checked_out":
     case "completed":
       return "Đã trả phòng (check-out)";
     case "cancelled":
-      return "Da huy";
+      return "Đã hủy";
+    case "pending_refund":
+      return "Chờ hoàn tiền";
     default:
       return status || "—";
   }
+}
+
+function normalizeRatePlanKey(value) {
+  const k = String(value || "").trim().toLowerCase();
+  if (k === "breakfast") return "breakfast";
+  if (k === "non_refund" || k === "nonrefund" || k === "non-refundable") return "non_refund";
+  return "basic";
+}
+
+function computeHoursUntilArrival(checkInDate) {
+  const start = new Date(checkInDate);
+  if (Number.isNaN(start.getTime())) return null;
+  return (start.getTime() - Date.now()) / (1000 * 60 * 60);
+}
+
+function computeCancellationRefundRate(hoursUntilArrival) {
+  if (hoursUntilArrival == null) return 0;
+  const days = hoursUntilArrival / 24;
+  if (days >= 15) return 1;
+  if (hoursUntilArrival > 48) return 0.5;
+  return 0;
+}
+
+function estimateRefundForBooking(booking) {
+  const paidDeposit = Math.max(0, Number(booking?.deposit_paid_amount) || 0);
+  const hoursUntilArrival = computeHoursUntilArrival(booking?.check_in_date);
+  const firstLine = Array.isArray(booking?.line_items) && booking.line_items.length > 0
+    ? booking.line_items[0]
+    : null;
+  const ratePlanKey = normalizeRatePlanKey(firstLine?.rate_plan_key);
+  if (ratePlanKey === "non_refund") return 0;
+  const rate = computeCancellationRefundRate(hoursUntilArrival);
+  return Math.round(paidDeposit * rate);
 }
 
 export default function BookingAdmin() {
@@ -65,7 +100,19 @@ export default function BookingAdmin() {
     }
   };
 
-  const cancelBooking = async (id) => {
+  const cancelBooking = async (booking) => {
+    const id = booking?._id;
+    if (!id) return;
+    const refundAmount = estimateRefundForBooking(booking);
+    const paidDeposit = Math.max(0, Number(booking?.deposit_paid_amount) || 0);
+    const outcomeText =
+      refundAmount > 0
+        ? `Dự kiến: hoàn ${refundAmount.toLocaleString("vi-VN")} đ (chuyển trạng thái chờ hoàn tiền).`
+        : paidDeposit > 0
+          ? "Dự kiến: mất cọc theo chính sách."
+          : "Booking này chưa có tiền cọc để hoàn.";
+
+    if (!window.confirm(`Xác nhận hủy booking?\n${outcomeText}`)) return;
     const reason = window.prompt("Lý do hủy (tùy chọn):", "") || "";
     try {
       const token = localStorage.getItem("token");
@@ -139,7 +186,7 @@ export default function BookingAdmin() {
 
   function stayFlowStep(status) {
     const steps = [
-      { key: "s1", label: "Cho xac nhan" },
+      { key: "s1", label: "Chờ xác nhận" },
       { key: "s2", label: "Đã xác nhận" },
       { key: "s3", label: "Check-in" },
       { key: "s4", label: "Check-out" },
@@ -181,9 +228,10 @@ export default function BookingAdmin() {
       completed: bookings.filter(
         (b) => b.status === "checked_out" || b.status === "completed",
       ),
+      cancelled: bookings.filter((b) => b.status === "cancelled"),
       other: bookings.filter(
         (b) =>
-          !["pending", "confirmed", "checked_in", "checked_out", "completed"].includes(
+          !["pending", "confirmed", "checked_in", "checked_out", "completed", "cancelled"].includes(
             b.status,
           ),
       ),
@@ -291,7 +339,7 @@ export default function BookingAdmin() {
           </button>
         )}
         {b.status !== "checked_out" && b.status !== "completed" && (
-          <button type="button" className="btn-cancel" onClick={() => cancelBooking(b._id)}>
+          <button type="button" className="btn-cancel" onClick={() => cancelBooking(b)}>
             Hủy booking (áp policy)
           </button>
         )}
@@ -319,12 +367,6 @@ export default function BookingAdmin() {
   return (
     <div className="booking-admin-page">
       <h2>Quản lý booking</h2>
-      <p className="booking-admin-subtitle">
-        Xác nhận không gán phòng; check-in nhập CCCD và chọn phòng; check-out mới tạo hóa đơn.
-      </p>
-      <p>
-        <Link to="/admin/booking-list">Danh sach loc / sap xep</Link>
-      </p>
       <Outlet
         context={{
           bookings,

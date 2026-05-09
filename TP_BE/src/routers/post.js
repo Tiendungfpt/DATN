@@ -11,8 +11,6 @@ import { checkAuth } from "../middlewares/checkAuth";
 
 const postRouter = Router();
 
-postRouter.use(checkAuth);
-
 // GET /api/posts - Lấy danh sách bài viết
 postRouter.get("/", getPosts);
 
@@ -20,12 +18,12 @@ postRouter.get("/", getPosts);
 postRouter.get("/:id", getPostById);
 
 // POST /api/posts - Thêm bài viết mới
-postRouter.post("/", addPost);
+postRouter.post("/", checkAuth, addPost);
 
 // DELETE /api/posts/:id - Xóa bài viết
-postRouter.delete("/:id", deletePost);
+postRouter.delete("/:id", checkAuth, deletePost);
 
 // PUT /api/posts/:id - Cập nhật bài viết
-postRouter.put("/:id", updatePost);
+postRouter.put("/:id", checkAuth, updatePost);
 
 export default postRouter;

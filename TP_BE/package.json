@@ -5,7 +5,13 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "nodemon --exec babel-node src/app.js"
+    "dev": "nodemon --exec babel-node src/app.js",
+    "test": "cross-env NODE_ENV=test vitest run",
+    "seed:site": "babel-node src/scripts/seedSiteContent.js",
+    "seed:complimentary-services": "babel-node src/scripts/seedComplimentaryServices.js",
+    "seed:roomtype-images": "babel-node src/scripts/seedRoomTypeImages.js",
+    "seed:roomtype-images:force": "babel-node src/scripts/seedRoomTypeImages.js --force",
+    "seed:roomtype-images:download": "babel-node src/scripts/downloadRoomTypeImagesToUploads.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +29,7 @@
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
+    "dayjs": "^1.11.20",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "joi": "^18.0.1",
@@ -38,6 +45,21 @@
     "@babel/core": "^7.29.0",
     "@babel/node": "^7.29.0",
     "@babel/preset-env": "^7.28.3",
-    "nodemon": "^3.1.10"
+    "@babel/register": "^7.29.3",
+    "babel-jest": "^30.4.1",
+    "cross-env": "^10.1.0",
+    "jest": "^30.4.1",
+    "mongodb-memory-server": "^11.1.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.5"
+  },
+  "vitest": {
+    "test": {
+      "environment": "node",
+      "include": [
+        "**/__tests__/**/*.test.js"
+      ]
+    }
   }
 }

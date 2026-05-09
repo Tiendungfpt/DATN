@@ -12,6 +12,25 @@ function normalizeImageValue(imageValue) {
   return `https://${raw}`;
 }
 
+function parseIdList(input) {
+  const arr = Array.isArray(input)
+    ? input
+    : String(input || "")
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+  return arr.map((x) => String(x).trim()).filter(Boolean);
+}
+
+function getUploadedFilenames(req, fieldName) {
+  if (Array.isArray(req?.files)) {
+    return req.files.filter((f) => f?.fieldname === fieldName).map((f) => f.filename).filter(Boolean);
+  }
+  const fieldFiles = req?.files?.[fieldName];
+  if (Array.isArray(fieldFiles)) return fieldFiles.map((f) => f?.filename).filter(Boolean);
+  return [];
+}
+
 // ================= DASHBOARD =================
 
 export const getDashboard = async (req, res) => {
@@ -99,7 +118,10 @@ export const deleteUser = async (req, res) => {
 
 export const getRooms = async (req, res) => {
   try {
-    const rooms = await Rooms.find().lean();
+    const rooms = await Rooms.find()
+      .populate("complimentary_services", "name defaultPrice unit isActive")
+      .populate("extra_services", "name defaultPrice unit isActive")
+      .lean();
     res.json(rooms);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -108,7 +130,17 @@ export const getRooms = async (req, res) => {
 
 export const getRoomById = async (req, res) => {
   try {
-    const room = await Rooms.findById(req.params.id);
+    const room = await Rooms.findById(req.params.id)
+      .populate("complimentary_services", "name defaultPrice unit isActive")
+      .populate("extra_services", "name defaultPrice unit isActive")
+      .populate({
+        path: "roomType",
+        select: "name code complimentary_services extra_services",
+        populate: [
+          { path: "complimentary_services", select: "name defaultPrice unit isActive" },
+          { path: "extra_services", select: "name defaultPrice unit isActive" },
+        ],
+      });
     if (!room) {
       return res.status(404).json({ message: "Không tìm thấy phòng" });
     }
@@ -120,11 +152,15 @@ export const getRoomById = async (req, res) => {
 
 export const createRoom = async (req, res) => {
   try {
+    const singleImage = getUploadedFilenames(req, "image")[0] || "";
+    const galleryImages = getUploadedFilenames(req, "images");
+    const bodyImages = parseIdList(req.body.images);
     const payload = {
       ...req.body,
-      image: req.file
-        ? req.file.filename
-        : normalizeImageValue(req.body.image || ""),
+      image: singleImage || normalizeImageValue(req.body.image || ""),
+      images: [...galleryImages, ...bodyImages].filter(Boolean),
+      complimentary_services: parseIdList(req.body.complimentary_services),
+      extra_services: parseIdList(req.body.extra_services),
     };
     const room = await Rooms.create(payload);
     res.status(201).json(room);
@@ -136,10 +172,22 @@ export const createRoom = async (req, res) => {
 export const updateRoom = async (req, res) => {
   try {
     const payload = { ...req.body };
-    if (req.file) {
-      payload.image = req.file.filename;
+    const singleImage = getUploadedFilenames(req, "image")[0] || "";
+    const galleryImages = getUploadedFilenames(req, "images");
+    if (singleImage) {
+      payload.image = singleImage;
     } else if (Object.prototype.hasOwnProperty.call(req.body, "image")) {
       payload.image = normalizeImageValue(req.body.image || "");
+    }
+    if (galleryImages.length > 0 || Object.prototype.hasOwnProperty.call(req.body, "images")) {
+      const bodyImages = parseIdList(req.body.images);
+      payload.images = [...galleryImages, ...bodyImages].filter(Boolean);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "complimentary_services")) {
+      payload.complimentary_services = parseIdList(req.body.complimentary_services);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "extra_services")) {
+      payload.extra_services = parseIdList(req.body.extra_services);
     }
     const room = await Rooms.findByIdAndUpdate(req.params.id, payload, {
       new: true,
