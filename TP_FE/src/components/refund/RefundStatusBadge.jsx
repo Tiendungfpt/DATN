@@ -8,6 +8,7 @@ export default function RefundStatusBadge({ status }) {
   const map = {
     pending: "text-bg-warning",
     processing: "text-bg-info",
+    completed: "text-bg-success",
     success: "text-bg-success",
     failed: "text-bg-danger",
   };
@@ -16,8 +17,9 @@ export default function RefundStatusBadge({ status }) {
   const labelVi =
     {
       pending: "Chờ xử lý",
-      processing: "Đang xử lý",
-      success: "Đã hoàn tiền",
+      processing: "Đang xử lý cổng",
+      completed: "Hoàn tất",
+      success: "Hoàn tất",
       failed: "Thất bại",
     }[s] || s || "—";
 

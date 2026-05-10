@@ -21,16 +21,23 @@ const refundSchema = new mongoose.Schema(
     reason: { type: String, required: true, trim: true },
     status: {
       type: String,
-      // Manual approval flow:
-      // - pending: user submitted request, waiting admin review
-      // - success: admin marked as refunded manually
-      // - failed: admin rejected (or internal validation failure)
-      enum: ["pending", "success", "failed"],
+      // pending → admin duyệt → processing (gọi cổng) → completed | failed
+      // success: legacy DB; API trả về completed
+      enum: ["pending", "processing", "completed", "failed", "success"],
       default: "pending",
       index: true,
     },
     payment_method: { type: String, default: "" },
     refund_transaction_id: { type: String, default: "" },
+    // Provider execution metadata (for audit/ops): MoMo result codes, raw payload, etc.
+    provider: { type: String, default: "", trim: true }, // momo|bank|cash|...
+    provider_result_code: { type: Number, default: null },
+    provider_message: { type: String, default: "", trim: true },
+    provider_payload: { type: mongoose.Schema.Types.Mixed, default: null },
+    /** Lưu orderId/requestId lần gọi refund MoMo (query / retry / idempotency) */
+    provider_refund_order_id: { type: String, default: "", trim: true },
+    provider_refund_request_id: { type: String, default: "", trim: true },
+    retry_count: { type: Number, default: 0, min: 0 },
     processed_at: { type: Date, default: null },
     processed_by: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null, index: true },
     failure_message: { type: String, default: "", trim: true },
@@ -62,7 +69,7 @@ refundSchema.index(
   { booking_id: 1 },
   {
     unique: true,
-    partialFilterExpression: { status: { $in: ["pending"] } },
+    partialFilterExpression: { status: { $in: ["pending", "processing"] } },
   },
 );
 

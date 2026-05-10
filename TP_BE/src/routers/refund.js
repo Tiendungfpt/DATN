@@ -8,6 +8,8 @@ import {
   getMyRefunds,
   getRefundDetail,
   listRefundsAdmin,
+  queryRefundProvider,
+  retryProviderRefund,
 } from "../controllers/refundController.js";
 
 const refundRouter = Router();
@@ -16,6 +18,8 @@ refundRouter.post("/request", authenticateToken, requestRefund);
 refundRouter.get("/my", authenticateToken, getMyRefunds);
 refundRouter.get("/admin/list", authenticateToken, checkAdmin, listRefundsAdmin);
 refundRouter.post("/admin/approve/:refundId", authenticateToken, checkAdmin, approveRefundManual);
+refundRouter.post("/admin/query/:refundId", authenticateToken, checkAdmin, queryRefundProvider);
+refundRouter.post("/admin/retry/:refundId", authenticateToken, checkAdmin, retryProviderRefund);
 refundRouter.post("/admin/reject/:refundId", authenticateToken, checkAdmin, rejectRefundManual);
 refundRouter.get("/:refundId", authenticateToken, getRefundDetail);
 

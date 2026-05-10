@@ -4,6 +4,7 @@ import Refund from "../models/Refund.js";
 import PaymentTransaction from "../models/PaymentTransaction.js";
 import Rooms from "../models/rooms.js";
 import User from "../models/User.js";
+import momoController from "./momoController.js";
 import { ROOM_OCCUPYING_BOOKING_STATUSES } from "../utils/bookingSchedule.js";
 import { computeRefundBreakdown } from "../utils/refundPolicy.js";
 import { createNotification } from "../utils/notification.js";
@@ -67,6 +68,9 @@ function serializeRefund(raw) {
       : o.user_id;
 
   const out = {};
+  const statusRaw = String(o.status || "pending");
+  const statusApi = statusRaw === "success" ? "completed" : statusRaw;
+
   Object.assign(out, {
     id: String(o._id || ""),
     bookingId: bookingIdResolved,
@@ -75,7 +79,7 @@ function serializeRefund(raw) {
     originalAmount: o.original_amount,
     cancellationFee: o.cancellation_fee,
     reason: o.reason,
-    status: o.status,
+    status: statusApi,
     paymentMethod: o.payment_method,
     refundTransactionId: o.refund_transaction_id,
     processedAt: o.processed_at,
@@ -87,6 +91,12 @@ function serializeRefund(raw) {
     payoutBankAccountName: o.payout_bank_account_name,
     payoutBankAccountNumber: o.payout_bank_account_number,
     adminNote: o.admin_note,
+    provider: o.provider,
+    providerResultCode: o.provider_result_code,
+    providerMessage: o.provider_message,
+    providerRefundOrderId: o.provider_refund_order_id,
+    providerRefundRequestId: o.provider_refund_request_id,
+    retryCount: o.retry_count ?? 0,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   });
@@ -160,6 +170,425 @@ async function applySuccessfulRefundLedger(booking, amt, opts = {}) {
       provider_message: String(led.provider_message || "Refund processed"),
       provider_payload: led.provider_payload ?? { source: "refund_controller" },
     });
+  }
+}
+
+/**
+ * Resolve original MoMo transId (gateway) for refund.
+ *
+ * Priority:
+ * - booking.payment_transaction_id (stored from callback/ipn transId)
+ * - latest succeeded PaymentTransaction (deposit|balance) provider_trans_id
+ *
+ * @param {import("../models/Booking.js").Booking} booking
+ */
+async function resolveMomoOriginalTransId(booking) {
+  const fromBooking = Number(String(booking?.payment_transaction_id || "").trim());
+  if (Number.isFinite(fromBooking) && fromBooking > 0) return Math.trunc(fromBooking);
+
+  const last = await PaymentTransaction.findOne({
+    booking_id: booking._id,
+    provider: "momo",
+    status: "succeeded",
+    type: { $in: ["deposit", "balance"] },
+  })
+    .sort({ updatedAt: -1 })
+    .lean();
+  const fromLedger = Number(String(last?.provider_trans_id || "").trim());
+  if (Number.isFinite(fromLedger) && fromLedger > 0) return Math.trunc(fromLedger);
+  return 0;
+}
+
+function logRefundOpsAlert(payload) {
+  console.error("[REFUND_OPS_ALERT]", JSON.stringify({ ts: new Date().toISOString(), ...payload }));
+}
+
+function getMomoAsyncResultCodes() {
+  const raw = String(process.env.MOMO_REFUND_ASYNC_RESULT_CODES || "7002")
+    .split(/[,\s]+/)
+    .map((x) => Number.parseInt(String(x).trim(), 10))
+    .filter((n) => Number.isFinite(n));
+  return raw.length ? raw : [7002];
+}
+
+function isMomoRefundPendingResult(resultCode) {
+  const n = Number(resultCode);
+  if (!Number.isFinite(n)) return false;
+  return getMomoAsyncResultCodes().includes(n);
+}
+
+/**
+ * @param {import("../models/Booking.js").Booking} booking
+ * @param {import("mongoose").Document} refund
+ */
+async function notifyRefundProcessing(booking, refund) {
+  try {
+    await createNotification({
+      userId: booking.user_id,
+      bookingId: booking._id,
+      type: "refund_processing",
+      title: "Hoàn tiền đang được cổng thanh toán xử lý",
+      message: `Số tiền ${(Number(refund.amount) || 0).toLocaleString("vi-VN")} ₫ — có thể vài giây đến vài ngày mới về tài khoản khách.`,
+      eventKey: `refund_processing_${booking._id}_${Date.now()}`,
+    });
+  } catch {
+    /** non-blocking */
+  }
+}
+
+/**
+ * @param {import("../models/Booking.js").Booking} booking
+ * @param {import("mongoose").Document} refund
+ * @param {{ completed: boolean, message?: string }} opts
+ */
+async function notifyRefundGatewayOutcome(booking, refund, opts) {
+  const { completed, message = "" } = opts;
+  try {
+    await createNotification({
+      userId: booking.user_id,
+      bookingId: booking._id,
+      type: completed ? "refund_completed" : "refund_failed",
+      title: completed ? "Hoàn tiền đã xử lý xong" : "Hoàn tiền thất bại",
+      message: completed
+        ? `Yêu cầu hoàn ${(Number(refund.amount) || 0).toLocaleString("vi-VN")} ₫ đã hoàn tất trên hệ thống. ${message}`.trim()
+        : `Hoàn tiền thất bại: ${message || "Lỗi cổng thanh toán"}`,
+      eventKey: `refund_outcome_${booking._id}_${completed ? "ok" : "fail"}_${String(refund._id).slice(-6)}`,
+    });
+    if (booking.guest_email) {
+      await sendRefundStatusEmail({
+        to: booking.guest_email,
+        guestName: booking.guest_name || "",
+        bookingId: booking._id,
+        stage: completed ? "refunded" : "rejected",
+        amount: refund.amount,
+        reason: message,
+      });
+    }
+  } catch {
+    /** non-blocking */
+  }
+}
+
+/**
+ * Gọi MoMo Refund API sau khi admin duyệt (hoặc retry).
+ *
+ * @returns {Promise<
+ *  | { outcome: "completed"; refund: import("mongoose").Document }
+ *  | { outcome: "async"; refund: import("mongoose").Document }
+ *  | { outcome: "failed"; refund: import("mongoose").Document; clientMessage: string }
+ * >}
+ */
+async function runMomoRefundGateway(refund, booking, { amt, manualRef, finishedAt }) {
+  const originalTransId = await resolveMomoOriginalTransId(booking);
+  if (!originalTransId) {
+    refund.status = "failed";
+    refund.processed_at = finishedAt;
+    refund.failure_message = "Missing original MoMo transId";
+    refund.provider = "momo";
+    refund.provider_message = "Không tìm thấy transId MoMo gốc";
+    await refund.save();
+    logRefundOpsAlert({
+      refundId: String(refund._id),
+      bookingId: String(booking._id),
+      step: "momo_refund_missing_transId",
+    });
+    return {
+      outcome: "failed",
+      refund,
+      clientMessage:
+        "Không tìm thấy transId MoMo gốc để hoàn online. Vui lòng hoàn thủ công và nhập manualRef (mã tham chiếu).",
+    };
+  }
+
+  const refundOrderId = `REFUND_${String(refund._id)}_${Date.now()}`.slice(0, 50);
+  const refundRequestId = `RE_${String(refund._id).slice(-6)}_${Date.now()}`.slice(0, 50);
+  const description = `Refund booking ${String(booking._id).slice(-6).toUpperCase()}`;
+
+  refund.provider_refund_order_id = refundOrderId;
+  refund.provider_refund_request_id = refundRequestId;
+  await refund.save();
+
+  const tx = await PaymentTransaction.create({
+    booking_id: booking._id,
+    provider: "momo",
+    type: "refund",
+    amount: amt,
+    status: "created",
+    provider_order_id: refundOrderId,
+    provider_message: "Refund requested",
+    provider_payload: {
+      refundId: String(refund._id),
+      originalTransId,
+      requestId: refundRequestId,
+    },
+  });
+
+  const r = await momoController.refundPaymentInternal({
+    transId: originalTransId,
+    amount: amt,
+    description,
+    lang: "vi",
+    orderId: refundOrderId,
+    requestId: refundRequestId,
+  });
+
+  const rc = Number(r?.resultCode);
+
+  if (r?.ok && rc === 0) {
+    refund.status = "completed";
+    refund.refund_transaction_id =
+      manualRef || String(r?.data?.transId || tx.provider_order_id || refund.refund_transaction_id || "");
+    refund.processed_at = finishedAt;
+    refund.failure_message = "";
+    refund.provider = "momo";
+    refund.provider_result_code = 0;
+    refund.provider_message = String(r?.message || "Successful.");
+    refund.provider_payload = r?.data || null;
+    await refund.save();
+
+    await applySuccessfulRefundLedger(booking, amt, {
+      createLedger: false,
+    });
+
+    await PaymentTransaction.findByIdAndUpdate(tx._id, {
+      status: "refunded",
+      provider_trans_id: String(r?.data?.transId || ""),
+      provider_message: String(r?.message || "Successful."),
+      provider_payload: { ...(tx.provider_payload || {}), refundResult: r?.data || null },
+    });
+
+    await notifyRefundGatewayOutcome(booking, refund, {
+      completed: true,
+      message: "Cổng MoMo đã chấp nhận hoàn tiền (tiền có thể về ví/ngân hàng sau vài ngày).",
+    });
+
+    return { outcome: "completed", refund };
+  }
+
+  if (Number.isFinite(rc) && isMomoRefundPendingResult(rc)) {
+    refund.status = "processing";
+    refund.processed_at = null;
+    refund.failure_message = "";
+    refund.provider = "momo";
+    refund.provider_result_code = rc;
+    refund.provider_message = String(r?.message || "Đang xử lý");
+    refund.provider_payload = r?.data || null;
+    await refund.save();
+
+    await PaymentTransaction.findByIdAndUpdate(tx._id, {
+      status: "pending_provider",
+      provider_message: String(r?.message || "pending_provider"),
+      provider_payload: { ...(tx.provider_payload || {}), refundResult: r?.data || null },
+    });
+
+    await notifyRefundProcessing(booking, refund);
+
+    return { outcome: "async", refund };
+  }
+
+  await PaymentTransaction.findByIdAndUpdate(tx._id, {
+    status: "failed",
+    provider_message: String(r?.message || "Refund failed"),
+    provider_payload: { ...(tx.provider_payload || {}), refundResult: r?.data || null },
+  });
+
+  refund.status = "failed";
+  refund.processed_at = finishedAt;
+  refund.failure_message = String(r?.message || "MoMo refund failed");
+  refund.provider = "momo";
+  refund.provider_result_code = Number.isFinite(rc) ? rc : null;
+  refund.provider_message = String(r?.message || "");
+  refund.provider_payload = r?.data || null;
+  await refund.save();
+
+  logRefundOpsAlert({
+    refundId: String(refund._id),
+    bookingId: String(booking._id),
+    step: "momo_refund_failed",
+    resultCode: rc,
+    message: r?.message,
+  });
+
+  await notifyRefundGatewayOutcome(booking, refund, {
+    completed: false,
+    message: String(r?.message || "MoMo từ chối hoặc lỗi"),
+  });
+
+  return {
+    outcome: "failed",
+    refund,
+    clientMessage: `Hoàn tiền MoMo thất bại: ${String(r?.message || "")}`.trim(),
+  };
+}
+
+function momoQueryIndicatesRefundSuccess(data) {
+  if (!data || Number(data.resultCode) !== 0) return false;
+  const rows = Array.isArray(data.refundTrans) ? data.refundTrans : [];
+  if (rows.length === 0) return true;
+  return rows.some((t) => Number(t.resultCode) === 0);
+}
+
+function momoQueryExtractRefundTransId(data) {
+  const rows = Array.isArray(data?.refundTrans) ? data.refundTrans : [];
+  const ok = rows.find((t) => Number(t.resultCode) === 0);
+  if (ok && ok.transId != null) return String(ok.transId);
+  if (data?.transId != null) return String(data.transId);
+  return "";
+}
+
+/** POST /api/refunds/admin/query/:refundId — tra cứu kết quả hoàn MoMo (async) */
+export async function queryRefundProvider(req, res) {
+  try {
+    const id = String(req.params.refundId || "");
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "refundId không hợp lệ." });
+    }
+    const refund = await Refund.findById(id);
+    if (!refund) {
+      return res.status(404).json({ message: "Không tìm thấy refund." });
+    }
+    const pm = String(refund.payment_method || "").toLowerCase();
+    if (pm !== "momo") {
+      return res.status(400).json({ message: "Tra cứu cổng chỉ hỗ trợ thanh toán MoMo." });
+    }
+    const st = String(refund.status || "");
+    if (st === "completed" || st === "success") {
+      return res.json({ message: "Refund đã hoàn tất.", refund: serializeRefund(refund) });
+    }
+    const orderId = String(refund.provider_refund_order_id || "").trim();
+    const requestId = String(refund.provider_refund_request_id || "").trim();
+    if (!orderId || !requestId) {
+      return res.status(400).json({
+        message: "Chưa có mã tra cứu MoMo. Cần đã gửi yêu cầu hoàn ít nhất một lần (duyệt hoặc thử lại).",
+      });
+    }
+    const q = await momoController.refundQueryInternal({ orderId, requestId, lang: "vi" });
+    const data = q.data || {};
+    const topRc = Number.isFinite(Number(q.resultCode)) ? Number(q.resultCode) : Number(data.resultCode);
+    refund.provider_result_code = Number.isFinite(topRc) ? topRc : null;
+    refund.provider_message = String(q.message || data.message || "");
+    const prevPayload =
+      refund.provider_payload && typeof refund.provider_payload === "object" ? refund.provider_payload : {};
+    refund.provider_payload = { ...prevPayload, lastQueryAt: new Date().toISOString(), lastQuery: data };
+
+    if (q.ok && momoQueryIndicatesRefundSuccess(data)) {
+      const booking = await Booking.findById(refund.booking_id);
+      if (!booking) {
+        await refund.save();
+        return res.status(404).json({ message: "Không tìm thấy booking." });
+      }
+      const amt = Math.round(Number(refund.amount) || 0);
+      const finishedAt = new Date();
+      const tid = momoQueryExtractRefundTransId(data);
+      refund.status = "completed";
+      refund.processed_at = finishedAt;
+      refund.failure_message = "";
+      if (tid) refund.refund_transaction_id = tid;
+      await refund.save();
+
+      if (amt > 0 && String(booking.refund_status || "") !== "paid") {
+        await applySuccessfulRefundLedger(booking, amt, { createLedger: false });
+      }
+
+      await PaymentTransaction.findOneAndUpdate(
+        { booking_id: booking._id, provider: "momo", type: "refund", provider_order_id: orderId },
+        {
+          status: "refunded",
+          provider_trans_id: tid,
+          provider_message: "Query confirmed refund",
+          provider_payload: { queryConfirm: data },
+        },
+      );
+
+      await notifyRefundGatewayOutcome(booking, refund, {
+        completed: true,
+        message: "Tra cứu MoMo xác nhận hoàn tiền thành công.",
+      });
+
+      return res.json({
+        message: "Tra cứu: cổng đã hoàn tất.",
+        refund: serializeRefund(refund),
+        query: data,
+      });
+    }
+
+    await refund.save();
+    return res.json({
+      message: "Tra cứu xong — chưa xác nhận hoàn tất hoặc đang xử lý.",
+      refund: serializeRefund(refund),
+      query: data,
+    });
+  } catch (e) {
+    return res.status(500).json({ message: e?.message || "Lỗi tra cứu refund." });
+  }
+}
+
+/** POST /api/refunds/admin/retry/:refundId — thử lại gọi Refund API MoMo sau failed */
+export async function retryProviderRefund(req, res) {
+  try {
+    const id = String(req.params.refundId || "");
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "refundId không hợp lệ." });
+    }
+    const refund = await Refund.findById(id);
+    if (!refund) {
+      return res.status(404).json({ message: "Không tìm thấy refund." });
+    }
+    if (String(refund.status) !== "failed") {
+      return res.status(400).json({ message: "Chỉ thử lại khi refund đang failed." });
+    }
+    const pm = String(refund.payment_method || "").toLowerCase();
+    if (pm !== "momo") {
+      return res.status(400).json({ message: "Chỉ thử lại hoàn tự động cho MoMo." });
+    }
+    const configured =
+      Boolean(momoController?.partnerCode) &&
+      Boolean(momoController?.accessKey) &&
+      Boolean(momoController?.secretKey);
+    if (!configured) {
+      return res.status(400).json({ message: "Chưa cấu hình MoMo trên server." });
+    }
+    const booking = await Booking.findById(refund.booking_id);
+    if (!booking) {
+      return res.status(404).json({ message: "Không tìm thấy booking." });
+    }
+
+    const adminNote = String(req.body?.adminNote || "").trim();
+    const manualRef = String(req.body?.manualRef || "").trim();
+    const finishedAt = new Date();
+    const amt = Math.round(Number(refund.amount) || 0);
+
+    refund.retry_count = (Number(refund.retry_count) || 0) + 1;
+    refund.status = "processing";
+    refund.processed_by = req.userId || null;
+    refund.processed_at = null;
+    refund.failure_message = "";
+    if (adminNote) refund.admin_note = adminNote;
+    refund.provider = "momo";
+    refund.provider_result_code = null;
+    refund.provider_message = "";
+    refund.provider_payload = null;
+    await refund.save();
+
+    const gatewayOut = await runMomoRefundGateway(refund, booking, { amt, manualRef, finishedAt });
+    if (gatewayOut.outcome === "completed") {
+      return res.json({
+        message: "Thử lại: cổng MoMo chấp nhận hoàn tiền.",
+        refund: serializeRefund(gatewayOut.refund),
+      });
+    }
+    if (gatewayOut.outcome === "async") {
+      return res.status(202).json({
+        message: "Thử lại: đã gửi tới MoMo, đang xử lý bất đồng bộ.",
+        refund: serializeRefund(gatewayOut.refund),
+      });
+    }
+    return res.status(400).json({
+      message: gatewayOut.clientMessage,
+      refund: serializeRefund(gatewayOut.refund),
+    });
+  } catch (e) {
+    return res.status(500).json({ message: e?.message || "Lỗi thử lại refund." });
   }
 }
 
@@ -346,7 +775,7 @@ export async function requestRefund(req, res) {
     }
 
     // refund 0₫ theo policy: đóng sổ ngay để UI không chờ
-    refundDoc.status = "success";
+    refundDoc.status = "completed";
     refundDoc.processed_at = new Date();
     refundDoc.refund_transaction_id = "REFUND_0";
     refundDoc.failure_message = "";
@@ -398,12 +827,57 @@ export async function approveRefundManual(req, res) {
     const finishedAt = new Date();
     const amt = Math.round(Number(refund.amount) || 0);
 
-    refund.status = "success";
-    refund.refund_transaction_id = manualRef || refund.refund_transaction_id || `MANUAL_REF_${Date.now()}`;
-    refund.processed_at = finishedAt;
+    const paymentMethod = String(refund.payment_method || booking.payment_provider || "").trim().toLowerCase();
+    const shouldAutoRefundMomo =
+      amt > 0 &&
+      paymentMethod === "momo" &&
+      Boolean(momoController?.partnerCode) &&
+      Boolean(momoController?.accessKey) &&
+      Boolean(momoController?.secretKey);
+
+    // Mark processing early to avoid double-approve and to show progress in admin UI.
+    refund.status = "processing";
     refund.processed_by = req.userId || null;
+    refund.processed_at = null;
     refund.failure_message = "";
     refund.admin_note = adminNote;
+    refund.provider = shouldAutoRefundMomo ? "momo" : (paymentMethod || "manual");
+    refund.provider_result_code = null;
+    refund.provider_message = "";
+    refund.provider_payload = null;
+    await refund.save();
+
+    // Auto refund via MoMo if possible; otherwise fallback to manual approval.
+    if (shouldAutoRefundMomo) {
+      const gatewayOut = await runMomoRefundGateway(refund, booking, { amt, manualRef, finishedAt });
+      if (gatewayOut.outcome === "completed") {
+        return res.json({
+          message: "Đã duyệt — cổng MoMo chấp nhận hoàn tiền.",
+          refund: serializeRefund(gatewayOut.refund),
+        });
+      }
+      if (gatewayOut.outcome === "async") {
+        return res.status(202).json({
+          message:
+            "Đã gửi yêu cầu hoàn tới MoMo — cổng đang xử lý bất đồng bộ. Dùng Tra cứu hoặc Thử lại hoàn MoMo.",
+          refund: serializeRefund(gatewayOut.refund),
+        });
+      }
+      return res.status(400).json({
+        message: gatewayOut.clientMessage,
+        refund: serializeRefund(gatewayOut.refund),
+      });
+    }
+
+    // Manual fallback
+    refund.status = "completed";
+    refund.refund_transaction_id = manualRef || refund.refund_transaction_id || `MANUAL_REF_${Date.now()}`;
+    refund.processed_at = finishedAt;
+    refund.failure_message = "";
+    refund.provider = paymentMethod || "manual";
+    refund.provider_result_code = null;
+    refund.provider_message = "Approved manually";
+    refund.provider_payload = null;
     await refund.save();
 
     if (amt > 0) {
@@ -433,6 +907,11 @@ export async function approveRefundManual(req, res) {
       booking.refund_processed_at = finishedAt;
       await booking.save();
     }
+
+    await notifyRefundGatewayOutcome(booking, refund, {
+      completed: true,
+      message: "Admin đã xác nhận hoàn tiền (thủ công / đối soát).",
+    });
 
     return res.json({
       message: "Đã duyệt hoàn tiền (thủ công).",
@@ -516,14 +995,18 @@ export async function listRefundsAdmin(req, res) {
     /** @type {Record<string, unknown>} */
     let filter = {};
     if (normalized && normalized !== "all") {
-      // allow: pending | success | failed
-      if (!["pending", "success", "failed"].includes(normalized)) {
-        return res.status(400).json({ message: "status không hợp lệ. Dùng pending|success|failed|all." });
+      if (!["pending", "processing", "completed", "failed", "success"].includes(normalized)) {
+        return res.status(400).json({
+          message: "status không hợp lệ. Dùng pending|processing|completed|failed|success|all.",
+        });
       }
-      filter = { status: normalized };
+      if (normalized === "completed" || normalized === "success") {
+        filter = { status: { $in: ["completed", "success"] } };
+      } else {
+        filter = { status: normalized };
+      }
     } else if (!normalized) {
-      // default view: show items needing attention + recently completed for audit
-      filter = { status: { $in: ["pending", "failed", "success"] } };
+      filter = { status: { $in: ["pending", "processing", "failed", "completed", "success"] } };
     }
 
     const list = await Refund.find(filter)

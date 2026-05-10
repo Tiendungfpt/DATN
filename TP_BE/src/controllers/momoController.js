@@ -50,7 +50,139 @@ class MoMoController {
 
     this.createEndpoint = process.env.MOMO_CREATE_ENDPOINT;
     this.queryEndpoint = process.env.MOMO_QUERY_ENDPOINT;
+    this.refundEndpoint =
+      process.env.MOMO_REFUND_ENDPOINT || "https://test-payment.momo.vn/v2/gateway/api/refund";
+    this.refundQueryEndpoint =
+      process.env.MOMO_REFUND_QUERY_ENDPOINT || "https://test-payment.momo.vn/v2/gateway/api/refund/query";
     this.requestType = process.env.MOMO_REQUEST_TYPE || "captureWallet";
+  }
+
+  /**
+   * MoMo refund query — POST /v2/gateway/api/refund/query
+   * rawSignature: accessKey=$accessKey&orderId=$orderId&partnerCode=$partnerCode&requestId=$requestId
+   *
+   * @param {{ orderId: string, requestId: string, lang?: "vi"|"en" }} input
+   */
+  async refundQueryInternal(input) {
+    if (!this.partnerCode || !this.accessKey || !this.secretKey) {
+      return { ok: false, error: "missing_keys", message: "Thiếu cấu hình MoMo refund query" };
+    }
+    const orderId = String(input?.orderId || "").trim();
+    const requestId = String(input?.requestId || "").trim();
+    if (!orderId || !requestId) {
+      return { ok: false, error: "invalid_params", message: "Thiếu orderId/requestId tra cứu hoàn tiền" };
+    }
+    const lang = input?.lang === "en" ? "en" : "vi";
+    const rawSignature =
+      `accessKey=${this.accessKey}` +
+      `&orderId=${orderId}` +
+      `&partnerCode=${this.partnerCode}` +
+      `&requestId=${requestId}`;
+    const signature = crypto.createHmac("sha256", this.secretKey).update(rawSignature).digest("hex");
+    const body = {
+      partnerCode: this.partnerCode,
+      orderId,
+      requestId,
+      lang,
+      signature,
+    };
+    try {
+      const resp = await axios.post(this.refundQueryEndpoint, body, { timeout: 35000 });
+      const data = resp?.data || {};
+      const resultCode = Number(data?.resultCode);
+      const ok = resultCode === 0;
+      return { ok, data, resultCode, message: String(data?.message || "") || (ok ? "Successful" : "Query failed") };
+    } catch (e) {
+      const upstream = e?.response?.data;
+      return {
+        ok: false,
+        error: "network_or_upstream",
+        message: String(upstream?.message || e?.message || "Refund query failed"),
+        data: upstream || null,
+      };
+    }
+  }
+
+  /**
+   * Call MoMo refund API (server-to-server).
+   *
+   * Docs: POST /v2/gateway/api/refund
+   * rawSignature:
+   * accessKey=$accessKey&amount=$amount&description=$description&orderId=$orderId&partnerCode=$partnerCode&requestId=$requestId&transId=$transId
+   *
+   * @param {{
+   *  transId: number|string,
+   *  amount: number|string,
+   *  description?: string,
+   *  lang?: "vi"|"en",
+   *  orderId?: string,
+   *  requestId?: string
+   * }} input
+   */
+  async refundPaymentInternal(input) {
+    if (!this.partnerCode || !this.accessKey || !this.secretKey) {
+      return { ok: false, error: "missing_keys", message: "Thiếu cấu hình MoMo refund" };
+    }
+    if (!this.refundEndpoint) {
+      return { ok: false, error: "missing_refund_endpoint", message: "Thiếu MOMO_REFUND_ENDPOINT" };
+    }
+
+    const amount = Math.round(Math.max(0, Number(input?.amount) || 0));
+    const transIdNum = Number(input?.transId);
+    const transId = Number.isFinite(transIdNum) ? Math.trunc(transIdNum) : NaN;
+    if (!Number.isFinite(transId) || transId <= 0) {
+      return { ok: false, error: "invalid_transId", message: "Thiếu/không hợp lệ transId giao dịch MoMo gốc" };
+    }
+    if (amount <= 0) {
+      return { ok: false, error: "invalid_amount", message: "Số tiền hoàn không hợp lệ" };
+    }
+
+    const orderId = String(input?.orderId || `REF_${transId}_${Date.now()}`).slice(0, 50);
+    const requestId = String(input?.requestId || `RE_${Date.now()}`).slice(0, 50);
+    const description = String(input?.description || "Refund booking").slice(0, 255);
+    const lang = input?.lang === "en" ? "en" : "vi";
+
+    const rawSignature =
+      `accessKey=${this.accessKey}` +
+      `&amount=${amount}` +
+      `&description=${description}` +
+      `&orderId=${orderId}` +
+      `&partnerCode=${this.partnerCode}` +
+      `&requestId=${requestId}` +
+      `&transId=${transId}`;
+
+    const signature = crypto.createHmac("sha256", this.secretKey).update(rawSignature).digest("hex");
+
+    const body = {
+      partnerCode: this.partnerCode,
+      orderId,
+      requestId,
+      amount,
+      transId,
+      lang,
+      description,
+      signature,
+    };
+
+    try {
+      const resp = await axios.post(this.refundEndpoint, body, {
+        // MoMo docs: minimum timeout 30s
+        timeout: 35000,
+      });
+      const data = resp?.data || {};
+      const resultCode = Number(data?.resultCode);
+      const ok = resultCode === 0;
+      return { ok, data, resultCode, message: String(data?.message || "") || (ok ? "Successful" : "Refund failed") };
+    } catch (e) {
+      const upstream = e?.response?.data;
+      const msg = String(upstream?.message || e?.message || "Refund request failed");
+      return {
+        ok: false,
+        error: "network_or_upstream",
+        message: msg,
+        data: upstream || null,
+      };
+    }
   }
 
   /**

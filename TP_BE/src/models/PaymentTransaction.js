@@ -27,7 +27,8 @@ const paymentTransactionSchema = new mongoose.Schema(
     amount: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      enum: ["created", "succeeded", "failed", "refunded"],
+      /** pending_provider: refund submitted; gateway may settle async */
+      enum: ["created", "succeeded", "failed", "refunded", "pending_provider"],
       default: "created",
       index: true,
     },

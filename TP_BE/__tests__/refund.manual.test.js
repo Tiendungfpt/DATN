@@ -106,7 +106,7 @@ describe("Refund manual flow", () => {
       .send({ manualRef: "MANUAL_1", adminNote: "Đã chuyển khoản" })
       .expect(200);
 
-    expect(approveRes.body?.refund?.status).toBe("success");
+    expect(approveRes.body?.refund?.status).toBe("completed");
     const updated = await Booking.findById(booking._id).lean();
     expect(updated?.refund_status).toBe("paid");
     expect(["refunded", "partial_refunded"]).toContain(String(updated?.deposit_status || ""));

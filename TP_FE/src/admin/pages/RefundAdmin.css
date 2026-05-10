@@ -1,0 +1,92 @@
+.refund-admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.refund-admin-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.refund-admin-subtitle {
+  margin-top: 6px;
+  max-width: 70ch;
+}
+
+.refund-admin-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.refund-admin-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.refund-admin-filter > span {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.refund-admin-select {
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.refund-admin-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.18),
+    0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.refund-admin-loading {
+  padding: 10px 0;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.refund-admin-error {
+  padding: 10px 0;
+  color: crimson;
+  font-weight: 800;
+}
+
+/* Dark-theme harmony (admin premium dark overrides use dark cards already) */
+.booking-admin-page.refund-admin-page .refund-admin-filter > span {
+  color: #9aa8c4;
+}
+
+.booking-admin-page.refund-admin-page .refund-admin-select {
+  background: #17243f;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #dfe8fb;
+}
+
+.booking-admin-page.refund-admin-page .refund-admin-select:focus {
+  border-color: rgba(214, 182, 112, 0.6);
+  box-shadow:
+    0 0 0 3px rgba(214, 182, 112, 0.22),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
