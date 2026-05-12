@@ -1,8 +1,3 @@
-/**
- * Badge trạng thái hoàn tiền — đồng bộ palette Bootstrap.
- *
- * @param {{ status?: string }} props
- */
 export default function RefundStatusBadge({ status }) {
   const s = String(status || "").toLowerCase();
   const map = {
@@ -17,7 +12,7 @@ export default function RefundStatusBadge({ status }) {
   const labelVi =
     {
       pending: "Chờ xử lý",
-      processing: "Đang xử lý cổng",
+      processing: "Đang xử lý",
       completed: "Hoàn tất",
       success: "Hoàn tất",
       failed: "Thất bại",

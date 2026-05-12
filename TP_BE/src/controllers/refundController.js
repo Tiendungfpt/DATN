@@ -10,11 +10,6 @@ import { computeRefundBreakdown } from "../utils/refundPolicy.js";
 import { createNotification } from "../utils/notification.js";
 import { sendRefundStatusEmail } from "../services/emailService.js";
 
-/**
- * Sau khi hủy/gỡ phòng gán — đồng bộ occupied/available như trong booking cancel.
- *
- * @param {unknown} roomIdOrList
- */
 async function syncRoomStatuses(roomIdOrList) {
   const raw = Array.isArray(roomIdOrList) ? roomIdOrList : [roomIdOrList];
   const ids = raw.filter(Boolean);
@@ -28,11 +23,6 @@ async function syncRoomStatuses(roomIdOrList) {
   }
 }
 
-/**
- * Ước tính số tiền đã thu của khách dùng làm căn cứ áp refund % policy.
- *
- * @param {import("../models/Booking.js").Booking} booking
- */
 function resolveRefundOriginalAmount(booking) {
   const prepaid = Math.round(Math.max(0, Number(booking.prepaid_amount) || 0));
   const depositPaid = Math.round(Math.max(0, Number(booking.deposit_paid_amount) || 0));
@@ -44,28 +34,17 @@ function resolveRefundOriginalAmount(booking) {
   return Math.max(0, base);
 }
 
-/** @typedef {{ refundAmount: number, cancellationFee: number, originalAmount: number }} BreakdownLike */
-
-/**
- * Chuẩn hóa DTO camelCase — API mới của module refund.
- *
- * @param {unknown} raw
- */
 function serializeRefund(raw) {
   const o =
     typeof raw?.toObject === "function"
       ? raw.toObject({ virtuals: false })
-      : { .../** @type {Record<string, unknown>} */ (raw || {}) };
+      : { ...(raw || {}) };
 
   const bookingIdResolved =
-    o.booking_id && typeof o.booking_id === "object" && /** @type {{ _id?: unknown }} */ (o.booking_id)._id
-      ? /** @type {{ _id: unknown }} */ (o.booking_id)._id
-      : o.booking_id;
+    o.booking_id && typeof o.booking_id === "object" && o.booking_id._id ? o.booking_id._id : o.booking_id;
 
   const userIdResolved =
-    o.user_id && typeof o.user_id === "object" && /** @type {{ _id?: unknown }} */ (o.user_id)._id
-      ? /** @type {{ _id: unknown }} */ (o.user_id)._id
-      : o.user_id;
+    o.user_id && typeof o.user_id === "object" && o.user_id._id ? o.user_id._id : o.user_id;
 
   const out = {};
   const statusRaw = String(o.status || "pending");
@@ -103,11 +82,6 @@ function serializeRefund(raw) {
   return out;
 }
 
-/**
- * Lấy thông tin cổng thanh toán từ ledger — map provider nội bộ sang nhánh refund.
- *
- * @param {import("../models/Booking.js").Booking} booking
- */
 async function resolvePaymentLedgerMeta(booking) {
   const txn = await PaymentTransaction.findOne({
     booking_id: booking._id,
@@ -121,7 +95,6 @@ async function resolvePaymentLedgerMeta(booking) {
     return { payment_method: booking.payment_provider || "", transId: booking.payment_transaction_id || "" };
   }
 
-  /** @type {string} */
   let gateway = booking.payment_provider || "";
   const p = String(txn.provider || "").toLowerCase();
   if (!gateway && p === "momo") gateway = "momo";
@@ -131,13 +104,6 @@ async function resolvePaymentLedgerMeta(booking) {
   return { payment_method: gateway || p || "", transId };
 }
 
-/**
- * Áp ledger khi gateway hoàn tiền thật/thành công (mirror confirm-refund legacy).
- *
- * @param {import("../models/Booking.js").Booking} booking
- * @param {number} amt
- * @param {{ createLedger?: boolean, ledger?: { provider?: string, provider_order_id?: string, provider_trans_id?: string, provider_message?: string, provider_payload?: unknown } }} [opts]
- */
 async function applySuccessfulRefundLedger(booking, amt, opts = {}) {
   const refundToProcess = Math.max(0, Math.round(Number(amt) || 0));
   if (refundToProcess <= 0) return;
@@ -173,15 +139,6 @@ async function applySuccessfulRefundLedger(booking, amt, opts = {}) {
   }
 }
 
-/**
- * Resolve original MoMo transId (gateway) for refund.
- *
- * Priority:
- * - booking.payment_transaction_id (stored from callback/ipn transId)
- * - latest succeeded PaymentTransaction (deposit|balance) provider_trans_id
- *
- * @param {import("../models/Booking.js").Booking} booking
- */
 async function resolveMomoOriginalTransId(booking) {
   const fromBooking = Number(String(booking?.payment_transaction_id || "").trim());
   if (Number.isFinite(fromBooking) && fromBooking > 0) return Math.trunc(fromBooking);
@@ -217,30 +174,21 @@ function isMomoRefundPendingResult(resultCode) {
   return getMomoAsyncResultCodes().includes(n);
 }
 
-/**
- * @param {import("../models/Booking.js").Booking} booking
- * @param {import("mongoose").Document} refund
- */
 async function notifyRefundProcessing(booking, refund) {
   try {
     await createNotification({
       userId: booking.user_id,
       bookingId: booking._id,
       type: "refund_processing",
-      title: "Hoàn tiền đang được cổng thanh toán xử lý",
-      message: `Số tiền ${(Number(refund.amount) || 0).toLocaleString("vi-VN")} ₫ — có thể vài giây đến vài ngày mới về tài khoản khách.`,
+      title: "Đang xử lý hoàn tiền",
+      message: `${(Number(refund.amount) || 0).toLocaleString("vi-VN")} ₫ — tiền có về chậm vài phút hoặc vài ngày tùy ngân hàng.`,
       eventKey: `refund_processing_${booking._id}_${Date.now()}`,
     });
   } catch {
-    /** non-blocking */
+    /* ignore */
   }
 }
 
-/**
- * @param {import("../models/Booking.js").Booking} booking
- * @param {import("mongoose").Document} refund
- * @param {{ completed: boolean, message?: string }} opts
- */
 async function notifyRefundGatewayOutcome(booking, refund, opts) {
   const { completed, message = "" } = opts;
   try {
@@ -248,10 +196,10 @@ async function notifyRefundGatewayOutcome(booking, refund, opts) {
       userId: booking.user_id,
       bookingId: booking._id,
       type: completed ? "refund_completed" : "refund_failed",
-      title: completed ? "Hoàn tiền đã xử lý xong" : "Hoàn tiền thất bại",
+      title: completed ? "Hoàn tiền xong" : "Hoàn tiền không thành công",
       message: completed
-        ? `Yêu cầu hoàn ${(Number(refund.amount) || 0).toLocaleString("vi-VN")} ₫ đã hoàn tất trên hệ thống. ${message}`.trim()
-        : `Hoàn tiền thất bại: ${message || "Lỗi cổng thanh toán"}`,
+        ? `${(Number(refund.amount) || 0).toLocaleString("vi-VN")} ₫. ${message}`.trim()
+        : `${message || "Lỗi thanh toán"}`,
       eventKey: `refund_outcome_${booking._id}_${completed ? "ok" : "fail"}_${String(refund._id).slice(-6)}`,
     });
     if (booking.guest_email) {
@@ -265,19 +213,10 @@ async function notifyRefundGatewayOutcome(booking, refund, opts) {
       });
     }
   } catch {
-    /** non-blocking */
+    /* ignore */
   }
 }
 
-/**
- * Gọi MoMo Refund API sau khi admin duyệt (hoặc retry).
- *
- * @returns {Promise<
- *  | { outcome: "completed"; refund: import("mongoose").Document }
- *  | { outcome: "async"; refund: import("mongoose").Document }
- *  | { outcome: "failed"; refund: import("mongoose").Document; clientMessage: string }
- * >}
- */
 async function runMomoRefundGateway(refund, booking, { amt, manualRef, finishedAt }) {
   const originalTransId = await resolveMomoOriginalTransId(booking);
   if (!originalTransId) {
@@ -296,7 +235,7 @@ async function runMomoRefundGateway(refund, booking, { amt, manualRef, finishedA
       outcome: "failed",
       refund,
       clientMessage:
-        "Không tìm thấy transId MoMo gốc để hoàn online. Vui lòng hoàn thủ công và nhập manualRef (mã tham chiếu).",
+        "Không tìm thấy mã giao dịch MoMo gốc. Hoàn tay và nhập mã tham chiếu khi duyệt.",
     };
   }
 
@@ -359,7 +298,7 @@ async function runMomoRefundGateway(refund, booking, { amt, manualRef, finishedA
 
     await notifyRefundGatewayOutcome(booking, refund, {
       completed: true,
-      message: "Cổng MoMo đã chấp nhận hoàn tiền (tiền có thể về ví/ngân hàng sau vài ngày).",
+      message: "MoMo đã nhận hoàn — tiền có thể về chậm vài ngày.",
     });
 
     return { outcome: "completed", refund };
@@ -411,13 +350,13 @@ async function runMomoRefundGateway(refund, booking, { amt, manualRef, finishedA
 
   await notifyRefundGatewayOutcome(booking, refund, {
     completed: false,
-    message: String(r?.message || "MoMo từ chối hoặc lỗi"),
+    message: String(r?.message || "MoMo báo lỗi"),
   });
 
   return {
     outcome: "failed",
     refund,
-    clientMessage: `Hoàn tiền MoMo thất bại: ${String(r?.message || "")}`.trim(),
+    clientMessage: `MoMo: ${String(r?.message || "lỗi")}`.trim(),
   };
 }
 
@@ -436,7 +375,6 @@ function momoQueryExtractRefundTransId(data) {
   return "";
 }
 
-/** POST /api/refunds/admin/query/:refundId — tra cứu kết quả hoàn MoMo (async) */
 export async function queryRefundProvider(req, res) {
   try {
     const id = String(req.params.refundId || "");
@@ -449,17 +387,17 @@ export async function queryRefundProvider(req, res) {
     }
     const pm = String(refund.payment_method || "").toLowerCase();
     if (pm !== "momo") {
-      return res.status(400).json({ message: "Tra cứu cổng chỉ hỗ trợ thanh toán MoMo." });
+      return res.status(400).json({ message: "Chỉ tra cứu được khi thanh toán bằng MoMo." });
     }
     const st = String(refund.status || "");
     if (st === "completed" || st === "success") {
-      return res.json({ message: "Refund đã hoàn tất.", refund: serializeRefund(refund) });
+      return res.json({ message: "Đã hoàn tiền xong.", refund: serializeRefund(refund) });
     }
     const orderId = String(refund.provider_refund_order_id || "").trim();
     const requestId = String(refund.provider_refund_request_id || "").trim();
     if (!orderId || !requestId) {
       return res.status(400).json({
-        message: "Chưa có mã tra cứu MoMo. Cần đã gửi yêu cầu hoàn ít nhất một lần (duyệt hoặc thử lại).",
+        message: "Chưa có mã tra cứu — cần duyệt hoặc thử lại hoàn trước.",
       });
     }
     const q = await momoController.refundQueryInternal({ orderId, requestId, lang: "vi" });
@@ -502,11 +440,11 @@ export async function queryRefundProvider(req, res) {
 
       await notifyRefundGatewayOutcome(booking, refund, {
         completed: true,
-        message: "Tra cứu MoMo xác nhận hoàn tiền thành công.",
+        message: "MoMo xác nhận đã hoàn.",
       });
 
       return res.json({
-        message: "Tra cứu: cổng đã hoàn tất.",
+        message: "Đã hoàn xong.",
         refund: serializeRefund(refund),
         query: data,
       });
@@ -514,7 +452,7 @@ export async function queryRefundProvider(req, res) {
 
     await refund.save();
     return res.json({
-      message: "Tra cứu xong — chưa xác nhận hoàn tất hoặc đang xử lý.",
+      message: "Chưa thấy hoàn xong — thử lại sau.",
       refund: serializeRefund(refund),
       query: data,
     });
@@ -523,7 +461,6 @@ export async function queryRefundProvider(req, res) {
   }
 }
 
-/** POST /api/refunds/admin/retry/:refundId — thử lại gọi Refund API MoMo sau failed */
 export async function retryProviderRefund(req, res) {
   try {
     const id = String(req.params.refundId || "");
@@ -573,13 +510,13 @@ export async function retryProviderRefund(req, res) {
     const gatewayOut = await runMomoRefundGateway(refund, booking, { amt, manualRef, finishedAt });
     if (gatewayOut.outcome === "completed") {
       return res.json({
-        message: "Thử lại: cổng MoMo chấp nhận hoàn tiền.",
+        message: "MoMo đã nhận hoàn.",
         refund: serializeRefund(gatewayOut.refund),
       });
     }
     if (gatewayOut.outcome === "async") {
       return res.status(202).json({
-        message: "Thử lại: đã gửi tới MoMo, đang xử lý bất đồng bộ.",
+        message: "Đã gửi lại MoMo — đang xử lý, chờ tra cứu hoặc thử lại.",
         refund: serializeRefund(gatewayOut.refund),
       });
     }
@@ -592,7 +529,6 @@ export async function retryProviderRefund(req, res) {
   }
 }
 
-/** POST /api/refunds/request */
 export async function requestRefund(req, res) {
   try {
     const bookingIdRaw = req.body?.bookingId;
@@ -628,22 +564,17 @@ export async function requestRefund(req, res) {
       return res.status(403).json({ message: "Bạn không thể huỷ booking của người khác." });
     }
 
-    // Allow refund request for:
-    // - pending/confirmed bookings (user cancels and refunds in one action)
-    // - cancelled bookings that were cancelled via legacy flow but still need refund processing
     if (!["pending", "confirmed", "cancelled"].includes(String(booking.status || ""))) {
       return res.status(400).json({
-        message:
-          "Chỉ áp dụng khi booking đang chờ/xác nhận hoặc đã hủy (để xử lý hoàn tiền) và đã có thanh toán.",
+        message: "Chỉ hủy/hoàn được khi đặt đang chờ, đã xác nhận hoặc đã hủy và đã có thanh toán.",
       });
     }
 
     const originalAmount = resolveRefundOriginalAmount(booking);
     if (originalAmount <= 0) {
-      return res.status(400).json({ message: "Không có số tiền đã thanh toán để áp policy hoàn tiền." });
+      return res.status(400).json({ message: "Chưa có khoản thanh toán để hoàn." });
     }
 
-    /** @type {BreakdownLike} — chính sách cố định: % theo calendar day tới check-in */
     const breakdown = computeRefundBreakdown(new Date(), booking.check_in_date, originalAmount);
     const ledgerMeta = await resolvePaymentLedgerMeta(booking);
 
@@ -651,14 +582,9 @@ export async function requestRefund(req, res) {
       booking.payment_transaction_id = ledgerMeta.transId;
     }
 
-    /** @type {string} — giao dịch gốc: lưu trên booking + refund.payment_method */
     const paymentMethodStored = String(booking.payment_provider || ledgerMeta.payment_method || "momo").trim();
 
     const now = new Date();
-    const prevRooms = [...(booking.assigned_room_ids || [])];
-    if (booking.assigned_room_id) prevRooms.push(booking.assigned_room_id);
-
-    // If booking already cancelled via legacy flow, do NOT overwrite cancelled_at unconditionally.
     const wasCancelledAlready = String(booking.status || "") === "cancelled";
 
     if (breakdown.refundAmount > 0) {
@@ -680,17 +606,10 @@ export async function requestRefund(req, res) {
       booking.refund_status = "none";
     }
 
-    if (!wasCancelledAlready) {
-      booking.status = "cancelled";
-      booking.cancelled_at = now;
-      booking.cancel_reason = reason;
-      booking.assigned_room_ids = [];
-      booking.assigned_room_id = null;
-    } else {
-      // keep legacy cancellation metadata; only fill missing reason if empty
-      if (!booking.cancel_reason) booking.cancel_reason = reason;
-      if (!booking.cancelled_at) booking.cancelled_at = now;
-    }
+    // Flow B: user request does NOT cancel booking immediately.
+    // Booking will be cancelled only after admin approves the refund request.
+    // We still keep a reason snapshot for admin review/email context.
+    if (!booking.cancel_reason) booking.cancel_reason = reason;
 
     await booking.save();
 
@@ -715,7 +634,6 @@ export async function requestRefund(req, res) {
         payout_bank_account_number: payoutBankAccountNumber,
       });
     } catch (e) {
-      // Unique partial index may throw duplicate key when two tabs submit simultaneously
       const code = Number(e?.code || 0);
       if (code === 11000) {
         const existing = await Refund.findOne({
@@ -732,20 +650,16 @@ export async function requestRefund(req, res) {
       throw e;
     }
 
-    for (const p of prevRooms) {
-      await syncRoomStatuses(p);
-    }
-
     try {
       await createNotification({
         userId: booking.user_id,
         bookingId: booking._id,
-        type: "booking_cancelled",
-        title: "Yêu cầu hủy & hoàn tiền",
+        type: "refund_requested",
+        title: "Đã gửi yêu cầu hủy & hoàn tiền",
         message:
           breakdown.refundAmount > 0
-            ? `Booking #${String(booking._id).slice(-6).toUpperCase()} đã hủy. Hoàn ${breakdown.refundAmount.toLocaleString("vi-VN")} ₫ đang chờ xử lý (policy mới).`
-            : `Booking #${String(booking._id).slice(-6).toUpperCase()} đã hủy — không được hoàn theo ngày còn lại.`,
+            ? `#${String(booking._id).slice(-6).toUpperCase()} đã gửi yêu cầu. Hoàn ${breakdown.refundAmount.toLocaleString("vi-VN")} ₫ đang chờ khách sạn duyệt.`
+            : `#${String(booking._id).slice(-6).toUpperCase()} đã gửi yêu cầu hủy. Trường hợp này không được hoàn tiền theo chính sách.`,
         eventKey: `refund_requested_${booking._id}`,
       });
       if (booking.guest_email) {
@@ -759,12 +673,12 @@ export async function requestRefund(req, res) {
         });
       }
     } catch {
-      /** non-blocking */
+      /* ignore */
     }
 
     if (breakdown.refundAmount > 0) {
       return res.status(201).json({
-        message: "Đã nhận yêu cầu. Vui lòng chờ admin duyệt hoàn tiền thủ công.",
+        message: "Đã gửi. Chờ khách sạn duyệt hoàn tiền.",
         refund: serializeRefund(refundDoc),
         policy: {
           cancellationFee: breakdown.cancellationFee,
@@ -774,7 +688,6 @@ export async function requestRefund(req, res) {
       });
     }
 
-    // refund 0₫ theo policy: đóng sổ ngay để UI không chờ
     refundDoc.status = "completed";
     refundDoc.processed_at = new Date();
     refundDoc.refund_transaction_id = "REFUND_0";
@@ -782,7 +695,7 @@ export async function requestRefund(req, res) {
     await refundDoc.save();
 
     return res.status(201).json({
-      message: "Đã hủy booking. Số tiền hoàn 0₫ theo policy.",
+      message: "Đã gửi yêu cầu. Trường hợp này không hoàn tiền theo thời hạn hủy.",
       refund: serializeRefund(refundDoc),
       policy: {
         cancellationFee: breakdown.cancellationFee,
@@ -795,7 +708,6 @@ export async function requestRefund(req, res) {
   }
 }
 
-/** POST /api/refunds/admin/approve/:refundId — admin marks manual refund as done */
 export async function approveRefundManual(req, res) {
   try {
     const id = String(req.params.refundId || "");
@@ -823,7 +735,7 @@ export async function approveRefundManual(req, res) {
     }
 
     const adminNote = String(req.body?.adminNote || "").trim();
-    const manualRef = String(req.body?.manualRef || "").trim(); // bank ref / momo ref / evidence id
+    const manualRef = String(req.body?.manualRef || "").trim();
     const finishedAt = new Date();
     const amt = Math.round(Number(refund.amount) || 0);
 
@@ -835,7 +747,6 @@ export async function approveRefundManual(req, res) {
       Boolean(momoController?.accessKey) &&
       Boolean(momoController?.secretKey);
 
-    // Mark processing early to avoid double-approve and to show progress in admin UI.
     refund.status = "processing";
     refund.processed_by = req.userId || null;
     refund.processed_at = null;
@@ -847,19 +758,45 @@ export async function approveRefundManual(req, res) {
     refund.provider_payload = null;
     await refund.save();
 
-    // Auto refund via MoMo if possible; otherwise fallback to manual approval.
     if (shouldAutoRefundMomo) {
       const gatewayOut = await runMomoRefundGateway(refund, booking, { amt, manualRef, finishedAt });
       if (gatewayOut.outcome === "completed") {
+        // Cancel booking only after refund approval (Flow B)
+        if (String(booking.status || "") !== "cancelled") {
+          const prevRooms = [...(booking.assigned_room_ids || [])];
+          if (booking.assigned_room_id) prevRooms.push(booking.assigned_room_id);
+          booking.status = "cancelled";
+          booking.cancelled_at = finishedAt;
+          booking.cancel_reason = booking.cancel_reason || refund.reason || "refund_approved";
+          booking.assigned_room_ids = [];
+          booking.assigned_room_id = null;
+          await booking.save();
+          for (const p of prevRooms) {
+            await syncRoomStatuses(p);
+          }
+        }
         return res.json({
-          message: "Đã duyệt — cổng MoMo chấp nhận hoàn tiền.",
+          message: "Đã duyệt — MoMo đã nhận hoàn.",
           refund: serializeRefund(gatewayOut.refund),
         });
       }
       if (gatewayOut.outcome === "async") {
+        // Cancel booking after admin approval even when provider is async (Flow B)
+        if (String(booking.status || "") !== "cancelled") {
+          const prevRooms = [...(booking.assigned_room_ids || [])];
+          if (booking.assigned_room_id) prevRooms.push(booking.assigned_room_id);
+          booking.status = "cancelled";
+          booking.cancelled_at = finishedAt;
+          booking.cancel_reason = booking.cancel_reason || refund.reason || "refund_approved";
+          booking.assigned_room_ids = [];
+          booking.assigned_room_id = null;
+          await booking.save();
+          for (const p of prevRooms) {
+            await syncRoomStatuses(p);
+          }
+        }
         return res.status(202).json({
-          message:
-            "Đã gửi yêu cầu hoàn tới MoMo — cổng đang xử lý bất đồng bộ. Dùng Tra cứu hoặc Thử lại hoàn MoMo.",
+          message: "Đã gửi MoMo — đang xử lý, dùng Tra cứu hoặc Thử lại.",
           refund: serializeRefund(gatewayOut.refund),
         });
       }
@@ -869,7 +806,6 @@ export async function approveRefundManual(req, res) {
       });
     }
 
-    // Manual fallback
     refund.status = "completed";
     refund.refund_transaction_id = manualRef || refund.refund_transaction_id || `MANUAL_REF_${Date.now()}`;
     refund.processed_at = finishedAt;
@@ -908,13 +844,28 @@ export async function approveRefundManual(req, res) {
       await booking.save();
     }
 
+    // Cancel booking only after admin approval (Flow B)
+    if (String(booking.status || "") !== "cancelled") {
+      const prevRooms = [...(booking.assigned_room_ids || [])];
+      if (booking.assigned_room_id) prevRooms.push(booking.assigned_room_id);
+      booking.status = "cancelled";
+      booking.cancelled_at = finishedAt;
+      booking.cancel_reason = booking.cancel_reason || refund.reason || "refund_approved";
+      booking.assigned_room_ids = [];
+      booking.assigned_room_id = null;
+      await booking.save();
+      for (const p of prevRooms) {
+        await syncRoomStatuses(p);
+      }
+    }
+
     await notifyRefundGatewayOutcome(booking, refund, {
       completed: true,
-      message: "Admin đã xác nhận hoàn tiền (thủ công / đối soát).",
+      message: "Khách sạn đã xác nhận hoàn tiền.",
     });
 
     return res.json({
-      message: "Đã duyệt hoàn tiền (thủ công).",
+      message: "Đã duyệt hoàn tiền.",
       refund: serializeRefund(refund),
     });
   } catch (e) {
@@ -922,7 +873,6 @@ export async function approveRefundManual(req, res) {
   }
 }
 
-/** POST /api/refunds/admin/reject/:refundId — admin rejects manual refund */
 export async function rejectRefundManual(req, res) {
   try {
     const id = String(req.params.refundId || "");
@@ -948,7 +898,6 @@ export async function rejectRefundManual(req, res) {
     refund.admin_note = adminNote;
     await refund.save();
 
-    // reflect on booking so UI can show rejected (no money moved)
     const booking = await Booking.findById(refund.booking_id);
     if (booking) {
       booking.deposit_status = "paid";
@@ -963,7 +912,6 @@ export async function rejectRefundManual(req, res) {
   }
 }
 
-/** GET /api/refunds/my */
 export async function getMyRefunds(req, res) {
   try {
     const list = await Refund.find({ user_id: req.userId })
@@ -987,12 +935,10 @@ export async function getMyRefunds(req, res) {
   }
 }
 
-/** GET /api/refunds/admin/list — quản trị duyệt mock */
 export async function listRefundsAdmin(req, res) {
   try {
     const statusRaw = req.query.status ? String(req.query.status) : "";
     const normalized = statusRaw.trim().toLowerCase();
-    /** @type {Record<string, unknown>} */
     let filter = {};
     if (normalized && normalized !== "all") {
       if (!["pending", "processing", "completed", "failed", "success"].includes(normalized)) {
@@ -1031,7 +977,6 @@ export async function listRefundsAdmin(req, res) {
   }
 }
 
-/** GET /api/refunds/:refundId */
 export async function getRefundDetail(req, res) {
   try {
     const id = String(req.params.refundId || "");

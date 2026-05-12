@@ -1,9 +1,5 @@
 import mongoose from "mongoose";
 
-/**
- * Payment ledger for booking (deposit / balance / refund).
- * This is the source of truth for payment provider interactions.
- */
 const paymentTransactionSchema = new mongoose.Schema(
   {
     booking_id: {
@@ -27,7 +23,6 @@ const paymentTransactionSchema = new mongoose.Schema(
     amount: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      /** pending_provider: refund submitted; gateway may settle async */
       enum: ["created", "succeeded", "failed", "refunded", "pending_provider"],
       default: "created",
       index: true,
@@ -35,7 +30,6 @@ const paymentTransactionSchema = new mongoose.Schema(
     provider_order_id: { type: String, default: "", index: true },
     provider_trans_id: { type: String, default: "", index: true },
     provider_message: { type: String, default: "" },
-    /** Snapshot of provider payloads for audit/debug */
     provider_payload: { type: mongoose.Schema.Types.Mixed, default: null },
   },
   { timestamps: true, versionKey: false },

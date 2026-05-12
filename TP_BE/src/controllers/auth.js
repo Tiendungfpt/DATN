@@ -71,9 +71,17 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
-      email: String(email).trim().toLowerCase(),
-    }).select("+password");
+    const emailNorm = String(email).trim().toLowerCase();
+
+    // Khớp email không phân biệt hoa/thường (dữ liệu cũ có thể lưu User@Mail.com)
+    let user = await User.findOne({ email: emailNorm }).select("+password");
+    if (!user) {
+      user = await User.findOne({
+        $expr: {
+          $eq: [{ $toLower: { $trim: { input: "$email" } } }, emailNorm],
+        },
+      }).select("+password");
+    }
 
     if (!user) {
       return res.status(401).json({
@@ -81,7 +89,13 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    if (!user.password || typeof user.password !== "string") {
+      return res.status(401).json({
+        message: "Email hoặc mật khẩu không đúng",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(String(password), user.password);
 
     if (!isMatch) {
       return res.status(401).json({

@@ -10,9 +10,9 @@ export const getMyBookings = () => {
   return api.get("/bookings/user");
 };
 
-/** GET /api/bookings — admin */
-export const getAllBookingsAdmin = () => {
-  return api.get("/bookings");
+/** GET /api/bookings — admin (phân trang: { items, total, page, pageSize, totalPages }) */
+export const getAllBookingsAdmin = (params = {}) => {
+  return api.get("/bookings", { params });
 };
 
 /** GET /api/bookings/:id */

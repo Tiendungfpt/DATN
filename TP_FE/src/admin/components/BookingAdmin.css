@@ -1,3 +1,9 @@
+.booking-admin-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-bottom: 28px;
+}
+
 .booking-admin-page h2 {
   margin: 0;
   font-size: 1.85rem;
@@ -8,6 +14,136 @@
 .booking-admin-subtitle {
   margin: 6px 0 14px;
   color: #64748b;
+}
+
+.booking-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.booking-search {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.booking-search-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.booking-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.booking-search-input:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.booking-search-clear {
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.booking-search-clear:hover:not(:disabled) {
+  background: #eef2f7;
+}
+
+.booking-search-clear:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.booking-admin-error {
+  color: #b91c1c;
+  font-weight: 700;
+  margin: 8px 0 0;
+}
+
+.booking-admin-loading,
+.booking-inline-loading {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.booking-inline-loading {
+  margin-top: -4px;
+}
+
+.booking-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.booking-page-btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.booking-page-btn:hover:not(:disabled) {
+  background: #eef2f7;
+}
+
+.booking-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.booking-pagination-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.booking-pagination-pages {
+  color: #334155;
 }
 
 .booking-admin-tabs {
@@ -101,62 +237,145 @@
 
 .booking-admin-grid {
   display: grid;
-  gap: 12px;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .booking-admin-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
   padding: 0;
   background: #fff;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.06);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .ba-card-head {
-  padding: 12px 14px;
+  padding: 14px 16px 12px;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   align-items: flex-start;
-  border-bottom: 1px solid #eef2f7;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.ba-card-head-left {
+  min-width: 0;
+  flex: 1;
 }
 
 .ba-card-title {
   font-weight: 950;
   color: #0f172a;
-  font-size: 15px;
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
   display: flex;
   gap: 10px;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
 }
 
 .ba-card-id {
-  font-weight: 900;
-  font-size: 12px;
-  color: #334155;
-  background: #f1f5f9;
+  font-weight: 800;
+  font-size: 11px;
+  color: #475569;
+  background: rgba(241, 245, 249, 0.95);
   border: 1px solid #e2e8f0;
-  padding: 2px 8px;
-  border-radius: 999px;
-  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
 }
 
+.ba-card-meta {
+  margin: 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ba-card-meta-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: baseline;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.ba-meta-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.ba-meta-value {
+  margin: 0;
+  font-weight: 650;
+  color: #334155;
+  word-break: break-word;
+}
+
+.ba-meta-value--truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ba-meta-sep {
+  color: #94a3b8;
+  font-weight: 700;
+  padding: 0 2px;
+}
+
+.ba-card-head-right {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.ba-card-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+@media (max-width: 540px) {
+  .ba-card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ba-card-head-right {
+    align-items: flex-start;
+  }
+
+  .ba-card-badges {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .ba-card-meta-row {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+}
+
+/* Dùng ở RefundAdmin / card khác */
 .ba-card-sub {
   margin-top: 4px;
   color: #64748b;
   font-size: 12.5px;
   font-weight: 700;
-}
-
-.ba-card-head-right {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .booking-admin-status {
@@ -193,6 +412,11 @@
   color: #3730a3;
 }
 
+.booking-admin-status.pending_refund {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
 .booking-admin-status-row {
   display: flex;
   flex-wrap: wrap;
@@ -217,20 +441,29 @@
   color: #854d0e;
 }
 
-/* Luồng: chờ xác nhận → xác nhận → check-in → check-out */
+/* Luồng lưu trú — gọn, nằm trong body */
 .booking-admin-flow {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0;
-  margin: 12px 14px;
-  padding: 10px 12px;
-  background: #f8fafc;
+  margin: 0 16px 12px;
+  padding: 8px 10px;
+  background: #f1f5f9;
   border-radius: 10px;
   border: 1px solid #e2e8f0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.booking-admin-flow--compact {
+  margin-bottom: 10px;
 }
 
 .booking-admin-flow--cancelled {
+  justify-content: center;
+  text-align: center;
+  padding: 8px 12px;
   color: #991b1b;
   font-size: 0.85rem;
   font-weight: 600;
@@ -284,11 +517,101 @@
   background: #86efac;
 }
 
+.booking-admin-flow--compact .booking-admin-flow-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.booking-admin-flow--compact .booking-admin-flow-label {
+  font-size: 0.68rem;
+}
+
+.booking-admin-flow--compact .booking-admin-flow-line {
+  width: 12px;
+  margin: 0 4px;
+}
+
+.ba-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 4px 0 0;
+}
+
+.ba-card-panel {
+  margin: 0 16px 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e8eef4;
+}
+
+.ba-card-panel .ba-card-grid {
+  padding: 0;
+}
+
+.ba-card-panel .ba-money {
+  margin: 12px 0 0;
+  background: #fff;
+  border-color: #e2e8f0;
+}
+
 .booking-admin-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin: 12px 14px 14px;
+}
+
+.booking-admin-actions.ba-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin: 0;
+  margin-top: auto;
+  padding: 14px 16px 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.5) 0%, #fff 40%);
+}
+
+.ba-actions-primary,
+.ba-actions-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ba-actions-primary .ba-btn,
+.ba-actions-primary .btn-confirm,
+.ba-actions-secondary .ba-btn,
+.ba-actions-secondary .btn-confirm {
+  flex: 1 1 auto;
+  min-width: min(100%, 148px);
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 40px;
+}
+
+.ba-actions-risk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding-top: 10px;
+  margin-top: 2px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.65);
+}
+
+.ba-actions-risk .btn-cancel,
+.ba-actions-risk .ba-btn--danger {
+  flex: 1 1 auto;
+  min-width: min(100%, 120px);
+  min-height: 38px;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .booking-admin-actions button {
@@ -300,10 +623,10 @@
 }
 
 .ba-card-grid {
-  padding: 0 14px;
+  padding: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px 14px;
+  gap: 10px 12px;
 }
 
 @media (max-width: 980px) {
@@ -313,10 +636,11 @@
 }
 
 .ba-kv {
-  border: 1px solid #eef2f7;
+  border: 1px solid rgba(226, 232, 240, 0.95);
   background: #fff;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 10px 12px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .ba-k {
@@ -338,8 +662,8 @@
 .ba-money {
   margin: 12px 14px 0;
   border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  border-radius: 12px;
+  background: #fff;
+  border-radius: 10px;
   padding: 10px 12px;
 }
 
@@ -446,6 +770,35 @@
   cursor: not-allowed;
 }
 
+.ba-head-with-back {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ba-head-with-back h3 {
+  margin: 0;
+}
+
+.ba-nav-back {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ba-nav-back:hover {
+  background: #eef2f7;
+  border-color: #cbd5e1;
+}
+
 /* ===== Checkout page UI ===== */
 .co-shell {
   max-width: 980px;
@@ -506,11 +859,11 @@
 .co-row--due {
   font-size: 16px;
   font-weight: 900;
-  color: #1e3a8a;
+  color: #78350f;
 }
 
 .co-row--due strong {
-  color: #1d4ed8;
+  color: #b45309;
 }
 
 .co-field {
@@ -554,11 +907,16 @@
   height: 42px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #d0a649 0%, #bf9537 100%);
+  color: #0b1020;
   font-weight: 900;
   letter-spacing: 0.02em;
-  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.28);
+  box-shadow: 0 10px 20px rgba(191, 149, 55, 0.26);
+  cursor: pointer;
+}
+
+.co-submit:hover:not(:disabled) {
+  filter: brightness(0.98);
 }
 
 .co-submit:disabled {
@@ -593,6 +951,57 @@
 }
 
 /* ===== Premium dark overrides ===== */
+.booking-toolbar .booking-search-label,
+.booking-pagination-meta,
+.booking-admin-loading,
+.booking-inline-loading {
+  color: #9aa8c4 !important;
+}
+
+.booking-search-input {
+  background: #101a2f !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #f4f7ff !important;
+}
+
+.booking-search-input:focus {
+  border-color: rgba(214, 182, 112, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(214, 182, 112, 0.18) !important;
+}
+
+.booking-search-clear {
+  background: #17243f !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #dfe8fb !important;
+}
+
+.booking-search-clear:hover:not(:disabled) {
+  background: #1c2d4d !important;
+}
+
+.booking-pagination {
+  background: #131f37 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.booking-page-btn {
+  background: #17243f !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #f4f7ff !important;
+}
+
+.booking-page-btn:hover:not(:disabled) {
+  background: #1c2d4d !important;
+}
+
+.booking-pagination-pages {
+  color: #cfdaf2 !important;
+}
+
+.booking-admin-error {
+  color: #fca5a5 !important;
+}
+
 .booking-admin-page h2,
 .booking-admin-section-header h3,
 .ba-card-title,
@@ -646,15 +1055,49 @@
   color: #cfdaf2 !important;
 }
 
-.booking-admin-flow,
-.ba-kv,
-.ba-money {
+.ba-meta-label {
+  color: #7b8aad !important;
+}
+
+.ba-meta-value {
+  color: #dfe8fb !important;
+}
+
+.ba-meta-sep {
+  color: #7b8aad !important;
+}
+
+.ba-card-panel {
+  background: rgba(15, 24, 44, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.booking-admin-flow:not(.booking-admin-flow--cancelled) {
   background: #0f182c !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.ba-kv {
+  background: #131f37 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.ba-money {
+  background: #101a2f !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 .booking-admin-flow-line {
   background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.booking-admin-actions.ba-actions {
+  background: linear-gradient(180deg, rgba(19, 31, 55, 0.88) 0%, #101b30 42%) !important;
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.ba-actions-risk {
+  border-top-color: rgba(255, 255, 255, 0.14) !important;
 }
 
 .booking-admin-actions .ba-btn--secondary {

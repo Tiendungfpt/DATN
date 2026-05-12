@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import DatePicker from "react-datepicker";
 import { registerLocale, setDefaultLocale } from "react-datepicker";
@@ -13,8 +13,10 @@ setDefaultLocale("vi");
 function Booking() {
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlAdults = Math.max(1, Number.parseInt(String(searchParams.get("adults") || ""), 10) || 2);
+  const urlChildren = Math.max(0, Number.parseInt(String(searchParams.get("children") || ""), 10) || 0);
 
-  //his
   const [reviews, setReviews] = useState([]);
 const [roomSummary, setRoomSummary] = useState({ avg: 0, total: 0 });
 const [visibleCount, setVisibleCount] = useState(4);
@@ -29,7 +31,6 @@ useEffect(() => {
       const data = Array.isArray(res.data) ? res.data : [];
       setReviews(data);
 
-      // tính trung bình và tổng số đánh giá
       const total = data.length;
       const avg =
         total > 0
@@ -72,7 +73,6 @@ useEffect(() => {
 
   const [checkInDate, setCheckInDate] = useState(null);
   const [checkOutDate, setCheckOutDate] = useState(null);
-  /** Gio hang nhieu loai phong: dong dau = loai tu URL */
   const [cartLines, setCartLines] = useState([]);
   const [roomTypes, setRoomTypes] = useState([]);
 
@@ -278,7 +278,7 @@ useEffect(() => {
           </div>
 
           <p className="subtext" style={{ marginTop: 16 }}>
-            Add-on services only after check-in (hotel policy).
+            Dịch vụ thêm chỉ sau khi nhận phòng.
           </p>
         </div>
 
@@ -555,6 +555,8 @@ useEffect(() => {
                       depositTotal,
                       totalRoomCount,
                       checkoutLines,
+                      adults: urlAdults,
+                      children: urlChildren,
                     },
                   });
                 }}

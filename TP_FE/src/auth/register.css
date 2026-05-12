@@ -1,0 +1,10 @@
+/* Placeholder & focus — không thể set bằng inline style */
+.register-page input::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.register-page input:focus {
+  border-color: #93c5fd !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}

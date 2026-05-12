@@ -21,7 +21,9 @@ export default function BookingList() {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });
-      setItems(Array.isArray(res.data) ? res.data : []);
+      const data = res.data;
+      const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+      setItems(list);
     } catch (e) {
       setErr(e.response?.data?.message || "Load failed");
     } finally {

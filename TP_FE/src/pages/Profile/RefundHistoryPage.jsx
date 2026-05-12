@@ -8,9 +8,6 @@ function bookingCode(b) {
   return `#${String(id).slice(-6).toUpperCase()}`;
 }
 
-/**
- * Trang lịch sử hoàn tiền — tab trong tài khoản.
- */
 export default function RefundHistoryPage() {
   const { getMyRefunds, data, loading, error } = useRefund();
   const [started, setStarted] = useState(false);

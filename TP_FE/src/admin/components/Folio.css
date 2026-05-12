@@ -229,6 +229,11 @@
   border-bottom: none;
 }
 
+.folio-row--section {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 .folio-minus {
   color: #166534;
 }

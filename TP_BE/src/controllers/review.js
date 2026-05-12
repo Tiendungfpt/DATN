@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Booking from "../models/Booking.js";
 import Review from "../models/Review.js";
+import { createNotification } from "../utils/notification.js";
 
 function resolveReviewRoomId(booking) {
   const ids = booking.assigned_room_ids;
@@ -230,20 +231,45 @@ export const toggleReviewVisibility = async (req, res) => {
  */
 export const replyReview = async (req, res) => {
   try {
-    const { reply } = req.body;
+    const reply = String(req.body?.reply || "").trim();
+    if (!reply) {
+      return res.status(400).json({
+        message: "Nội dung phản hồi không được để trống.",
+      });
+    }
 
     const review = await Review.findByIdAndUpdate(
       req.params.id,
-      {
-        adminReply: String(reply || "").trim(),
-      },
-      { new: true }
-    );
+      { adminReply: reply },
+      { new: true },
+    )
+      .populate("room_id", "name room_no")
+      .lean();
 
     if (!review) {
       return res.status(404).json({
         message: "Review không tồn tại",
       });
+    }
+
+    try {
+      const notifyUserId = review.user_id;
+      if (notifyUserId) {
+        const roomLabel = review.room_id?.name
+          ? `${review.room_id.name}${review.room_id.room_no ? ` (${review.room_id.room_no})` : ""}`
+          : "phòng đã lưu trú";
+        const preview = reply.length > 200 ? `${reply.slice(0, 197)}…` : reply;
+        await createNotification({
+          userId: notifyUserId,
+          bookingId: review.booking_id || null,
+          type: "review_reply",
+          title: "Khách sạn đã phản hồi đánh giá của bạn",
+          message: `Phòng: ${roomLabel}. Nội dung: ${preview}`,
+          eventKey: `review_reply_${String(review._id)}_${Date.now()}`,
+        });
+      }
+    } catch {
+      // non-blocking notify
     }
 
     res.json({

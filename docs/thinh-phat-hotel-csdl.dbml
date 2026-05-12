@@ -1,0 +1,339 @@
+// Thịnh Phát Hotel — sơ đồ CSDL (DBML cho dbdiagram.io)
+// Cách dùng: https://dbdiagram.io → New diagram → dán toàn bộ file này
+// Ghi chú: MongoDB; khóa ngoại = varchar ObjectId. booking_line_items = mảng nhúng line_items[].
+// QUAN TRỌNG: chỉ dùng [ref: ...] trên cột — KHÔNG thêm khối Ref: trùng ở cuối (dbdiagram báo lỗi duplicate).
+
+Project ThinhPhatHotel {
+  Note: '''
+    Thịnh Phát Hotel — đặt phòng, check-in, hoàn tiền (MongoDB).
+    booking_line_items: mô tả mảng nhúng bookings.line_items.
+  '''
+}
+
+// ========== Người dùng & khách sạn ==========
+
+Table users {
+  _id varchar [pk, note: 'ObjectId']
+  name varchar [not null]
+  email varchar [not null, unique]
+  password varchar [not null]
+  role varchar [not null, note: 'user | admin']
+  phone varchar
+  avatar varchar
+  reset_password_token varchar
+  reset_password_expires datetime
+  created_at datetime
+  updated_at datetime
+}
+
+Table hotels {
+  _id varchar [pk]
+  name varchar [not null]
+  address varchar [not null]
+  image varchar [not null]
+  description text
+  rating decimal
+  review_count int
+  location_note varchar
+  hotline varchar
+  created_at datetime
+  updated_at datetime
+}
+
+// ========== Danh mục phòng & phòng vật lý ==========
+
+Table room_types {
+  _id varchar [pk]
+  code varchar
+  name varchar [not null]
+  price decimal [not null]
+  deposit_amount decimal
+  description text
+  max_guests int [note: 'maxGuests']
+  area_sqm decimal
+  bed_type varchar
+  image varchar
+  images json [note: 'mảng URL/filename']
+  complimentary_service_ids json [note: 'ObjectId[] → services']
+  extra_service_ids json [note: 'ObjectId[] → services']
+  created_at datetime
+  updated_at datetime
+}
+
+Table rooms {
+  _id varchar [pk]
+  name varchar [not null]
+  room_type varchar [not null, note: 'legacy string']
+  room_type_id varchar [ref: > room_types._id, note: 'ObjectId']
+  room_no varchar [not null]
+  image varchar
+  images json
+  complimentary_service_ids json
+  extra_service_ids json
+  price decimal [not null]
+  capacity int [not null]
+  status varchar [not null, note: 'available | occupied | maintenance']
+  created_at datetime
+  updated_at datetime
+}
+
+// ========== Đặt phòng ==========
+
+Table discount_codes {
+  _id varchar [pk]
+  code varchar [not null, unique]
+  name varchar
+  discount_type varchar [not null, note: 'percent | fixed']
+  discount_value decimal [not null]
+  min_order_value decimal
+  max_discount_amount decimal
+  usage_limit int [note: '0 = unlimited']
+  used_count int
+  start_at datetime
+  end_at datetime
+  is_active boolean
+  created_at datetime
+  updated_at datetime
+}
+
+Table bookings {
+  _id varchar [pk]
+  user_id varchar [not null, ref: > users._id]
+  hotel_id varchar [ref: > hotels._id]
+  room_type_id varchar [ref: > room_types._id, note: 'loại chính / populate']
+  room_id varchar [ref: > rooms._id, note: 'deprecated']
+  assigned_room_id varchar [ref: > rooms._id, note: 'sync từ assigned_room_ids[0]']
+  assigned_room_ids json [note: 'ObjectId[] — gán lúc check-in']
+  check_in_date datetime [not null]
+  check_out_date datetime [not null]
+  booking_type varchar [not null, note: 'overnight']
+  adults int [default: 0]
+  children int [default: 0]
+  room_quantity int [not null]
+  payment_mode varchar [not null, note: 'deposit | full']
+  payment_provider varchar [note: 'momo | vnpay | ...']
+  payment_transaction_id varchar
+  prepaid_amount decimal
+  deposit_amount decimal
+  deposit_paid_amount decimal
+  deposit_status varchar [note: 'unpaid | paid | pending_refund | ...']
+  estimated_room_total decimal
+  total_price decimal [not null]
+  is_paid boolean
+  status varchar [not null, note: 'pending | confirmed | checked_in | ...']
+  discount_code_id varchar [ref: > discount_codes._id]
+  discount_code varchar
+  discount_amount decimal
+  refund_status varchar
+  refund_requested_amount decimal
+  refund_processed_amount decimal
+  refund_requested_at datetime
+  refund_processed_at datetime
+  refund_rejected_reason varchar
+  guest_name varchar
+  guest_phone varchar
+  guest_email varchar
+  guest_id_number varchar
+  checkin_guest_snapshot json
+  checked_in_by varchar [ref: > users._id]
+  actual_check_in_at datetime
+  actual_check_out_at datetime
+  invoice_id varchar [note: '1-1 → invoices._id sau checkout']
+  cancelled_at datetime
+  cancel_reason varchar
+  no_show_at datetime
+  is_reviewed boolean
+  created_at datetime
+  updated_at datetime
+}
+
+// Dòng đặt theo loại phòng (embedded trong Mongo; tách bảng để vẽ ERD rõ)
+Table booking_line_items {
+  _id varchar [pk, note: 'có thể = composite booking_id + index hoặc _id con nếu normalize']
+  booking_id varchar [not null, ref: > bookings._id]
+  room_type_id varchar [not null, ref: > room_types._id]
+  rate_plan_key varchar [not null, note: 'basic']
+  quantity int [not null]
+  unit_price_per_night decimal
+  line_subtotal decimal
+}
+
+// ========== Check-in: danh sách người ở ==========
+
+Table booking_guests {
+  _id varchar [pk]
+  booking_id varchar [not null, ref: > bookings._id]
+  full_name varchar [not null]
+  id_card varchar
+  nationality varchar
+  date_of_birth date
+  relationship varchar
+  is_primary boolean
+  captured_at datetime
+  captured_by varchar [ref: > users._id]
+  created_at datetime
+  updated_at datetime
+}
+
+// ========== Thanh toán & hoàn tiền ==========
+
+Table payment_transactions {
+  _id varchar [pk]
+  booking_id varchar [not null, ref: > bookings._id]
+  provider varchar [not null, note: 'momo | vnpay | cash | bank']
+  type varchar [not null, note: 'deposit | balance | refund']
+  amount decimal [not null]
+  status varchar [not null]
+  provider_order_id varchar
+  provider_trans_id varchar
+  provider_message varchar
+  provider_payload json
+  created_at datetime
+  updated_at datetime
+}
+
+Table refunds {
+  _id varchar [pk]
+  booking_id varchar [not null, ref: > bookings._id]
+  user_id varchar [not null, ref: > users._id]
+  amount decimal [not null]
+  original_amount decimal [not null]
+  cancellation_fee decimal [not null]
+  reason varchar [not null]
+  status varchar [not null, note: 'pending | processing | completed | failed | success']
+  payment_method varchar
+  refund_transaction_id varchar
+  provider varchar
+  provider_result_code int
+  provider_message varchar
+  provider_payload json
+  provider_refund_order_id varchar
+  provider_refund_request_id varchar
+  retry_count int
+  processed_at datetime
+  processed_by varchar [ref: > users._id]
+  failure_message varchar
+  payout_method varchar
+  payout_phone varchar
+  payout_bank_name varchar
+  payout_bank_account_name varchar
+  payout_bank_account_number varchar
+  admin_note varchar
+  created_at datetime
+  updated_at datetime
+}
+
+// ========== Hóa đơn sau checkout ==========
+
+Table invoices {
+  _id varchar [pk]
+  booking_id varchar [not null, unique, ref: - bookings._id, note: '1 booking 1 invoice']
+  invoice_number varchar [not null, unique]
+  room_subtotal decimal [not null]
+  service_subtotal decimal [not null]
+  discount_amount decimal
+  grand_total decimal [not null]
+  prepaid_amount decimal
+  balance_due decimal [not null]
+  status varchar [not null, note: 'unpaid | paid']
+  paid_at datetime
+  payment_method varchar
+  created_at datetime
+  updated_at datetime
+}
+
+// ========== Dịch vụ trong lưu trú ==========
+
+Table service_categories {
+  _id varchar [pk]
+  code varchar [not null, unique]
+  name varchar [not null]
+  is_active boolean
+  created_at datetime
+  updated_at datetime
+}
+
+Table services {
+  _id varchar [pk]
+  name varchar [not null]
+  default_price decimal [not null]
+  kind varchar [not null, note: 'extra | complimentary']
+  category_id varchar [ref: > service_categories._id]
+  unit varchar
+  description text
+  is_active boolean
+  created_at datetime
+  updated_at datetime
+}
+
+Table booking_services {
+  _id varchar [pk]
+  booking_id varchar [not null, ref: > bookings._id]
+  service_id varchar [not null, ref: > services._id]
+  quantity int [not null]
+  unit_price decimal [not null]
+  line_total decimal [not null]
+  note varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table booking_charges {
+  _id varchar [pk]
+  booking_id varchar [not null, ref: > bookings._id]
+  category varchar [not null, note: 'food | laundry | minibar | ...']
+  service_name varchar [not null]
+  quantity int [not null]
+  unit_price decimal [not null]
+  total_price decimal [not null]
+  charged_at datetime
+  charged_by varchar [ref: > users._id]
+  note varchar
+  created_at datetime
+  updated_at datetime
+}
+
+// ========== Đánh giá & thông báo ==========
+
+Table contact_messages {
+  _id varchar [pk]
+  user_id varchar [ref: > users._id]
+  name varchar [not null]
+  email varchar [not null]
+  phone varchar
+  subject varchar [not null]
+  message varchar [not null]
+  status varchar [not null, note: 'new | replied | closed']
+  admin_reply varchar
+  replied_by varchar [ref: > users._id]
+  replied_at datetime
+  user_read_reply_at datetime
+  created_at datetime
+  updated_at datetime
+}
+
+Table reviews {
+  _id varchar [pk]
+  user_id varchar [not null, ref: > users._id]
+  booking_id varchar [not null, unique, ref: - bookings._id, note: '1 booking 1 review']
+  room_id varchar [not null, ref: > rooms._id]
+  rating int [not null]
+  comment text
+  admin_reply text
+  created_at datetime
+  updated_at datetime
+}
+
+Table notifications {
+  _id varchar [pk]
+  user_id varchar [not null, ref: > users._id]
+  booking_id varchar [ref: > bookings._id]
+  contact_message_id varchar [ref: > contact_messages._id, note: 'optional']
+  type varchar [not null]
+  title varchar [not null]
+  message varchar [not null]
+  is_read boolean
+  event_key varchar [unique, note: 'idempotency']
+  created_at datetime
+  updated_at datetime
+}

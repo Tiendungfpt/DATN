@@ -17,16 +17,6 @@ function formatDt(v) {
   return new Date(v).toLocaleDateString("vi-VN");
 }
 
-/**
- * Modal yêu cầu huỷ + hoàn tiền — preview policy trước khi POST /api/refunds/request.
- *
- * @param {{
- *   booking: Record<string, unknown> | null,
- *   isOpen: boolean,
- *   onClose: () => void,
- *   onSuccess: (message?: string, payload?: unknown) => void,
- * }} props
- */
 export default function RefundRequestModal({ booking, isOpen, onClose, onSuccess }) {
   const { requestRefund, loading, error, resetError } = useRefund();
   const [reason, setReason] = useState("");
@@ -85,9 +75,7 @@ export default function RefundRequestModal({ booking, isOpen, onClose, onSuccess
       const msg = String(resp?.message || "").trim();
       onSuccess(msg, resp);
       onClose();
-    } catch {
-      /* error hiển thị dưới form */
-    }
+    } catch {}
   };
 
   return createPortal(
@@ -106,7 +94,7 @@ export default function RefundRequestModal({ booking, isOpen, onClose, onSuccess
         <div className="modal-dialog modal-dialog-centered modal-lg">
           <div className="modal-content rounded-4 shadow border-0">
             <div className="modal-header border-0 pb-0">
-              <h5 className="modal-title fw-bold">Hủy đặt phòng &amp; yêu cầu hoàn tiền</h5>
+              <h5 className="modal-title fw-bold">Hủy phòng / Hoàn tiền</h5>
               <button type="button" className="btn-close" aria-label="Đóng" onClick={onClose} disabled={loading} />
             </div>
             <form onSubmit={handleSubmit}>
@@ -118,26 +106,24 @@ export default function RefundRequestModal({ booking, isOpen, onClose, onSuccess
                     <strong>{formatDt(booking.check_out_date)}</strong>
                   </div>
                   <div className="mt-2">
-                    Căn cứ đã thanh toán (ước tính):{" "}
-                    <strong>{original.toLocaleString("vi-VN")} ₫</strong>
+                    Đã thanh toán: <strong>{original.toLocaleString("vi-VN")} ₫</strong>
                   </div>
                   <div className="mt-2">
-                    Phí hủy (theo chính sách):{" "}
+                    Phí hủy:{" "}
                     <strong className="text-danger">{preview.cancellationFee.toLocaleString("vi-VN")} ₫</strong>
                   </div>
                   <div>
-                    Dự kiến hoàn lại:{" "}
+                    Tiền hoàn (tạm tính):{" "}
                     <strong className="text-success">{preview.refundAmount.toLocaleString("vi-VN")} ₫</strong>
                   </div>
                   <div className="mt-2 text-muted">
-                    Lưu ý: sau khi xác nhận, booking sẽ chuyển sang{" "}
-                    <strong>đã hủy</strong> và admin sẽ duyệt hoàn tiền thủ công theo chính sách.
+                    Gửi xong là <strong>tạo yêu cầu hủy/hoàn tiền</strong>. Booking chỉ chuyển sang <strong>đã hủy</strong> khi khách sạn duyệt.
                   </div>
                 </div>
 
                 {preview.refundAmount > 0 ? (
                   <div className="border rounded-3 p-3 mb-3">
-                    <div className="fw-semibold mb-2">Thông tin nhận tiền hoàn</div>
+                    <div className="fw-semibold mb-2">Nhận hoàn qua</div>
                     <div className="row g-2 align-items-end">
                       <div className="col-12 col-md-4">
                         <label className="form-label mb-1">Hình thức</label>
@@ -161,7 +147,7 @@ export default function RefundRequestModal({ booking, isOpen, onClose, onSuccess
                             className="form-control rounded-3"
                             value={payoutPhone}
                             onChange={(e) => setPayoutPhone(e.target.value)}
-                            placeholder="Ví dụ: 09xxxxxxxx"
+                            placeholder="09xxxxxxxx"
                             disabled={loading}
                           />
                         </div>
@@ -175,7 +161,7 @@ export default function RefundRequestModal({ booking, isOpen, onClose, onSuccess
                               className="form-control rounded-3"
                               value={payoutBankName}
                               onChange={(e) => setPayoutBankName(e.target.value)}
-                              placeholder="Ví dụ: Vietcombank"
+                              placeholder="VD: Vietcombank"
                               disabled={loading}
                             />
                           </div>
@@ -185,7 +171,7 @@ export default function RefundRequestModal({ booking, isOpen, onClose, onSuccess
                               className="form-control rounded-3"
                               value={payoutBankAccountNumber}
                               onChange={(e) => setPayoutBankAccountNumber(e.target.value)}
-                              placeholder="Ví dụ: 0123456789"
+                              placeholder="Số tài khoản"
                               disabled={loading}
                             />
                           </div>
@@ -202,9 +188,7 @@ export default function RefundRequestModal({ booking, isOpen, onClose, onSuccess
                         </>
                       ) : null}
                     </div>
-                    <div className="text-muted small mt-2">
-                      Admin sẽ kiểm tra và hoàn tiền thủ công theo thông tin bạn cung cấp.
-                    </div>
+                    <div className="text-muted small mt-2">Dùng đúng SĐT / STK bạn ghi để bên khách sạn hoàn.</div>
                   </div>
                 ) : null}
 
@@ -215,7 +199,7 @@ export default function RefundRequestModal({ booking, isOpen, onClose, onSuccess
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   required
-                  placeholder="Ví dụ: thay đổi lịch trình, lý do cá nhân..."
+                  placeholder="Ghi vài dòng lý do là được"
                   disabled={loading}
                 />
 

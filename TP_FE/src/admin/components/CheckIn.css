@@ -334,3 +334,149 @@
   line-height: 1.45;
 }
 
+/* --- Check-in trong admin: đồng bộ tối, form thành viên gọn --- */
+.ci-members-wrap {
+  margin-top: 2px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(8, 14, 28, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.ci-subhead--members {
+  margin-bottom: 12px;
+}
+
+.ci-btn-add-member {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(214, 182, 112, 0.45);
+  background: linear-gradient(135deg, #d6b670, #b89454);
+  color: #0b1020;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.ci-btn-add-member:hover {
+  filter: brightness(1.06);
+}
+
+.ci-btn-add-member:active {
+  transform: translateY(1px);
+}
+
+.ci-guest-card-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #c7d4ee;
+}
+
+/* Admin layout: thẻ thành viên cùng tone với panel, không “hộp trắng” */
+.admin-main .ci-members-wrap {
+  background: rgba(8, 14, 28, 0.55) !important;
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.admin-main .ci-panel .ci-label {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .ci-panel .ci-subtitle {
+  color: #f7f9ff !important;
+}
+
+.admin-main .ci-panel .ci-subnote {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .ci-kpi {
+  background: rgba(8, 14, 28, 0.45) !important;
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+.admin-main .ci-kpi-k {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .ci-kpi-v {
+  color: #f7f9ff !important;
+}
+
+.admin-main .ci-guest-list {
+  gap: 12px;
+}
+
+.admin-main .ci-guest-card {
+  background: rgba(13, 22, 42, 0.72) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.admin-main .ci-guest-card-head {
+  background: rgba(23, 36, 63, 0.75) !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+  padding: 11px 14px;
+}
+
+.admin-main .ci-guest-grid {
+  padding: 14px 14px 16px;
+  gap: 12px 14px;
+}
+
+.admin-main .ci-guest-card .ci-label {
+  color: #94a3b8 !important;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.admin-main .ci-guest-card .ci-input {
+  background: rgba(6, 11, 22, 0.92) !important;
+  border-color: rgba(100, 116, 139, 0.35) !important;
+  color: #f1f5f9 !important;
+  border-radius: 10px;
+  color-scheme: dark;
+}
+
+.admin-main .ci-guest-card .ci-input:focus {
+  border-color: var(--ad-blue) !important;
+  box-shadow: 0 0 0 3px rgba(77, 140, 255, 0.22) !important;
+}
+
+.admin-main .ci-guest-card .ci-input::placeholder {
+  color: #64748b !important;
+}
+
+.admin-main .ci-icon-btn {
+  border: 1px solid rgba(248, 113, 113, 0.35) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #fecaca !important;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-main .ci-icon-btn:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(248, 113, 113, 0.55) !important;
+}
+
+.admin-main .ci-btn-add-member {
+  background: linear-gradient(135deg, var(--ad-accent), var(--ad-accent-2)) !important;
+  border: 1px solid var(--ad-border-strong) !important;
+  color: #0b1020 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.admin-main .ci-btn-add-member:hover {
+  filter: brightness(1.05);
+}
+

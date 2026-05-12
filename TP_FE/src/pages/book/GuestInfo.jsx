@@ -20,7 +20,6 @@ const VI_BOOKING_MONTHS = [
   "Mười Hai",
 ];
 
-/** dd Tháng Tên_tháng yyyy — giống thẻ xác nhận hotel */
 function formatBookingDateVi(ymd) {
   const s = String(ymd || "").trim();
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -33,7 +32,6 @@ function formatBookingDateVi(ymd) {
   return `${day} Tháng ${monthName} ${y}`;
 }
 
-/** "03 Tháng Năm" — không năm, dùng thanh search */
 function formatStripDateNoYear(ymd) {
   const s = String(ymd || "").trim();
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -70,7 +68,6 @@ function computeGuestCapacity(lines, catalog) {
   return Math.max(1, sum);
 }
 
-/** Trả về danh sách loại phòng không đủ phòng trống */
 async function findAvailabilityProblems(lines, checkIn, checkOut) {
   const rows = Array.isArray(lines) ? lines : [];
   const items = await fetchRoomTypeAvailability({
@@ -95,7 +92,6 @@ async function findAvailabilityProblems(lines, checkIn, checkOut) {
   return problems;
 }
 
-/** Biểu tượng ví MoMo kiểu bong bóng (gradient nhận diện thương hiệu) */
 function MomoBubbleIcon({ className = "" }) {
   const uid = useId().replace(/:/g, "");
   const gradId = `${uid}-momo-grad`;
@@ -153,8 +149,12 @@ export default function GuestInfo() {
   const [stripBusy, setStripBusy] = useState(false);
   const [dateInDraft, setDateInDraft] = useState("");
   const [dateOutDraft, setDateOutDraft] = useState("");
-  const [guestAdultsDraft, setGuestAdultsDraft] = useState(2);
-  const [guestChildrenDraft, setGuestChildrenDraft] = useState(0);
+  const [guestAdultsDraft, setGuestAdultsDraft] = useState(() =>
+    Math.max(1, Math.min(16, Number((location.state || null)?.adults ?? 2) || 2)),
+  );
+  const [guestChildrenDraft, setGuestChildrenDraft] = useState(() =>
+    Math.max(0, Math.min(10, Number((location.state || null)?.children ?? 0) || 0)),
+  );
 
   const [guestEmail, setGuestEmail] = useState("");
   const [guestFirstName, setGuestFirstName] = useState("");
@@ -266,11 +266,12 @@ export default function GuestInfo() {
     setDateOutDraft(booking.checkOut);
   }, [stripPanel, booking?.checkIn, booking?.checkOut]);
 
+  /** Khi panel khách đóng: luôn khớp draft với số khách đang áp dụng (từ bước chọn phòng / lần Áp dụng trước). */
   useEffect(() => {
-    if (stripPanel !== "guests" || !booking) return;
+    if (!booking || stripPanel === "guests") return;
     setGuestAdultsDraft(Math.min(16, Math.max(1, Number(booking.adults ?? 1) || 1)));
     setGuestChildrenDraft(Math.min(10, Math.max(0, Number(booking.children ?? 0) || 0)));
-  }, [stripPanel, booking?.adults, booking?.children]);
+  }, [booking?.adults, booking?.children, stripPanel]);
 
   const depositRequired = useMemo(() => {
     const lines = Array.isArray(booking?.lines) ? booking.lines : [];
@@ -470,6 +471,8 @@ export default function GuestInfo() {
         guest_name: fullName,
         guest_phone: guestPhone.trim(),
         guest_email: guestEmail.trim().toLowerCase(),
+        adults: Number(booking.adults || 0),
+        children: Number(booking.children || 0),
         booking_type: "overnight",
         check_in_date: booking.checkIn,
         check_out_date: booking.checkOut,
@@ -686,7 +689,14 @@ export default function GuestInfo() {
                     </div>
                   </div>
                   <p className="be-guest-strip-cap-hint">
-                    Sức chứa tối đa theo phòng đã chọn:{" "}
+                    Đang chọn: <strong>{guestAdultsDraft} người lớn</strong>
+                    {guestChildrenDraft > 0 ? (
+                      <>
+                        , <strong>{guestChildrenDraft} trẻ em</strong>
+                      </>
+                    ) : null}
+                    {" · "}
+                    Tối đa theo phòng đã chọn:{" "}
                     <strong>{computeGuestCapacity(booking.lines, roomCatalog)} khách</strong>
                     {roomCatalog.length === 0 ? " (đang tải hạng phòng…)" : ""}
                   </p>
@@ -694,7 +704,16 @@ export default function GuestInfo() {
                     <button
                       type="button"
                       className="be-guest-strip-btn-secondary"
-                      onClick={() => setStripPanel(null)}
+                      onClick={() => {
+                        setStripError("");
+                        setGuestAdultsDraft(
+                          Math.min(16, Math.max(1, Number(booking.adults ?? 1) || 1)),
+                        );
+                        setGuestChildrenDraft(
+                          Math.min(10, Math.max(0, Number(booking.children ?? 0) || 0)),
+                        );
+                        setStripPanel(null);
+                      }}
                     >
                       Hủy
                     </button>
@@ -715,21 +734,17 @@ export default function GuestInfo() {
                 </div>
               ) : null}
             </div>
-            <p className="be-guest-strip-footnote">
-              Tự tin đặt phòng: bạn đang trên trang web của khách sạn.
-            </p>
+            <p className="be-guest-strip-footnote">Đặt trực tiếp trên site khách sạn.</p>
           </div>
 
           <header className="be-guest-header">
-            <h1>Hoàn tất thông tin đặt phòng</h1>
-            <p>
-              Nhập thông tin liên hệ của khách lưu trú và chọn phương thức thanh toán để hoàn tất giữ chỗ.
-            </p>
+            <h1>Thông tin đặt phòng</h1>
+            <p>Điền họ tên, SĐT, email và chọn cách đặt cọc.</p>
           </header>
 
           <section className="be-booking-trust" aria-labelledby="booking-trust-title">
             <h2 id="booking-trust-title" className="be-booking-trust-title">
-              Kết thúc kỳ nghỉ của bạn
+              Tóm tắt đơn
             </h2>
             <article className="be-summary-card">
               <div className="be-summary-head">
@@ -912,43 +927,14 @@ export default function GuestInfo() {
                   </div>
                   <div className="be-momo-brand-text">
                     <strong>Ví điện tử MoMo</strong>
-                    <span>Thanh toán bảo mật qua cổng MoMo (sandbox).</span>
+                    <span>Thanh toán qua MoMo (môi trường thử).</span>
                   </div>
                 </div>
                 <select className="hh-input" value={momoType} onChange={(e) => setMomoType(e.target.value)}>
-                  <option value="captureWallet">Ví MoMo — quét QR (khuyến nghị sandbox)</option>
+                  <option value="captureWallet">Ví MoMo — quét QR</option>
                   <option value="payWithATM">Thẻ ATM / Napas</option>
                   <option value="payWithCC">Thẻ quốc tế (Visa/Master/JCB)</option>
                 </select>
-                {momoType === "captureWallet" ? (
-                  <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                    Luồng ổn định nhất trên môi trường test: cài{" "}
-                    <strong>MoMo Test App</strong> theo{" "}
-                    <a
-                      href="https://developers.momo.vn/v3/docs/payment/onboarding/test-instructions"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      test instructions
-                    </a>
-                    , mở ví test, trên trang thanh toán chọn quét QR hoặc làm theo hướng dẫn trên cổng.
-                    Tài khoản test thường mật khẩu / OTP: <strong>000000</strong>.
-                  </p>
-                ) : (
-                  <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                    ATM/Napas hay báo &quot;từ chối nhà phát hành&quot; trên sandbox — bắt buộc nhập{" "}
-                    <strong>SĐT VN đủ 10 số</strong> trên form MoMo và OTP theo tài liệu. Thử thẻ:{" "}
-                    <strong>9704000000000018</strong>, NGUYEN VAN A, 03/07. Xem{" "}
-                    <a
-                      href="https://developers.momo.vn/v3/docs/payment/onboarding/test-instructions"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      chi tiết MoMo
-                    </a>
-                    .
-                  </p>
-                )}
               </div>
 
               <div className="be-pay-highlight">

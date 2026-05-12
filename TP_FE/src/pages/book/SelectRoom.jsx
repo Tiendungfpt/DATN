@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchRoomTypeAvailability, fetchRoomTypeCatalog } from "../../services/availabilityApi";
 import "./BookEngine.css";
@@ -24,7 +24,7 @@ export default function SelectRoom() {
 
   const checkIn = params.get("check_in_date") || "";
   const checkOut = params.get("check_out_date") || "";
-  const preselectRoomTypeId = params.get("room_type_id") || "";
+  const preselectRoomTypeId = String(params.get("room_type_id") || "").trim();
   const adults = Math.max(1, Number(params.get("adults") || 2));
   const children = Math.max(0, Number(params.get("children") || 0));
   const today = new Date().toISOString().split("T")[0];
@@ -47,6 +47,18 @@ export default function SelectRoom() {
     return new Date(checkInDraft) < new Date(checkOutDraft);
   }, [checkInDraft, checkOutDraft]);
 
+  const buildBookListUrl = (ci, co, ad, ch) => {
+    const totalGuestsDraft = Math.max(1, Number(ad || 0) + Number(ch || 0));
+    const sp = new URLSearchParams();
+    if (ci) sp.set("check_in_date", ci);
+    if (co) sp.set("check_out_date", co);
+    sp.set("adults", String(ad));
+    sp.set("children", String(ch));
+    sp.set("capacity", String(totalGuestsDraft));
+    if (preselectRoomTypeId) sp.set("room_type_id", preselectRoomTypeId);
+    return `/book?${sp.toString()}`;
+  };
+
   const applySearchParams = () => {
     if (!checkInDraft || !checkOutDraft) {
       alert("Vui lòng chọn ngày nhận phòng và trả phòng.");
@@ -56,29 +68,25 @@ export default function SelectRoom() {
       alert("Ngày trả phòng phải sau ngày nhận phòng.");
       return;
     }
-    const totalGuestsDraft = Math.max(1, Number(adultsDraft || 0) + Number(childrenDraft || 0));
-    navigate(
-      `/book?check_in_date=${encodeURIComponent(checkInDraft)}&check_out_date=${encodeURIComponent(
-        checkOutDraft,
-      )}&adults=${encodeURIComponent(adultsDraft)}&children=${encodeURIComponent(childrenDraft)}&capacity=${encodeURIComponent(totalGuestsDraft)}`,
-      { replace: true },
-    );
+    navigate(buildBookListUrl(checkInDraft, checkOutDraft, adultsDraft, childrenDraft), { replace: true });
   };
 
   // Auto-apply search params when dates are valid (better UX; avoids “Tổng = 0₫” confusion).
   useEffect(() => {
     if (!isDraftValid) return undefined;
     const t = setTimeout(() => {
-      const totalGuestsDraft = Math.max(1, Number(adultsDraft || 0) + Number(childrenDraft || 0));
-      navigate(
-        `/book?check_in_date=${encodeURIComponent(checkInDraft)}&check_out_date=${encodeURIComponent(
-          checkOutDraft,
-        )}&adults=${encodeURIComponent(adultsDraft)}&children=${encodeURIComponent(childrenDraft)}&capacity=${encodeURIComponent(totalGuestsDraft)}`,
-        { replace: true },
-      );
+      navigate(buildBookListUrl(checkInDraft, checkOutDraft, adultsDraft, childrenDraft), { replace: true });
     }, 250);
     return () => clearTimeout(t);
-  }, [isDraftValid, checkInDraft, checkOutDraft, adultsDraft, childrenDraft, navigate]);
+  }, [
+    isDraftValid,
+    checkInDraft,
+    checkOutDraft,
+    adultsDraft,
+    childrenDraft,
+    navigate,
+    preselectRoomTypeId,
+  ]);
 
   const [roomTypes, setRoomTypes] = useState([]);
   const [availability, setAvailability] = useState([]);
@@ -88,6 +96,7 @@ export default function SelectRoom() {
   const [error, setError] = useState("");
   const [sortKey, setSortKey] = useState("priceAsc");
   const [activeImageByTypeId, setActiveImageByTypeId] = useState({});
+  const lastPreselectCartKeyRef = useRef("");
 
   const authState = useMemo(() => {
     const token = localStorage.getItem("token");
@@ -106,7 +115,10 @@ export default function SelectRoom() {
   const ensureCanBook = () => {
     if (!authState?.token || !authState?.user?._id) {
       alert("Vui lòng đăng nhập để đặt phòng.");
-      navigate("/login", { replace: false, state: { from: "/book" } });
+      navigate("/login", {
+        replace: false,
+        state: { from: `${window.location.pathname}${window.location.search || ""}` },
+      });
       return false;
     }
     if (authState?.user?.role === "admin") {
@@ -127,8 +139,6 @@ export default function SelectRoom() {
         ]);
         setRoomTypes(types);
         setAvailability(avail);
-        // NOTE: room_type_id in query is only for focusing/highlighting UI.
-        // Do NOT auto-add to cart; user must click "Chọn phòng" / "+ Thêm vào giỏ".
       } catch (e) {
         setRoomTypes([]);
         setAvailability([]);
@@ -227,7 +237,27 @@ export default function SelectRoom() {
     setCartRooms((prev) => (Array.isArray(prev) ? prev : []).filter((r) => allowed.has(String(r?.room_type_id || ""))));
   }, [visibleRoomTypes]);
 
-  // If room_type_id is present, scroll to that room type (no auto-add).
+  // ?room_type_id=... (Đặt phòng từ card hạng phòng): thêm 1 phòng loại đó vào giỏ khi đã có ngày, đủ sức chứa và còn phòng trống.
+  useEffect(() => {
+    const id = preselectRoomTypeId;
+    if (!id || !checkIn || !checkOut || loading) return;
+    const rt = roomTypes.find((x) => String(x._id) === id);
+    if (!rt) return;
+    const cap = Math.max(1, Number(rt?.maxGuests ?? rt?.max_guests) || 1);
+    if (cap < totalGuests) return;
+    if ((availableByTypeId[id] ?? 0) < 1) return;
+
+    const key = `${id}|${checkIn}|${checkOut}|${totalGuests}`;
+    if (lastPreselectCartKeyRef.current === key) return;
+    lastPreselectCartKeyRef.current = key;
+
+    setCartRooms((prev) => {
+      if (prev.some((r) => String(r.room_type_id) === id)) return prev;
+      return [...prev, { key: `preselect-${id}-${Date.now()}`, room_type_id: id }];
+    });
+  }, [preselectRoomTypeId, checkIn, checkOut, loading, roomTypes, availableByTypeId, totalGuests]);
+
+  // Cuộn tới hạng phòng được chọn từ URL (nếu có trong danh sách).
   useEffect(() => {
     if (!preselectRoomTypeId) return;
     const el = document.getElementById(`be-rt-${String(preselectRoomTypeId)}`);
@@ -391,7 +421,7 @@ export default function SelectRoom() {
             ) : null}
 
             <div className="be-inline-cart">
-              <div className="be-sidebar-head">Giỏ hàng của bạn</div>
+              <div className="be-sidebar-head">Phòng đã chọn</div>
               <div className="be-sidebar-body">
                 <div className="be-sidebar-row">
                   <span>Số phòng</span>
@@ -442,7 +472,7 @@ export default function SelectRoom() {
                 ) : (
                   <div className="be-empty-cart">
                     <div className="be-alert" style={{ marginTop: 0 }}>
-                      Chưa có phòng nào trong giỏ hàng.
+                      Bạn chưa chọn phòng nào.
                     </div>
                   </div>
                 )}
@@ -527,15 +557,6 @@ export default function SelectRoom() {
                     <div className="be-card-content">
                       <div className="be-room-head">
                         <div className="be-room-head-title">{rt.name}</div>
-                        <div className="be-room-head-actions">
-                          <button
-                            type="button"
-                            className="be-link"
-                            onClick={() => navigate(`/hang-phong/${encodeURIComponent(id)}`)}
-                          >
-                            Chi tiết
-                          </button>
-                        </div>
                       </div>
 
                       <div className="be-amenities">
@@ -568,7 +589,14 @@ export default function SelectRoom() {
                             {notEnoughCapacity ? <span className="be-badge be-badge--danger">Không đủ sức chứa</span> : null}
                           </div>
                         </div>
-                        <div className="be-qty">
+                        <div className="be-room-actions">
+                          <button
+                            type="button"
+                            className="be-detail-btn"
+                            onClick={() => navigate(`/hang-phong/${encodeURIComponent(id)}`)}
+                          >
+                            Chi tiết
+                          </button>
                           <button
                             type="button"
                             className="be-add-to-cart-btn"

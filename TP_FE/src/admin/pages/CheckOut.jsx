@@ -27,7 +27,7 @@ export default function CheckOut() {
         const res = await axios.get(`/api/bookings/${bookingId}/folio`, { headers: token() });
         setPreview(res.data);
       } catch (e) {
-        setErr(e.response?.data?.message || "Cannot load preview");
+        setErr(e.response?.data?.message || "Không tải được dữ liệu thanh toán.");
       }
     })();
   }, [bookingId]);
@@ -42,23 +42,28 @@ export default function CheckOut() {
         { payment_method: payMethod, settle_balance: true, override_time_window: overrideTimeWindow },
         { headers: token() },
       );
-      setMsg("Checkout thành công, hóa đơn đã được tạo.");
+      setMsg("Trả phòng thành công. Hóa đơn đã được tạo.");
       setTimeout(() => navigate("/admin/bookings/completed"), 700);
     } catch (e) {
-      setErr(e.response?.data?.message || "Check-out failed");
+      setErr(e.response?.data?.message || "Trả phòng thất bại.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (!bookingId) return <p className="booking-admin-empty">Missing bookingId</p>;
+  if (!bookingId) return <p className="booking-admin-empty">Thiếu mã booking trong URL.</p>;
 
   const currency = (v) => `${Number(v || 0).toLocaleString("vi-VN")} đ`;
 
   return (
     <section className="booking-admin-section co-shell">
       <div className="booking-admin-section-header">
-        <h3>Check-out & invoice</h3>
+        <div className="ba-head-with-back">
+          <button type="button" className="ba-nav-back" onClick={() => navigate(-1)}>
+            ← Trang trước
+          </button>
+          <h3>Trả phòng & hóa đơn</h3>
+        </div>
         <span className="booking-admin-section-count">#{bookingId.slice(-6).toUpperCase()}</span>
       </div>
       <div className="booking-admin-section-subtitle">
@@ -86,18 +91,18 @@ export default function CheckOut() {
               </div>
               <div className="co-divider" />
               <div className="co-row co-row--grand">
-                <span>Grand total</span>
+                <span>Tổng cộng</span>
                 <strong>{currency(preview.grand_total)}</strong>
               </div>
               <div className="co-row co-row--due">
-                <span>Balance due</span>
+                <span>Số dư còn lại</span>
                 <strong>{currency(preview.balance_due)}</strong>
               </div>
             </div>
           </article>
 
           <article className="co-card">
-            <div className="co-card-head">Xác nhận checkout</div>
+            <div className="co-card-head">Xác nhận trả phòng</div>
             <div className="co-card-body">
               <div className="co-field">
                 <label className="co-label">Phương thức thanh toán</label>
@@ -107,8 +112,8 @@ export default function CheckOut() {
                   onChange={(e) => setPayMethod(e.target.value)}
                   disabled={submitting}
                 >
-                  <option value="cash">Tiền mặt (cash)</option>
-                  <option value="card">Thẻ (card)</option>
+                  <option value="cash">Tiền mặt</option>
+                  <option value="card">Thẻ (POS)</option>
                   <option value="momo">MoMo</option>
                 </select>
               </div>
@@ -120,11 +125,11 @@ export default function CheckOut() {
                   onChange={(e) => setOverrideTimeWindow(e.target.checked)}
                   disabled={submitting}
                 />
-                <span>Override khung giờ check-out (trước 12:00)</span>
+                <span>Cho phép trả phòng ngoài khung giờ (trước 12:00)</span>
               </label>
 
               <button type="button" className="co-submit" onClick={settle} disabled={submitting}>
-                {submitting ? "Đang xử lý..." : "Pay balance & create invoice"}
+                {submitting ? "Đang xử lý..." : "Thanh toán số dư & tạo hóa đơn"}
               </button>
             </div>
           </article>

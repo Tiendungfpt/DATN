@@ -1,9 +1,5 @@
 import dayjs from "dayjs";
 
-/**
- * Frontend mirror backend refundPolicy.js — đồng bộ % hoàn để preview trước khi POST.
- */
-
 export function computeRefundRateByDaysUntilCheckIn(now, checkInDate) {
   const today = dayjs(now).startOf("day");
   const ci = dayjs(checkInDate).startOf("day");
@@ -14,11 +10,6 @@ export function computeRefundRateByDaysUntilCheckIn(now, checkInDate) {
   return 0;
 }
 
-/**
- * @param {Date|string|number} now
- * @param {Date|string|number} checkInDate
- * @param {number} originalAmountRaw
- */
 export function computeRefundBreakdown(now, checkInDate, originalAmountRaw) {
   const originalAmount = Math.max(0, Math.round(Number(originalAmountRaw) || 0));
   const rate = computeRefundRateByDaysUntilCheckIn(now, checkInDate);
@@ -27,7 +18,6 @@ export function computeRefundBreakdown(now, checkInDate, originalAmountRaw) {
   return { refundAmount, cancellationFee, originalAmount, rate };
 }
 
-/** @param {Record<string, unknown>} booking */
 export function resolveRefundOriginalAmountFromBooking(booking) {
   const prepaid = Math.round(Math.max(0, Number(booking.prepaid_amount) || 0));
   const depositPaid = Math.round(Math.max(0, Number(booking.deposit_paid_amount) || 0));

@@ -6,9 +6,6 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/**
- * Custom hook: requestRefund, getMyRefunds, getRefundDetail + { data, loading, error }.
- */
 export function useRefund() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);

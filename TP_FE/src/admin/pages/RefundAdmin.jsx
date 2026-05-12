@@ -13,7 +13,6 @@ function normalizePaymentMethod(raw) {
   return String(raw || "").trim().toLowerCase();
 }
 
-/** Admin: luồng Refund module — manual approve/reject */
 export default function RefundAdmin() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +90,7 @@ export default function RefundAdmin() {
   };
 
   const retryRefund = async (refundId) => {
-    if (!window.confirm("Thử lại gọi API hoàn tiền MoMo? (sau khi đã failed)")) return;
+    if (!window.confirm("Gửi lại yêu cầu hoàn qua MoMo?")) return;
     try {
       setBusyId(String(refundId));
       const adminNote = window.prompt("Ghi chú admin (tuỳ chọn):", "") || "";
@@ -141,9 +140,8 @@ export default function RefundAdmin() {
         <div>
           <h2>Quản lý hoàn tiền</h2>
           <div className="booking-admin-section-subtitle refund-admin-subtitle">
-            Luồng nghiệp vụ: <strong>Duyệt</strong> → gọi API hoàn của cổng (MoMo) → cổng xử lý bất đồng bộ →{" "}
-            <strong>Tra cứu</strong> / <strong>Thử lại</strong> nếu lỗi → cập nhật DB &amp; thông báo khách. Cổng khác:
-            duyệt thủ công + đối soát.
+            MoMo: duyệt xong là chờ cổng — trục trặc thì <strong>Tra cứu</strong> / <strong>Thử lại</strong>. Thanh toán
+            khác: chuyển khoản tay rồi đánh dấu duyệt.
           </div>
         </div>
         <div className="refund-admin-toolbar">
@@ -156,7 +154,7 @@ export default function RefundAdmin() {
               disabled={loading}
             >
               <option value="pending">Đang chờ duyệt</option>
-              <option value="processing">Đang xử lý cổng</option>
+              <option value="processing">Đang xử lý</option>
               <option value="completed">Hoàn tất</option>
               <option value="failed">Từ chối / lỗi</option>
               <option value="all">Tất cả</option>
@@ -170,10 +168,6 @@ export default function RefundAdmin() {
           <h3>Yêu cầu hoàn tiền</h3>
           <span className="booking-admin-section-count">{items.length}</span>
         </div>
-        <div className="booking-admin-section-subtitle">
-          Nguồn dữ liệu: collection <strong>Refund</strong>.
-        </div>
-
         {items.length === 0 ? (
           <div className="booking-admin-empty">Không có dữ liệu theo bộ lọc hiện tại.</div>
         ) : (
@@ -185,7 +179,7 @@ export default function RefundAdmin() {
                   <header className="ba-card-head">
                     <div className="ba-card-head-left">
                       <div className="ba-card-title">
-                        Refund <span className="ba-card-id">#{String(row.id || "").slice(-6).toUpperCase()}</span>
+                        Hoàn tiền <span className="ba-card-id">#{String(row.id || "").slice(-6).toUpperCase()}</span>
                       </div>
                       <div className="ba-card-sub">
                         Booking #{String(bid || "").slice(-6).toUpperCase()} · {formatDate(row.createdAt)}
@@ -202,7 +196,7 @@ export default function RefundAdmin() {
                       <strong>{(Number(row.amount) || 0).toLocaleString("vi-VN")} đ</strong>
                     </div>
                     <div className="ba-money-row ba-money-row--sub">
-                      <span>Tổng gốc (policy)</span>
+                      <span>Tiền gốc</span>
                       <strong>{(Number(row.originalAmount) || 0).toLocaleString("vi-VN")} đ</strong>
                     </div>
                     <div className="ba-money-row ba-money-row--sub">
@@ -245,7 +239,7 @@ export default function RefundAdmin() {
                     ) : null}
                   {row.provider ? (
                     <div className="ba-money-row ba-money-row--sub">
-                      <span>Kết quả cổng</span>
+                      <span>Phản hồi MoMo</span>
                       <span>
                         {String(row.provider).toUpperCase()}
                         {row.providerResultCode != null ? ` · code ${row.providerResultCode}` : ""}
@@ -265,7 +259,7 @@ export default function RefundAdmin() {
                         <span>
                           {row.failureMessage}
                           {normalizePaymentMethod(row?.paymentMethod) === "momo"
-                            ? " (Gợi ý: kiểm tra transId gốc của giao dịch MoMo và cấu hình MOMO_* trên server.)"
+                            ? " — kiểm tra mã giao dịch gốc và cấu hình MoMo trên server."
                             : ""}
                         </span>
                       </div>

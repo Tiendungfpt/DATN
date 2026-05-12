@@ -25,6 +25,7 @@ import {
   searchUsers,
   getUsersPagination,
 } from "../controllers/adminController.js";
+import { replyReview } from "../controllers/review.js";
 
 const adminRouter = Router();
 
@@ -160,29 +161,7 @@ adminRouter.patch(
  * ADMIN REPLY REVIEW
  * /api/admin/reviews/:id/reply
  */
-adminRouter.patch(
-  "/reviews/:id/reply",
-  checkAuth,
-  checkAdmin,
-  async (req, res) => {
-    try {
-      const { reply } = req.body;
-
-      const review = await Review.findByIdAndUpdate(
-        req.params.id,
-        { adminReply: reply },
-        { new: true }
-      );
-
-      res.json({
-        message: "Đã phản hồi review",
-        review,
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Lỗi server" });
-    }
-  }
-);
+adminRouter.patch("/reviews/:id/reply", checkAuth, checkAdmin, replyReview);
 
 /**
  * DELETE REVIEW

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import "./register.css";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -22,10 +23,17 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3000/api/auth/register", {
+      const payload = {
+        ...form,
+        email: String(form.email || "")
+          .trim()
+          .toLowerCase(),
+        name: String(form.name || "").trim(),
+      };
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -44,9 +52,7 @@ export default function Register() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.background} />
-
+    <div className="register-page" style={styles.container}>
       <div style={styles.card}>
         <div style={styles.header}>
           <h1 style={styles.title}>Tạo tài khoản mới</h1>
@@ -57,63 +63,84 @@ export default function Register() {
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Họ và tên</label>
+            <label style={styles.label} htmlFor="reg-name">
+              Họ và tên
+            </label>
             <input
+              id="reg-name"
               type="text"
               name="name"
               placeholder="Nguyễn Văn A"
               value={form.name}
               onChange={handleChange}
               style={styles.input}
+              autoComplete="name"
               required
             />
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Email</label>
+            <label style={styles.label} htmlFor="reg-email">
+              Email
+            </label>
             <input
+              id="reg-email"
               type="email"
               name="email"
               placeholder="your@email.com"
               value={form.email}
               onChange={handleChange}
               style={styles.input}
+              autoComplete="email"
               required
             />
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Mật khẩu</label>
+            <label style={styles.label} htmlFor="reg-password">
+              Mật khẩu
+            </label>
             <input
+              id="reg-password"
               type="password"
               name="password"
-              placeholder="••••••••"
+              placeholder="Tối thiểu 6 ký tự"
               value={form.password}
               onChange={handleChange}
               style={styles.input}
+              autoComplete="new-password"
+              minLength={6}
               required
             />
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Số điện thoại</label>
+            <label style={styles.label} htmlFor="reg-phone">
+              Số điện thoại
+            </label>
             <input
+              id="reg-phone"
               type="tel"
               name="phone"
               placeholder="0123456789"
               value={form.phone}
               onChange={handleChange}
               style={styles.input}
+              autoComplete="tel"
               required
             />
           </div>
 
-          <button type="submit" style={styles.button} disabled={loading}>
+          <button
+            type="submit"
+            style={{ ...styles.button, ...(loading ? styles.buttonDisabled : {}) }}
+            disabled={loading}
+          >
             {loading ? "Đang đăng ký..." : "Đăng ký ngay"}
           </button>
         </form>
 
-        <p style={styles.register}>
+        <p style={styles.footer}>
           Đã có tài khoản?{" "}
           <Link to="/login" style={styles.link}>
             Đăng nhập
@@ -126,37 +153,26 @@ export default function Register() {
 
 const styles = {
   container: {
-    position: "relative",
-    minHeight: "100vh",
+    minHeight: "calc(100vh - 180px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
+    padding: "32px 16px",
+    background:
+      "radial-gradient(circle at 10% 10%, rgba(37,99,235,0.10), transparent 35%), radial-gradient(circle at 90% 0%, rgba(124,58,237,0.10), transparent 32%), #f8fafc",
     fontFamily: "'Segoe UI', system-ui, sans-serif",
   },
 
-  background: {
-    position: "absolute",
-    inset: 0,
-    backgroundImage: `url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2073&auto=format&fit=crop')`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    filter: "brightness(0.75) contrast(1.1)",
-    zIndex: -1,
-  },
-
   card: {
-    background: "rgba(255, 255, 255, 0.15)",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
-    padding: "35px 32px", 
-    borderRadius: "18px",
-    boxShadow: "0 12px 30px rgba(0, 0, 0, 0.25)",
+    background: "#ffffff",
+    padding: "30px 26px",
+    borderRadius: "16px",
+    boxShadow: "0 16px 34px rgba(15,23,42,0.10)",
     width: "100%",
-    maxWidth: "380px", 
-    border: "1px solid rgba(255, 255, 255, 0.3)",
+    maxWidth: "460px",
+    border: "1px solid rgba(15,23,42,0.10)",
     textAlign: "center",
-    color: "white",
+    color: "#0f172a",
   },
 
   header: {
@@ -164,22 +180,22 @@ const styles = {
   },
 
   title: {
-    fontSize: "29px",
-    fontWeight: "700",
+    fontSize: "30px",
+    fontWeight: "900",
     margin: "0 0 8px 0",
-    textShadow: "0 2px 10px rgba(0,0,0,0.3)",
+    color: "#0f172a",
   },
 
   subtitle: {
     fontSize: "15px",
-    opacity: 0.9,
+    color: "rgba(15,23,42,0.68)",
     margin: 0,
   },
 
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: "18px", 
+    gap: "18px",
   },
 
   inputGroup: {
@@ -188,46 +204,50 @@ const styles = {
 
   label: {
     display: "block",
-    marginBottom: "6px",
+    marginBottom: "7px",
     fontSize: "14px",
-    fontWeight: "600",
-    opacity: 0.95,
+    fontWeight: "700",
+    color: "#0f172a",
   },
 
   input: {
     width: "100%",
-    padding: "13px 15px", 
-    background: "rgba(255, 255, 255, 0.25)",
-    border: "1px solid rgba(255, 255, 255, 0.4)",
-    borderRadius: "10px",
-    fontSize: "16px",
-    color: "white",
+    boxSizing: "border-box",
+    padding: "14px 16px",
+    background: "#ffffff",
+    border: "1px solid rgba(15,23,42,0.18)",
+    borderRadius: "11px",
+    fontSize: "15px",
+    color: "#0f172a",
     outline: "none",
-    transition: "all 0.3s",
   },
 
   button: {
     marginTop: "8px",
-    padding: "14px",
+    padding: "15px",
     background: "linear-gradient(135deg, #f59e0b, #ea580c)",
-    color: "white",
+    color: "#ffffff",
     border: "none",
-    borderRadius: "10px",
-    fontSize: "16.5px",
+    borderRadius: "11px",
+    fontSize: "16px",
     fontWeight: "700",
     cursor: "pointer",
-    transition: "all 0.3s",
-    boxShadow: "0 8px 20px rgba(245, 158, 11, 0.4)",
+    boxShadow: "0 10px 20px rgba(234,88,12,0.28)",
   },
 
-  register: {
-    marginTop: "25px",
-    fontSize: "14.5px",
-    opacity: 0.9,
+  buttonDisabled: {
+    opacity: 0.65,
+    cursor: "not-allowed",
+  },
+
+  footer: {
+    marginTop: "22px",
+    fontSize: "14px",
+    color: "rgba(15,23,42,0.72)",
   },
 
   link: {
-    color: "#fde047",
+    color: "#1d4ed8",
     fontWeight: "700",
     textDecoration: "none",
   },

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { createApp } from "./createApp.js";
+import { ensureDefaultServiceCategories } from "./config/seedServiceCategories.js";
 
 const MONGO_URI =
   process.env.MONGO_URI ||
@@ -12,6 +13,8 @@ async function start() {
       serverSelectionTimeoutMS: 8000,
     });
     console.log("✅ Connected to MongoDB");
+
+    await ensureDefaultServiceCategories();
 
     const app = createApp();
 

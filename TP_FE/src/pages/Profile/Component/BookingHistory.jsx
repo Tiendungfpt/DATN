@@ -128,7 +128,6 @@ function BookingHistory() {
     }
   }, [token]);
 
-  // restore last action alert after reload
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("bookingHistoryAlert");
@@ -172,7 +171,7 @@ function BookingHistory() {
       setBookings((prev) =>
         prev.map((b) => (b._id === bookingId ? { ...b, status: "cancelled", cancel_reason: reason } : b)),
       );
-      showAlert("Đã hủy booking (luồng hủy thường, không tự hoàn tiền).", "warning");
+      showAlert("Đã hủy. Trường hợp này không tự hoàn tiền — liên hệ khách sạn nếu cần.", "warning");
     } catch (err) {
       showAlert(err.response?.data?.message || "Không hủy được booking", "danger");
     }
@@ -464,7 +463,7 @@ function BookingHistory() {
                           </div>
                           {String(booking.deposit_status) === "pending_refund" ? (
                             <small className="text-warning d-block mt-1">
-                              Yêu cầu hoàn tiền đang chờ admin xử lý:{" "}
+                              Đang chờ khách sạn xử lý hoàn:{" "}
                               {(Number(booking.refund_requested_amount) || 0).toLocaleString("vi-VN")} ₫
                             </small>
                           ) : null}
@@ -481,7 +480,7 @@ function BookingHistory() {
                           ) : null}
                           {String(booking.refund_status || "") === "requested" ? (
                             <small className="text-muted d-block mt-1">
-                              Trạng thái xử lý: đang chờ duyệt hoàn tiền.
+                              Đang chờ duyệt hoàn tiền.
                             </small>
                           ) : null}
                         </div>
@@ -496,7 +495,7 @@ function BookingHistory() {
                           </div>
                           {!isPaid ? (
                             <small className="text-muted d-block mt-1">
-                              Bạn đã hủy/đóng trang MoMo hoặc chưa thanh toán nên đơn vẫn ở trạng thái chưa trả tiền.
+                              Chưa thanh toán xong (đã đóng trang MoMo hoặc chưa trả).
                             </small>
                           ) : null}
                         </div>
@@ -526,7 +525,7 @@ function BookingHistory() {
                           onClick={() => setRefundModalBooking(booking)}
                           className="btn btn-danger btn-lg px-5 py-3 rounded-4 w-100 w-lg-auto fw-medium mt-2"
                         >
-                          {isCancelled ? "Yêu cầu hoàn tiền" : "Hủy & hoàn tiền (policy mới)"}
+                          {isCancelled ? "Yêu cầu hoàn tiền" : "Hủy đặt & hoàn tiền"}
                         </button>
                       )}
 
@@ -557,7 +556,7 @@ function BookingHistory() {
                           {String(booking.deposit_status) === "forfeited" ? (
                             <small className="text-danger d-block mt-1">
                               <i className="bi bi-exclamation-triangle me-1"></i>
-                              Không được hoàn (mất cọc theo chính sách)
+                              Không hoàn tiền (giữ cọc)
                             </small>
                           ) : null}
                           {String(booking.refund_status || "") === "rejected" && booking.refund_rejected_reason ? (
@@ -574,7 +573,7 @@ function BookingHistory() {
                           ].includes(String(booking.deposit_status || "")) &&
                           !["requested", "paid", "rejected"].includes(String(booking.refund_status || "")) ? (
                             <small className="text-muted d-block mt-1">
-                              Chưa có trạng thái hoàn tiền (bạn có thể đã hủy theo luồng thường).
+                              Chưa có thông tin hoàn tiền.
                             </small>
                           ) : null}
                         </div>
@@ -587,32 +586,30 @@ function BookingHistory() {
                         </div>
                       )}
 
-                     {/* ✅ Trạng thái vẫn giữ nguyên */}
-{isStayFinished(booking.status) && (
-  <div className="text-success fw-semibold fs-5 py-3">
-    <i className="bi bi-check-circle-fill me-2"></i>
-    Đã trả phòng
-  </div>
-)}
+                      {isStayFinished(booking.status) && (
+                        <div className="text-success fw-semibold fs-5 py-3">
+                          <i className="bi bi-check-circle-fill me-2"></i>
+                          Đã trả phòng
+                        </div>
+                      )}
 
-{/* ⭐ Đánh giá (chỉ khi completed) */}
-{isStayFinished(booking.status) && primaryRoomId(booking) && (
-  <Link
-    to={`/review/${booking._id}?roomId=${primaryRoomId(booking)}`}
-    className="btn btn-primary mt-2"
-  >
-    ⭐ Đánh giá
-  </Link>
-)}
+                      {isStayFinished(booking.status) && primaryRoomId(booking) && (
+                        <Link
+                          to={`/review/${booking._id}?roomId=${primaryRoomId(booking)}`}
+                          className="btn btn-primary mt-2"
+                        >
+                          ⭐ Đánh giá
+                        </Link>
+                      )}
 
-{primaryRoomId(booking) ? (
-  <Link
-    to={`/phong/${primaryRoomId(booking)}`}
-    className="btn btn-primary mt-2"
-  >
-    Xem phòng
-  </Link>
-) : null}
+                      {primaryRoomId(booking) ? (
+                        <Link
+                          to={`/phong/${primaryRoomId(booking)}`}
+                          className="btn btn-primary mt-2"
+                        >
+                          Xem phòng
+                        </Link>
+                      ) : null}
 
                       {booking.status === "confirmed" && (
                         <div className="text-success fw-semibold fs-5 py-3">
@@ -638,7 +635,6 @@ function BookingHistory() {
                   </div>
                 </div>
 
-                {/* Footer */}
                 <div className="card-footer bg-light border-0 py-3 px-5 small d-flex justify-content-between align-items-center text-muted">
                   <span>
                     Đặt ngày:{" "}
@@ -669,7 +665,7 @@ function BookingHistory() {
               lower.includes("thành công") || lower.includes("đã hủy") ? "success" : lower.includes("lỗi") || lower.includes("thất bại") ? "danger" : "info";
             showAlert(msg, type);
           } else {
-            showAlert("Đã xử lý yêu cầu hủy/hoàn tiền.", "success");
+            showAlert("Đã gửi yêu cầu.", "success");
           }
           reloadBookings();
         }}

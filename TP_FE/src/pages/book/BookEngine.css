@@ -168,35 +168,13 @@
   font-size: 13px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
 }
 
 .be-room-head-title {
   font-weight: 900;
   letter-spacing: 0.02em;
-}
-
-.be-room-head-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.be-link {
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 10px;
-  font-weight: 900;
-  font-size: 12px;
-}
-
-.be-link:hover {
-  border-color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.12);
 }
 
 .be-room-body {
@@ -436,6 +414,43 @@
 
 .be-qty select {
   width: 84px;
+}
+
+.be-room-actions {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.be-detail-btn {
+  appearance: none;
+  cursor: pointer;
+  border: 1.5px solid rgba(191, 149, 55, 0.55);
+  background: #fff;
+  color: #0f172a;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.be-detail-btn:hover {
+  background: rgba(208, 166, 73, 0.14);
+  border-color: rgba(191, 149, 55, 0.85);
+  box-shadow: 0 6px 14px rgba(191, 149, 55, 0.18);
+}
+
+.be-detail-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(208, 166, 73, 0.35);
 }
 
 .be-sidebar {
@@ -748,11 +763,6 @@
 
 .be-room-head-title {
   font-size: 15px;
-}
-
-.be-link {
-  border-radius: 999px;
-  padding: 0 12px;
 }
 
 .be-room-img {
@@ -2100,8 +2110,23 @@
   font-size: 20px;
 }
 
-.be-add-to-cart-btn {
+.be-room-actions .be-detail-btn,
+.be-room-actions .be-add-to-cart-btn {
   min-width: 122px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.be-room-actions .be-add-to-cart-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.be-room-actions .be-detail-btn:hover {
+  transform: translateY(-1px);
 }
 
 .be-bottom-sticky {
@@ -2240,8 +2265,17 @@
     align-items: stretch;
   }
 
-  .be-qty {
-    justify-content: flex-end;
+  .be-room-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .be-room-actions .be-detail-btn,
+  .be-room-actions .be-add-to-cart-btn {
+    width: 100%;
+    justify-self: stretch;
   }
 }
 

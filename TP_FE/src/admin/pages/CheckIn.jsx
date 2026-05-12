@@ -45,7 +45,7 @@ export default function CheckIn() {
           const primary = items.find((x) => x?.is_primary) || items[0] || null;
           if (primary?.full_name) setGuestName(primary.full_name);
           if (primary?.id_card) setGuestId(primary.id_card);
-          const extras = items
+          let extras = items
             .filter((x) => !x?.is_primary)
             .map((x) => ({
               key: String(x?._id || `${Date.now()}-${Math.random()}`),
@@ -55,6 +55,24 @@ export default function CheckIn() {
               date_of_birth: x?.date_of_birth ? new Date(x.date_of_birth).toISOString().slice(0, 10) : "",
               relationship: String(x?.relationship || ""),
             }));
+          const bookedTotal =
+            Math.max(0, Number(b.data?.adults || 0)) + Math.max(0, Number(b.data?.children || 0));
+          if (bookedTotal >= 2) {
+            const needExtras = bookedTotal - 1;
+            while (extras.length < needExtras) {
+              extras = [
+                ...extras,
+                {
+                  key: `expected-${String(b.data._id)}-${extras.length}`,
+                  full_name: "",
+                  id_card: "",
+                  nationality: "",
+                  date_of_birth: "",
+                  relationship: "",
+                },
+              ];
+            }
+          }
           setExtraGuests(extras);
         } catch {
           // ignore: roster may not exist yet
@@ -177,14 +195,24 @@ export default function CheckIn() {
   };
 
   const qty = requiredTotal;
-  const partySize = 1 + (extraGuests || []).filter((g) => String(g.full_name || "").trim()).length;
+  const declaredPartySize = 1 + (extraGuests || []).filter((g) => String(g.full_name || "").trim()).length;
+  const bookedPartySize = Math.max(
+    0,
+    Number(booking?.adults || 0) + Number(booking?.children || 0),
+  );
+  const partySize = bookedPartySize > 0 ? bookedPartySize : declaredPartySize;
 
   if (!bookingId) return <p>Missing bookingId in URL</p>;
 
   return (
     <section className="ci-shell booking-admin-section">
       <div className="booking-admin-section-header">
-        <h3>Check-in</h3>
+        <div className="ba-head-with-back">
+          <button type="button" className="ba-nav-back" onClick={() => navigate(-1)}>
+            ← Trang trước
+          </button>
+          <h3>Check-in</h3>
+        </div>
         {booking ? (
           <span className="booking-admin-section-count">
             #{String(booking._id).slice(-6).toUpperCase()}
@@ -230,37 +258,46 @@ export default function CheckIn() {
             </div>
 
             <div className="ci-divider" />
-            <div className="ci-subhead">
-              <div>
-                <div className="ci-subtitle">Thành viên thêm</div>
-                <div className="ci-subnote">
-                  Bắt buộc khai báo đầy đủ người lưu trú theo quy định. Nhập họ tên để thêm thành viên vào đoàn.
+            <div className="ci-members-wrap">
+              <div className="ci-subhead ci-subhead--members">
+                <div>
+                  <div className="ci-subtitle">Thành viên thêm</div>
+                  <div className="ci-subnote">
+                    Bắt buộc khai báo đầy đủ người lưu trú theo quy định. Nhập họ tên để thêm thành viên vào đoàn.
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  className="ci-btn-add-member"
+                  onClick={() =>
+                    setExtraGuests((prev) => [
+                      ...(prev || []),
+                      {
+                        key: String(Date.now()),
+                        full_name: "",
+                        id_card: "",
+                        nationality: "",
+                        date_of_birth: "",
+                        relationship: "",
+                      },
+                    ])
+                  }
+                >
+                  + Thêm thành viên
+                </button>
               </div>
-              <button
-                type="button"
-                className="ci-secondary"
-                onClick={() =>
-                  setExtraGuests((prev) => [
-                    ...(prev || []),
-                    { key: String(Date.now()), full_name: "", id_card: "", nationality: "", date_of_birth: "", relationship: "" },
-                  ])
-                }
-              >
-                + Thêm thành viên
-              </button>
-            </div>
 
-            <div className="ci-guest-list">
+              <div className="ci-guest-list">
               {(extraGuests || []).map((g, idx) => (
                 <div key={g.key} className="ci-guest-card">
                   <div className="ci-guest-card-head">
-                    <strong>Thành viên {idx + 1}</strong>
+                    <span className="ci-guest-card-title">Thành viên {idx + 1}</span>
                     <button
                       type="button"
                       className="ci-icon-btn"
                       onClick={() => setExtraGuests((prev) => (prev || []).filter((x) => x.key !== g.key))}
                       title="Xóa thành viên"
+                      aria-label={`Xóa thành viên ${idx + 1}`}
                     >
                       ×
                     </button>
@@ -330,6 +367,7 @@ export default function CheckIn() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
 
             {err ? <div className="ci-alert ci-alert--danger">{err}</div> : null}

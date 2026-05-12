@@ -13,6 +13,28 @@ function formatMoney(v) {
   return `${Number(v || 0).toLocaleString("vi-VN")} ₫`;
 }
 
+/**
+ * Chuỗi cho `input type="datetime-local"`: phải là **giờ địa phương**.
+ * `toISOString().slice(0, 16)` là UTC → lệch múi giờ (VD VN +7 hiện 12h nhưng ô hiện 05h).
+ */
+function toDatetimeLocalString(d = new Date()) {
+  const x = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(x.getTime())) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}T${p(x.getHours())}:${p(x.getMinutes())}`;
+}
+
+/** Khớp enum `category` trong `TP_BE/src/models/BookingCharge.js` */
+const CHARGE_CATEGORY_OPTIONS = [
+  { value: "food", label: "Ăn uống" },
+  { value: "laundry", label: "Giặt là" },
+  { value: "minibar", label: "Minibar" },
+  { value: "spa", label: "Spa / Massage" },
+  { value: "rental", label: "Thuê dụng cụ / phương tiện" },
+  { value: "surcharge", label: "Phụ thu" },
+  { value: "other", label: "Khác" },
+];
+
 export default function ServiceManager() {
   const [params] = useSearchParams();
   const bookingId = params.get("bookingId") || "";
@@ -43,7 +65,7 @@ export default function ServiceManager() {
   const [chargeQty, setChargeQty] = useState(1);
   const [chargeUnit, setChargeUnit] = useState(0);
   const [chargeNote, setChargeNote] = useState("");
-  const [chargeAt, setChargeAt] = useState(() => new Date().toISOString().slice(0, 16));
+  const [chargeAt, setChargeAt] = useState(() => toDatetimeLocalString());
 
   const token = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
@@ -394,6 +416,9 @@ export default function ServiceManager() {
           </div>
         </div>
         <div className="folio-actions">
+          <button type="button" className="folio-add-btn folio-add-btn--ghost" onClick={() => navigate(-1)}>
+            ← Trang trước
+          </button>
           <button
             type="button"
             className="folio-add-btn folio-add-btn--ghost"
@@ -426,7 +451,7 @@ export default function ServiceManager() {
               </div>
               {roomTypeSummary.length ? (
                 <div className="folio-row">
-                  <span>Hạng phòng</span>
+                  <span>Phòng đã chọn</span>
                   <strong>
                     {roomTypeSummary.map((x) => `${x.name} × ${x.qty}`).join(" · ")}
                   </strong>
@@ -438,7 +463,7 @@ export default function ServiceManager() {
               </div>
 
               <div className="folio-divider" />
-              <div className="folio-row" style={{ borderBottom: "none", paddingBottom: 0 }}>
+              <div className="folio-row folio-row--section">
                 <span>Dịch vụ miễn phí đi kèm</span>
               </div>
               {complimentaryRows.length ? (
@@ -519,12 +544,10 @@ export default function ServiceManager() {
               {Array.isArray(guests) && guests.length > 0 ? (
                 <>
                   <div className="folio-divider" />
-                  <div style={{ fontWeight: 900, fontSize: 12, color: "#d6e2f8", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                    Danh sách khách
-                  </div>
-                  <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                  <div className="folio-guest-head">Danh sách khách</div>
+                  <div className="folio-guest-list">
                     {guests.slice(0, 6).map((g) => (
-                      <div key={g._id} className="folio-line" style={{ background: "#0f172b", border: "1px solid rgba(214, 182, 112, 0.18)" }}>
+                      <div key={g._id} className="folio-line folio-guest-card">
                         <div className="folio-line-left">
                           <div className="folio-line-title">
                             {g.full_name} {g.is_primary ? "(Chính)" : ""}
@@ -533,9 +556,7 @@ export default function ServiceManager() {
                             {g.id_card ? `ID: ${g.id_card}` : "—"} {g.nationality ? ` · ${g.nationality}` : ""}{g.relationship ? ` · ${g.relationship}` : ""}
                           </div>
                         </div>
-                        <div className="folio-line-amount" style={{ fontWeight: 800 }}>
-                          {g.date_of_birth ? formatDateVi(g.date_of_birth) : "—"}
-                        </div>
+                        <div className="folio-line-amount folio-line-amount--guest">{g.date_of_birth ? formatDateVi(g.date_of_birth) : "—"}</div>
                       </div>
                     ))}
                     {guests.length > 6 ? (
@@ -668,10 +689,11 @@ export default function ServiceManager() {
                   <label>
                     Loại phát sinh
                     <select value={chargeCategory} onChange={(e) => setChargeCategory(e.target.value)}>
-                      <option value="food">Ăn uống</option>
-                      <option value="laundry">Giặt là</option>
-                      <option value="minibar">Mini bar</option>
-                      <option value="other">Khác</option>
+                      {CHARGE_CATEGORY_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
                     </select>
                   </label>
                   <label>
@@ -718,7 +740,7 @@ export default function ServiceManager() {
                       <button
                         type="button"
                         className="folio-btn-ghost"
-                        onClick={() => setChargeAt(new Date().toISOString().slice(0, 16))}
+                        onClick={() => setChargeAt(toDatetimeLocalString())}
                       >
                         Dùng hiện tại
                       </button>

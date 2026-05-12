@@ -82,6 +82,9 @@ const bookingSchema = new mongoose.Schema(
       enum: ["overnight"],
       default: "overnight",
     },
+    /** Number of guests (captured at booking time) */
+    adults: { type: Number, default: 0, min: 0 },
+    children: { type: Number, default: 0, min: 0 },
     room_quantity: { type: Number, required: true, min: 1, default: 1 },
     /** deposit | full prepay of estimated room portion */
     payment_mode: {

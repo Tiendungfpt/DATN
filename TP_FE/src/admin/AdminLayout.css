@@ -91,6 +91,25 @@
   background: rgba(77, 140, 255, 0.08) !important;
 }
 
+/* Trang danh sách user: User.css đặt color tối cho .user-page — phần pagination ngoài bảng bị chìm */
+.admin-main .user-page {
+  color: var(--ad-text) !important;
+}
+
+.admin-main .user-page .pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-main .user-page .pagination span {
+  color: #f4f7ff !important;
+  font-weight: 800;
+  font-size: 0.98rem;
+  letter-spacing: 0.02em;
+}
+
 .admin-main input,
 .admin-main select,
 .admin-main textarea,
@@ -102,6 +121,16 @@
   background: #0d162a !important;
   color: var(--ad-text) !important;
   border: 1px solid var(--ad-border) !important;
+}
+
+.admin-main select {
+  accent-color: var(--ad-accent) !important;
+  color-scheme: dark;
+}
+
+.admin-main select option {
+  background-color: #0d162a !important;
+  color: #e8eefc !important;
 }
 
 .admin-main input:focus,
@@ -138,6 +167,23 @@
   border: 1px solid var(--ad-border-strong) !important;
   color: #0b1020 !important;
   font-weight: 900 !important;
+}
+
+.admin-main .folio-add-btn--ghost {
+  background: #17243f !important;
+  color: var(--ad-text) !important;
+  border: 1px solid var(--ad-border) !important;
+}
+
+.admin-main .ba-nav-back {
+  background: #17243f !important;
+  color: var(--ad-text) !important;
+  border: 1px solid var(--ad-border) !important;
+}
+
+.admin-main .ba-nav-back:hover {
+  background: #1c2d4d !important;
+  border-color: rgba(214, 182, 112, 0.35) !important;
 }
 
 .admin-main .booking-admin-tab,
@@ -186,10 +232,13 @@
 .admin-main .booking-admin-flow,
 .admin-main .folio-row,
 .admin-main .ci-kv,
-.admin-main .folio-divider,
 .admin-main .ci-divider {
   border-color: rgba(255, 255, 255, 0.1) !important;
   color: var(--ad-text-muted) !important;
+}
+
+.admin-main .folio-row strong {
+  color: #f7e8c5 !important;
 }
 
 .admin-main .cm-contact-drawer-footer,
@@ -203,4 +252,323 @@
   background: #0f182c !important;
   color: var(--ad-text) !important;
   border: 1px solid var(--ad-border) !important;
+}
+
+/* Folio (ServiceManager): modal + trang folio đồng bộ dark admin */
+.admin-main .folio-title {
+  color: #f7f9ff !important;
+}
+
+.admin-main .folio-sub {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .folio-modal {
+  background: linear-gradient(180deg, var(--ad-panel) 0%, #101b30 100%) !important;
+  border: 1px solid var(--ad-border) !important;
+  color: var(--ad-text) !important;
+  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.45) !important;
+}
+
+.admin-main .folio-modal-head {
+  background: linear-gradient(135deg, #0c1428 0%, #152038 55%, #1a2740 100%) !important;
+  border-bottom: 1px solid var(--ad-border) !important;
+}
+
+.admin-main .folio-modal-head strong {
+  color: #f7f9ff !important;
+}
+
+.admin-main .folio-modal-body {
+  color: var(--ad-text);
+}
+
+.admin-main .folio-tabs button {
+  background: #17243f !important;
+  color: #cad7f1 !important;
+  border: 1px solid var(--ad-border) !important;
+}
+
+.admin-main .folio-tabs button.active {
+  background: rgba(214, 182, 112, 0.22) !important;
+  border-color: var(--ad-border-strong) !important;
+  color: #f7e8c5 !important;
+}
+
+.admin-main .folio-form label {
+  color: #b8c7e6 !important;
+}
+
+.admin-main .folio-form select:focus,
+.admin-main .folio-form input:focus,
+.admin-main .folio-form textarea:focus {
+  border-color: rgba(214, 182, 112, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(214, 182, 112, 0.22) !important;
+}
+
+.admin-main .folio-service-preview {
+  background: #0f182c !important;
+  border-color: var(--ad-border) !important;
+}
+
+.admin-main .folio-preview-row {
+  color: var(--ad-text) !important;
+}
+
+.admin-main .folio-preview-row strong {
+  color: #f7f9ff !important;
+}
+
+.admin-main .folio-preview-desc {
+  color: #c7d4ee !important;
+}
+
+.admin-main .folio-preview-desc--muted {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .folio-inline-total {
+  background: #0f182c !important;
+  border-color: var(--ad-border) !important;
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .folio-inline-total strong {
+  color: #f7e8c5 !important;
+}
+
+.admin-main .folio-mini {
+  border-top-color: var(--ad-border) !important;
+}
+
+.admin-main .folio-mini-head {
+  color: #b8c7e6 !important;
+}
+
+.admin-main .folio-mini-row {
+  background: #0f182c !important;
+  border-color: var(--ad-border) !important;
+}
+
+.admin-main .folio-mini-title,
+.admin-main .folio-mini-amt {
+  color: #f7f9ff !important;
+}
+
+.admin-main .folio-mini-meta {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .folio-empty {
+  background: #0f182c !important;
+  border-color: var(--ad-border) !important;
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .folio-alert {
+  background: rgba(15, 23, 42, 0.65) !important;
+  border-color: var(--ad-border) !important;
+  color: var(--ad-text) !important;
+}
+
+.admin-main .folio-alert--danger {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #fecaca !important;
+}
+
+.admin-main .folio-btn-ghost {
+  background: #17243f !important;
+  color: var(--ad-text) !important;
+  border: 1px solid var(--ad-border) !important;
+}
+
+.admin-main .folio-btn-primary {
+  background: linear-gradient(135deg, var(--ad-accent), var(--ad-accent-2)) !important;
+  border: 1px solid var(--ad-border-strong) !important;
+  color: #0b1020 !important;
+}
+
+.admin-main .folio-btn-primary:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed;
+}
+
+.admin-main .folio-x:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Folio: nội dung thẻ (KPI realtime, dòng dịch vụ, tổng kết) */
+.admin-main .folio-divider {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.admin-main .folio-card-head {
+  border-bottom: 1px solid var(--ad-border) !important;
+  background: linear-gradient(135deg, #0c1428 0%, #152038 100%) !important;
+}
+
+.admin-main .folio-card-body {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .folio-row > span {
+  color: #b8c7e6 !important;
+}
+
+.admin-main .folio-kpi {
+  background: #0f182c !important;
+  border-color: var(--ad-border) !important;
+}
+
+.admin-main .folio-kpi-k {
+  color: #9dadc9 !important;
+}
+
+.admin-main .folio-kpi-v {
+  color: #f7f9ff !important;
+}
+
+.admin-main .folio-kpi--due {
+  border-color: rgba(239, 68, 68, 0.38) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
+.admin-main .folio-kpi--due .folio-kpi-v {
+  color: #fecaca !important;
+}
+
+.admin-main .folio-line {
+  background: #0f182c !important;
+  border-color: var(--ad-border) !important;
+}
+
+.admin-main .folio-line-title {
+  color: #f7f9ff !important;
+}
+
+.admin-main .folio-line-meta {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .folio-line-amount {
+  color: #f7e8c5 !important;
+}
+
+.admin-main .folio-line-amount--free {
+  color: #6ee7b7 !important;
+}
+
+.admin-main .folio-line-amount--guest {
+  font-weight: 800 !important;
+  color: #c7d4ee !important;
+}
+
+.admin-main .folio-help {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .folio-minus {
+  color: #86efac !important;
+}
+
+.admin-main .folio-due {
+  color: #fecaca !important;
+}
+
+.admin-main .folio-guest-head {
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b8c7e6 !important;
+}
+
+.admin-main .folio-guest-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-main .folio-guest-card {
+  background: rgba(12, 20, 40, 0.92) !important;
+  border-color: rgba(214, 182, 112, 0.22) !important;
+}
+
+/* Trang checkout: thẻ & dòng đồng bộ dark admin */
+.admin-main .co-card {
+  background: linear-gradient(180deg, var(--ad-panel) 0%, #101b30 100%) !important;
+  border: 1px solid var(--ad-border) !important;
+  color: var(--ad-text) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32) !important;
+}
+
+.admin-main .co-card-head {
+  background: linear-gradient(135deg, #0c1428 0%, #152038 100%) !important;
+  border-bottom: 1px solid var(--ad-border) !important;
+  color: #f7f9ff !important;
+}
+
+.admin-main .co-card-body {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .co-row {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .co-row > span {
+  color: #b8c7e6 !important;
+}
+
+.admin-main .co-row strong {
+  color: #f7f9ff !important;
+}
+
+.admin-main .co-row--grand {
+  color: var(--ad-text-muted) !important;
+}
+
+.admin-main .co-row--due {
+  color: #fecaca !important;
+}
+
+.admin-main .co-row--due > span {
+  color: #fecaca !important;
+}
+
+.admin-main .co-row--due strong {
+  color: #fecaca !important;
+}
+
+.admin-main .co-divider {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.admin-main .co-label {
+  color: #b8c7e6 !important;
+}
+
+.admin-main .co-checkbox {
+  color: #c7d4ee !important;
+}
+
+.admin-main .co-alert--ok {
+  border-color: rgba(34, 197, 94, 0.35) !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #bbf7d0 !important;
+}
+
+.admin-main .co-alert--err {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #fecaca !important;
+}
+
+.admin-main .co-submit {
+  background: linear-gradient(135deg, var(--ad-accent), var(--ad-accent-2)) !important;
+  color: #0b1020 !important;
+  border: 1px solid var(--ad-border-strong) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28) !important;
 }

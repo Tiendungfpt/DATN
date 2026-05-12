@@ -8,10 +8,6 @@ import { isDepositSufficient } from "../utils/bookingPolicy.js";
 
 dotenv.config();
 
-/**
- * Chuỗi orderInfo chỉ BOM ASCII — tránh lỗi kỹ thuật/issuer trên Napas sandbox khi ký tự Unicode dài.
- * (Tài liệu MoMo không bắt buộc, nhưng giảm rủi ro với BKUN/demo.)
- */
 function momoAsciiOrderInfo(roomLabel, mongoIdHex) {
   const deacc = String(roomLabel || "")
     .normalize("NFD")
@@ -32,7 +28,6 @@ function momoAsciiOrderInfo(roomLabel, mongoIdHex) {
   return `Thanh toan ${core} ${tail}`.slice(0, 250);
 }
 
-/** Chuẩn hóa SĐT VN (0xxxxxxxxx) — MoMo userInfo; không đổi chữ ký create. */
 function normalizeVnMobile(raw) {
   let d = String(raw || "").replace(/\D/g, "");
   if (!d) return "";
@@ -57,12 +52,6 @@ class MoMoController {
     this.requestType = process.env.MOMO_REQUEST_TYPE || "captureWallet";
   }
 
-  /**
-   * MoMo refund query — POST /v2/gateway/api/refund/query
-   * rawSignature: accessKey=$accessKey&orderId=$orderId&partnerCode=$partnerCode&requestId=$requestId
-   *
-   * @param {{ orderId: string, requestId: string, lang?: "vi"|"en" }} input
-   */
   async refundQueryInternal(input) {
     if (!this.partnerCode || !this.accessKey || !this.secretKey) {
       return { ok: false, error: "missing_keys", message: "Thiếu cấu hình MoMo refund query" };
@@ -103,22 +92,6 @@ class MoMoController {
     }
   }
 
-  /**
-   * Call MoMo refund API (server-to-server).
-   *
-   * Docs: POST /v2/gateway/api/refund
-   * rawSignature:
-   * accessKey=$accessKey&amount=$amount&description=$description&orderId=$orderId&partnerCode=$partnerCode&requestId=$requestId&transId=$transId
-   *
-   * @param {{
-   *  transId: number|string,
-   *  amount: number|string,
-   *  description?: string,
-   *  lang?: "vi"|"en",
-   *  orderId?: string,
-   *  requestId?: string
-   * }} input
-   */
   async refundPaymentInternal(input) {
     if (!this.partnerCode || !this.accessKey || !this.secretKey) {
       return { ok: false, error: "missing_keys", message: "Thiếu cấu hình MoMo refund" };

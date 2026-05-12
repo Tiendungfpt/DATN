@@ -15,6 +15,12 @@ function BookingCheckout() {
   const [guestEmail, setGuestEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("captureWallet");
   const [payDepositNow, setPayDepositNow] = useState(true);
+  const [adults, setAdults] = useState(() =>
+    Math.max(1, Number.parseInt(String(checkoutData?.adults ?? ""), 10) || 2),
+  );
+  const [children, setChildren] = useState(() =>
+    Math.max(0, Number.parseInt(String(checkoutData?.children ?? ""), 10) || 0),
+  );
 
   const total = Number(checkoutData?.total) || 0;
   const requiredDeposit = Math.max(0, Number(checkoutData?.depositTotal) || 0);
@@ -39,6 +45,12 @@ function BookingCheckout() {
       setPayDepositNow(false);
     }
   }, [requiredDeposit]);
+
+  useEffect(() => {
+    if (!checkoutData) return;
+    setAdults(Math.max(1, Number.parseInt(String(checkoutData.adults ?? ""), 10) || 2));
+    setChildren(Math.max(0, Number.parseInt(String(checkoutData.children ?? ""), 10) || 0));
+  }, [checkoutData?.adults, checkoutData?.children]);
 
   const lineItems = useMemo(
     () =>
@@ -96,12 +108,16 @@ function BookingCheckout() {
       alert("Vui lòng nhập đầy đủ họ tên, số điện thoại và email.");
       return;
     }
+    const adultsN = Math.max(1, Number.parseInt(String(adults), 10) || 1);
+    const childrenN = Math.max(0, Number.parseInt(String(children), 10) || 0);
 
     const payload = {
       line_items: lineItems,
       guest_name: guestName.trim(),
       guest_phone: guestPhone.trim(),
       guest_email: guestEmail.trim(),
+      adults: adultsN,
+      children: childrenN,
       booking_type: "overnight",
       check_in_date: checkInDate.toISOString().split("T")[0],
       check_out_date: checkOutDate.toISOString().split("T")[0],
@@ -248,6 +264,39 @@ function BookingCheckout() {
           <section className="checkout-card">
             <h3>Người đặt phòng</h3>
             <div className="checkout-form-group">
+              <label>Số khách lưu trú</label>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  Người lớn
+                  <input
+                    type="number"
+                    min={1}
+                    max={16}
+                    value={adults}
+                    onChange={(e) => setAdults(Math.max(1, Number.parseInt(e.target.value, 10) || 1))}
+                    disabled={loading}
+                    style={{ width: 72 }}
+                  />
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  Trẻ em
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={children}
+                    onChange={(e) => setChildren(Math.max(0, Number.parseInt(e.target.value, 10) || 0))}
+                    disabled={loading}
+                    style={{ width: 72 }}
+                  />
+                </label>
+                <span className="text-muted small">
+                  Tổng: <strong>{adults + children}</strong> khách
+                </span>
+              </div>
+              <small className="text-muted">Dùng cho check-in / khai báo lưu trú.</small>
+            </div>
+            <div className="checkout-form-group">
               <label>Họ tên</label>
               <input
                 type="text"
@@ -313,14 +362,14 @@ function BookingCheckout() {
             </div>
 
             <div className="checkout-form-group">
-              <label>Cổng MoMo</label>
+              <label>Thanh toán MoMo</label>
               <div className="checkout-momo-brand">
                 <div className="checkout-momo-logo" aria-label="MoMo logo">
                   MoMo
                 </div>
                 <div>
                   <strong>Ví điện tử MoMo</strong>
-                  <p>Thanh toán bảo mật qua cổng MoMo (sandbox)</p>
+                  <p>Thanh toán qua MoMo (bản thử)</p>
                 </div>
               </div>
               <div className="checkout-radio-list">
@@ -333,7 +382,7 @@ function BookingCheckout() {
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     disabled={loading}
                   />
-                  <span>Ví MoMo / QR — khuyến nghị khi test</span>
+                  <span>Ví MoMo / QR</span>
                 </label>
                 <label className={paymentMethod === "payWithATM" ? "active" : ""}>
                   <input
@@ -360,20 +409,20 @@ function BookingCheckout() {
               </div>
               {paymentMethod === "captureWallet" ? (
                 <p className="text-muted small mb-0" style={{ lineHeight: 1.45, marginTop: 8 }}>
-                  Sandbox: thường ổn định hơn thẻ Napas — cài <strong>MoMo Test App</strong>, ví test mật khẩu/OTP hay dùng{" "}
-                  <strong>000000</strong>. Hướng dẫn:{" "}
+                  Nên cài <strong>MoMo Test App</strong>. OTP thử hay là <strong>000000</strong>.{" "}
                   <a href="https://developers.momo.vn/v3/docs/payment/onboarding/test-instructions" target="_blank" rel="noopener noreferrer">
-                    MoMo test instructions
+                    Hướng dẫn của MoMo
                   </a>
                   .
                 </p>
               ) : (
                 <p className="text-muted small mb-0" style={{ lineHeight: 1.45, marginTop: 8 }}>
-                  ATM/Napas: nhập <strong>SĐT VN 10 số</strong> trên cổng + OTP/thẻ theo&nbsp;
+                  Nhập <strong>SĐT 10 số</strong> và làm theo màn hình MoMo. Thẻ mẫu:{" "}
+                  <strong>9704000000000018</strong> — NGUYEN VAN A — 03/07.{" "}
                   <a href="https://developers.momo.vn/v3/docs/payment/onboarding/test-instructions" target="_blank" rel="noopener noreferrer">
-                    tài liệu
+                    Chi tiết
                   </a>
-                  . Thẻ: <strong>9704000000000018</strong> — NGUYEN VAN A — 03/07.
+                  .
                 </p>
               )}
             </div>
