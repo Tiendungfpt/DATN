@@ -47,7 +47,7 @@ function countBookingNights(checkInStr, checkOutStr) {
   const a = new Date(String(checkInStr || "").slice(0, 10));
   const b = new Date(String(checkOutStr || "").slice(0, 10));
   if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
-  return Math.max(0, Math.ceil((b.getTime() - a.getTime()) / 86400000));
+  return Math.max(0, Math.round((b.getTime() - a.getTime()) / 86400000));
 }
 
 function recomputeBookingTotal(lines, nights) {

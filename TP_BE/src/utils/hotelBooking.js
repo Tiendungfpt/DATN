@@ -6,7 +6,7 @@ import { BOOKING_SCHEDULE_BLOCKING_STATUSES } from "./bookingSchedule.js";
 
 export function nightsBetween(start, end) {
   const ms = end.getTime() - start.getTime();
-  return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+  return Math.max(1, Math.round(ms / (1000 * 60 * 60 * 24)));
 }
 
 export function computeRoomSubtotal(pricePerNight, nights, quantity) {

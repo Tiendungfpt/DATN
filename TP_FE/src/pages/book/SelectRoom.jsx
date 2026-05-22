@@ -188,7 +188,7 @@ export default function SelectRoom() {
     if (!checkIn || !checkOut) return 0;
     const a = new Date(checkIn);
     const b = new Date(checkOut);
-    const diff = Math.ceil((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+    const diff = Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
     return Math.max(0, diff);
   }, [checkIn, checkOut]);
 
