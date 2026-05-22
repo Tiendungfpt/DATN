@@ -300,7 +300,7 @@ function BookingHistory() {
           const isFullPayment = paymentMode === "full";
           const totalPrice = Math.max(0, Number(booking.total_price ?? booking.totalPrice ?? 0) || 0);
           const prepaidAmount = Math.max(0, Number(booking.prepaid_amount ?? booking.prepaidAmount ?? 0) || 0);
-          const isPaid = Boolean(booking.is_paid) || prepaidAmount + 1 >= totalPrice;
+          const isPaid = Boolean(booking.is_paid) || prepaidAmount  >= totalPrice;
           const canPayDeposit =
             !isFullPayment &&
             booking.status === "pending" &&
