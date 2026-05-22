@@ -70,8 +70,8 @@ export default function RoomTypeEdit() {
         setForm({
           code: data.code || "",
           name: data.name || "",
-          price: Number(data.price || 0),
-          deposit_amount: Number(data.deposit_amount || 0),
+          price: Math.round(Number(data.price || 0)),
+          deposit_amount: Math.round(Number(data.deposit_amount || 0)),
           description: data.description || "",
           maxGuests: Number(data.maxGuests ?? data.max_guests ?? 2),
           image: data.image || "",
@@ -110,9 +110,10 @@ export default function RoomTypeEdit() {
 
   const onChange = (e) => {
     const { name, value } = e.target;
-    if (name === "price" || name === "deposit_amount") {
+    if (name === "price" || name === "deposit_amount" || name === "maxGuests") {
       const cleaned = String(value).replace(/[^0-9]/g, "");
-      setForm((f) => ({ ...f, [name]: cleaned }));
+      const numeric = cleaned === "" ? "" : Number.parseInt(cleaned, 10);
+      setForm((f) => ({ ...f, [name]: numeric }));
     } else {
       setForm((f) => ({ ...f, [name]: value }));
     }
@@ -166,8 +167,8 @@ export default function RoomTypeEdit() {
     const payload = {
       code: String(form.code || "").trim(),
       name: String(form.name || "").trim(),
-      price: Number(form.price),
-      deposit_amount: Number(form.deposit_amount || 0),
+      price: Math.round(Number(form.price) || 0),
+      deposit_amount: Math.round(Number(form.deposit_amount || 0)),
       description: String(form.description || "").trim(),
       maxGuests: Math.max(1, Number.parseInt(String(form.maxGuests), 10) || 1),
       max_guests: Math.max(1, Number.parseInt(String(form.maxGuests), 10) || 1),
@@ -189,8 +190,10 @@ export default function RoomTypeEdit() {
     }
 
     try {
+      console.log("[RoomTypeEdit] submit payload:", payload);
       setSaving(true);
-      await axios.put(`${API}/${id}`, payload, { headers: authHeaders() });
+      const res = await axios.put(`${API}/${id}`, payload, { headers: authHeaders() });
+      console.log("[RoomTypeEdit] update response:", res?.data);
       alert("Cập nhật loại phòng thành công");
       navigate("/admin/room-types");
     } catch (ex) {

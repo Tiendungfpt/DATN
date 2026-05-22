@@ -54,8 +54,8 @@ function pickRoomTypeBody(body) {
         .map((x) => String(x || "").trim())
         .filter(Boolean);
     }
-    else if (k === "price") o.price = Number(body.price);
-    else if (k === "deposit_amount") o.deposit_amount = Number(body.deposit_amount);
+    else if (k === "price") o.price = Math.round(Number(body.price) || 0);
+    else if (k === "deposit_amount") o.deposit_amount = Math.round(Number(body.deposit_amount) || 0);
     else if (k === "maxGuests" || k === "max_guests") {
       const rawMaxGuests = body.maxGuests ?? body.max_guests;
       o.maxGuests = Math.max(1, Number.parseInt(String(rawMaxGuests), 10) || 1);
@@ -205,6 +205,7 @@ export const createRoomType = async (req, res) => {
 export const updateRoomType = async (req, res) => {
   try {
     const data = pickRoomTypeBody(req.body);
+    console.log('[roomTypeController] updateRoomType id=', req.params.id, 'data=', data);
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ message: "Khong co truong hop le de cap nhat" });
     }
@@ -229,7 +230,7 @@ export const updateRoomType = async (req, res) => {
     };
     const roomSet = {};
     if (data.price !== undefined && !Number.isNaN(Number(data.price))) {
-      roomSet.price = Number(data.price);
+      roomSet.price = Math.round(Number(data.price) || 0);
     }
     if (data.maxGuests !== undefined && !Number.isNaN(Number(data.maxGuests))) {
       roomSet.capacity = Math.max(1, Number.parseInt(String(data.maxGuests), 10) || 1);
@@ -238,6 +239,7 @@ export const updateRoomType = async (req, res) => {
       roomSet.room_type = String(data.code || data.name || doc.code || doc.name || "").trim();
     }
     if (Object.keys(roomSet).length > 0) {
+      console.log('[roomTypeController] roomFilter=', roomFilter, 'roomSet=', roomSet);
       await Room.updateMany(roomFilter, { $set: roomSet });
     }
 
