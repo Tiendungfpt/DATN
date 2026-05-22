@@ -638,7 +638,7 @@ export const checkBookingAvailability = async (req, res) => {
 export const getMyBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ user_id: req.userId })
-      .populate("room_type_id", "name price description")
+      .populate("room_type_id", "name price description image")
       .populate("line_items.room_type_id", "name price maxGuests")
       .populate("room_id", "name image price capacity room_no")
       .populate("assigned_room_id", "name image price capacity room_no")

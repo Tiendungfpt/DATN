@@ -664,7 +664,10 @@ export default function ServiceManager() {
                       type="number"
                       min={1}
                       value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
+                      onChange={(e) => {
+                        const cleaned = String(e.target.value).replace(/[^0-9]/g, "");
+                        setQuantity(cleaned);
+                      }}
                     />
                   </label>
                   <div className="folio-inline-total">
@@ -722,11 +725,17 @@ export default function ServiceManager() {
                   <div className="folio-form-grid">
                     <label>
                       SL
-                      <input type="number" min={1} value={chargeQty} onChange={(e) => setChargeQty(e.target.value)} />
+                      <input type="number" min={1} value={chargeQty} onChange={(e) => {
+                      const cleaned = String(e.target.value).replace(/[^0-9]/g, "");
+                      setChargeQty(cleaned);
+                    }} />
                     </label>
                     <label>
                       Đơn giá
-                      <input type="number" min={0} value={chargeUnit} onChange={(e) => setChargeUnit(e.target.value)} />
+                      <input type="number" min={0} value={chargeUnit} onChange={(e) => {
+                        const cleaned = String(e.target.value).replace(/[^0-9]/g, "");
+                        setChargeUnit(cleaned);
+                      }} />
                     </label>
                   </div>
                   <div className="folio-inline-total">

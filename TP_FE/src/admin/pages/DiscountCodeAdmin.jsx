@@ -109,6 +109,11 @@ export default function DiscountCodeAdmin() {
     return () => window.removeEventListener("keydown", onEsc);
   }, [modalOpen, closeModal]);
 
+  const setNumeric = (key, raw) => {
+    const cleaned = String(raw || "").replace(/[^0-9]/g, "");
+    setForm((p) => ({ ...p, [key]: cleaned }));
+  };
+
   const save = async (e) => {
     e.preventDefault();
     setErr("");
@@ -400,12 +405,7 @@ export default function DiscountCodeAdmin() {
                             form.discount_type === "percent" ? "10" : "500000"
                           }
                           value={form.discount_value}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              discount_value: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setNumeric("discount_value", e.target.value)}
                         />
                       </label>
                     </div>
@@ -420,12 +420,7 @@ export default function DiscountCodeAdmin() {
                           min={0}
                           placeholder="Để trống hoặc 0 — không giới hạn tiền"
                           value={form.max_discount_amount}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              max_discount_amount: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setNumeric("max_discount_amount", e.target.value)}
                         />
                       </label>
                     ) : null}
@@ -444,12 +439,7 @@ export default function DiscountCodeAdmin() {
                           min={0}
                           placeholder="0"
                           value={form.min_order_value}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              min_order_value: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setNumeric("min_order_value", e.target.value)}
                         />
                         <span className="dc-field-hint">Giá trị tính theo ₫.</span>
                       </label>
@@ -461,12 +451,7 @@ export default function DiscountCodeAdmin() {
                           min={0}
                           placeholder="0 = không giới hạn"
                           value={form.usage_limit}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              usage_limit: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setNumeric("usage_limit", e.target.value)}
                         />
                       </label>
                     </div>

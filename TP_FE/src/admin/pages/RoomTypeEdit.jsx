@@ -110,7 +110,12 @@ export default function RoomTypeEdit() {
 
   const onChange = (e) => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    if (name === "price" || name === "deposit_amount") {
+      const cleaned = String(value).replace(/[^0-9]/g, "");
+      setForm((f) => ({ ...f, [name]: cleaned }));
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+    }
   };
 
   const toggleService = (key, serviceId) => {

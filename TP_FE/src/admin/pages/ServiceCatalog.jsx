@@ -326,7 +326,10 @@ export default function ServiceCatalog() {
                     type="number"
                     min={0}
                     value={form.defaultPrice}
-                    onChange={(e) => setForm((p) => ({ ...p, defaultPrice: e.target.value }))}
+                    onChange={(e) => {
+                      const cleaned = String(e.target.value).replace(/[^0-9]/g, "");
+                      setForm((p) => ({ ...p, defaultPrice: cleaned }));
+                    }}
                     disabled={isComplimentaryForm}
                   />
                 </label>

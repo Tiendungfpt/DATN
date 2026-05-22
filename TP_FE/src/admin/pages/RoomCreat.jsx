@@ -63,10 +63,18 @@ function RoomsCreate() {
             return;
         }
 
-        setRoom({
-            ...room,
-            [name]: name === "price" || name === "capacity" ? Number(value) : value,
-        });
+        if (name === "price" || name === "capacity") {
+            const cleaned = String(value).replace(/[^0-9]/g, "");
+            setRoom({
+                ...room,
+                [name]: Number(cleaned || 0),
+            });
+        } else {
+            setRoom({
+                ...room,
+                [name]: value,
+            });
+        }
 
         if (name === "image") {
             setPreview(value);

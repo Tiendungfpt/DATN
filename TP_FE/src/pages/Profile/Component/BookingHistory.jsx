@@ -96,11 +96,14 @@ function BookingHistory() {
     const image =
       firstAssigned?.image ||
       booking?.assigned_room_id?.image ||
-      booking?.room_id?.image;
+      booking?.room_id?.image ||
+      booking?.room_type_id?.image;
     if (!image) return null;
-    return image.startsWith("http")
-      ? image
-      : `/uploads/${image}`;
+    if (image.startsWith("http://") || image.startsWith("https://")) return image;
+    if (image.startsWith("//")) return `https:${image}`;
+    if (image.startsWith("/uploads/")) return image;
+    if (image.startsWith("uploads/")) return `/${image}`;
+    return `/uploads/${image.split("/").map(encodeURIComponent).join("/")}`;
   };
 
   useEffect(() => {
