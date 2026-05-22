@@ -20,12 +20,10 @@ export const getDashboardStats = async (req, res) => {
 
     let startDate, endDate, prevStart, prevEnd;
 
-    // ===== DEFINE PERIOD =====
     switch (period) {
       case "today":
         startDate = startOfDay(now);
         endDate = endOfDay(now);
-
         prevStart = startOfDay(subDays(now, 1));
         prevEnd = endOfDay(subDays(now, 1));
         break;
@@ -33,7 +31,6 @@ export const getDashboardStats = async (req, res) => {
       case "week":
         startDate = startOfWeek(now, { weekStartsOn: 1 });
         endDate = endOfWeek(now, { weekStartsOn: 1 });
-
         prevStart = startOfWeek(subDays(now, 7), { weekStartsOn: 1 });
         prevEnd = endOfWeek(subDays(now, 7), { weekStartsOn: 1 });
         break;
@@ -41,7 +38,6 @@ export const getDashboardStats = async (req, res) => {
       case "month":
         startDate = startOfMonth(now);
         endDate = endOfMonth(now);
-
         prevStart = startOfMonth(subDays(now, 30));
         prevEnd = endOfMonth(subDays(now, 30));
         break;
@@ -50,9 +46,12 @@ export const getDashboardStats = async (req, res) => {
         return res.status(400).json({ message: "Invalid period" });
     }
 
-    // ===== BOOKING QUERY (OVERLAP) =====
-    // Booking schema uses snake_case fields in this project.
-    const validRevenueStatuses = ["confirmed", "checked_in", "checked_out", "completed"];
+    const validRevenueStatuses = [
+      "confirmed",
+      "checked_in",
+      "checked_out",
+      "completed",
+    ];
 
     const currentBookings = await Booking.find({
       status: { $in: validRevenueStatuses },
@@ -66,11 +65,9 @@ export const getDashboardStats = async (req, res) => {
       check_out_date: { $gte: prevStart },
     });
 
-    // ===== TOTAL DATA =====
     const totalRooms = await Room.countDocuments();
     const totalUsers = await User.countDocuments();
 
-    // ===== CALCULATE =====
     const calculateMetrics = (bookings, start, end) => {
       let revenue = 0;
       let roomNights = 0;
@@ -79,18 +76,17 @@ export const getDashboardStats = async (req, res) => {
         const checkIn = new Date(b.check_in_date);
         const checkOut = new Date(b.check_out_date);
 
-        // Giới hạn trong period
         const actualStart = checkIn < start ? start : checkIn;
         const actualEnd = checkOut > end ? end : checkOut;
 
         const totalNights = Math.max(
           1,
-          Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24))
+          Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24)),
         );
 
         const usedNights = Math.max(
           1,
-          Math.ceil((actualEnd - actualStart) / (1000 * 60 * 60 * 24))
+          Math.ceil((actualEnd - actualStart) / (1000 * 60 * 60 * 24)),
         );
 
         const pricePerNight = (b.total_price || 0) / totalNights;
@@ -99,8 +95,7 @@ export const getDashboardStats = async (req, res) => {
         roomNights += usedNights * (b.room_quantity || 1);
       });
 
-      const days =
-        Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1;
+      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1;
 
       const available = totalRooms * days;
 
@@ -117,7 +112,6 @@ export const getDashboardStats = async (req, res) => {
     const current = calculateMetrics(currentBookings, startDate, endDate);
     const previous = calculateMetrics(prevBookings, prevStart, prevEnd);
 
-    // ===== GROWTH % =====
     const growth = (cur, prev) => {
       if (!prev) return 100;
       return ((cur - prev) / prev) * 100;
@@ -125,7 +119,6 @@ export const getDashboardStats = async (req, res) => {
 
     const format = (n) => Math.round(n).toLocaleString("vi-VN");
 
-    // ===== REVENUE OVERVIEW (TOTAL + MONTHLY + WEEKLY IN CURRENT MONTH) =====
     const allRevenueBookings = await Booking.find({
       status: { $in: validRevenueStatuses },
     }).select("total_price check_in_date");
@@ -144,7 +137,7 @@ export const getDashboardStats = async (req, res) => {
 
     const monthlyTotals = Array.from({ length: 12 }, () => 0);
     yearBookings.forEach((b) => {
-      const month = new Date(b.check_in_date).getMonth(); // 0..11
+      const month = new Date(b.check_in_date).getMonth();
       monthlyTotals[month] += Number(b.total_price || 0);
     });
 
@@ -178,7 +171,56 @@ export const getDashboardStats = async (req, res) => {
       revenueFormatted: format(value),
     }));
 
-    // ===== RESPONSE =====
+    const last30Start = startOfDay(subDays(now, 29)); // 30 ngày bao gồm hôm nay
+    const dailyBookings = allRevenueBookings.filter((b) => {
+      const checkIn = new Date(b.check_in_date);
+      return checkIn >= last30Start && checkIn <= endOfDay(now);
+    });
+
+    const dailyMap = {};
+    for (let i = 29; i >= 0; i--) {
+      const d = subDays(now, i);
+      const key = d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+      dailyMap[key] = 0;
+    }
+    dailyBookings.forEach((b) => {
+      const key = new Date(b.check_in_date).toISOString().slice(0, 10);
+      if (key in dailyMap) {
+        dailyMap[key] += Number(b.total_price || 0);
+      }
+    });
+
+    const dailyRevenueChart = Object.entries(dailyMap).map(([date, value]) => {
+      const d = new Date(date);
+      const label = `${d.getDate()}/${d.getMonth() + 1}`;
+      return {
+        date,
+        label,
+        revenue: Math.round(value),
+        revenueFormatted: format(value),
+      };
+    });
+
+    const daysInMonth = currentMonthEnd.getDate();
+    const dailyCurrentMonthMap = {};
+    for (let d = 1; d <= daysInMonth; d++) {
+      dailyCurrentMonthMap[d] = 0;
+    }
+    currentMonthBookings.forEach((b) => {
+      const day = new Date(b.check_in_date).getDate();
+      if (day >= 1 && day <= daysInMonth) {
+        dailyCurrentMonthMap[day] += Number(b.total_price || 0);
+      }
+    });
+
+    const dailyRevenueCurrentMonth = Object.entries(dailyCurrentMonthMap).map(
+      ([day, value]) => ({
+        day: `${day}`,
+        revenue: Math.round(value),
+        revenueFormatted: format(value),
+      }),
+    );
+
     res.json({
       success: true,
       period,
@@ -186,7 +228,6 @@ export const getDashboardStats = async (req, res) => {
       totals: {
         rooms: totalRooms,
         users: totalUsers,
-
       },
 
       stats: {
@@ -210,11 +251,14 @@ export const getDashboardStats = async (req, res) => {
         from: startDate,
         to: endDate,
       },
+
       revenueOverview: {
         totalRevenue: Math.round(totalRevenueValue),
         totalRevenueFormatted: format(totalRevenueValue),
         monthlyRevenueChart,
         weeklyRevenueCurrentMonth,
+        dailyRevenueChart, 
+        dailyRevenueCurrentMonth,
       },
     });
   } catch (err) {
