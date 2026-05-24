@@ -19,12 +19,45 @@ import {
   Line,
 } from "recharts";
 
+const DailyTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div
+        style={{
+          background: "#1e293b",
+          border: "1px solid #334155",
+          borderRadius: 8,
+          padding: "6px 12px",
+          color: "#f1f5f9",
+          fontSize: 13,
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 2 }}>{label}</div>
+        <div style={{ color: "#34d399" }}>
+          {Number(payload[0].value).toLocaleString("vi-VN")} đ
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonthLabel = String(now.getMonth() + 1).padStart(2, "0");
-  const roomTypePalette = ["#7c6ed6", "#78d4a6", "#f2c35e", "#5aa9e6", "#f59e99", "#6ee7b7"];
+  const roomTypePalette = [
+    "#7c6ed6",
+    "#78d4a6",
+    "#f2c35e",
+    "#5aa9e6",
+    "#f59e99",
+    "#6ee7b7",
+  ];
+
+  // ===== Daily view mode: "30days" | "current_month" =====
+  const [dailyViewMode, setDailyViewMode] = useState("30days");
 
   const [stats, setStats] = useState({
     rooms: 0,
@@ -40,6 +73,8 @@ export default function AdminDashboard() {
     totalRevenueFormatted: "0",
     monthlyRevenueChart: [],
     weeklyRevenueCurrentMonth: [],
+    dailyRevenueChart: [],
+    dailyRevenueCurrentMonth: [],
   });
   const [occupancyTrend, setOccupancyTrend] = useState([]);
   const [roomTypeDistribution, setRoomTypeDistribution] = useState([]);
@@ -61,17 +96,22 @@ export default function AdminDashboard() {
         const token = localStorage.getItem("token");
         const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
-        const [adminRes, revenueRes, bookingsRes, roomsRes, reviewsRes] = await Promise.all([
-          axios.get("/api/admin/dashboard", authHeaders),
-          axios.get("/api/dashboard"),
-          axios.get("/api/admin/bookings?sort=createdAt_desc", authHeaders),
-          axios.get("/api/admin/rooms", authHeaders),
-          axios.get("/api/admin/reviews", authHeaders),
-        ]);
+        const [adminRes, revenueRes, bookingsRes, roomsRes, reviewsRes] =
+          await Promise.all([
+            axios.get("/api/admin/dashboard", authHeaders),
+            axios.get("/api/dashboard"),
+            axios.get("/api/admin/bookings?sort=createdAt_desc", authHeaders),
+            axios.get("/api/admin/rooms", authHeaders),
+            axios.get("/api/admin/reviews", authHeaders),
+          ]);
 
-        const bookingItems = Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
+        const bookingItems = Array.isArray(bookingsRes.data)
+          ? bookingsRes.data
+          : [];
         const roomItems = Array.isArray(roomsRes.data) ? roomsRes.data : [];
-        const reviewItems = Array.isArray(reviewsRes.data) ? reviewsRes.data : [];
+        const reviewItems = Array.isArray(reviewsRes.data)
+          ? reviewsRes.data
+          : [];
 
         setStats({
           rooms: adminRes.data?.totalRooms || 0,
@@ -80,28 +120,46 @@ export default function AdminDashboard() {
         });
 
         setRevenueOverview({
-          totalRevenueFormatted: revenueRes.data?.revenueOverview?.totalRevenueFormatted || "0",
-          monthlyRevenueChart: revenueRes.data?.revenueOverview?.monthlyRevenueChart || [],
-          weeklyRevenueCurrentMonth: revenueRes.data?.revenueOverview?.weeklyRevenueCurrentMonth || [],
+          totalRevenueFormatted:
+            revenueRes.data?.revenueOverview?.totalRevenueFormatted || "0",
+          monthlyRevenueChart:
+            revenueRes.data?.revenueOverview?.monthlyRevenueChart || [],
+          weeklyRevenueCurrentMonth:
+            revenueRes.data?.revenueOverview?.weeklyRevenueCurrentMonth || [],
+          dailyRevenueChart:
+            revenueRes.data?.revenueOverview?.dailyRevenueChart || [],
+          dailyRevenueCurrentMonth:
+            revenueRes.data?.revenueOverview?.dailyRevenueCurrentMonth || [],
         });
 
         setRecentBookings(bookingItems.slice(0, 10));
 
-        const occupied = roomItems.filter((r) => String(r?.status) === "occupied").length;
+        const occupied = roomItems.filter(
+          (r) => String(r?.status) === "occupied"
+        ).length;
         setRoomSummary({
           total: roomItems.length,
           occupied,
         });
 
         const typeMap = roomItems.reduce((acc, room) => {
-          const key = String(room?.room_type || room?.name || "Khác").trim() || "Khác";
+          const key =
+            String(room?.room_type || room?.name || "Khác").trim() || "Khác";
           acc[key] = (acc[key] || 0) + 1;
           return acc;
         }, {});
-        const typeData = Object.entries(typeMap).map(([name, value]) => ({ name, value }));
+        const typeData = Object.entries(typeMap).map(([name, value]) => ({
+          name,
+          value,
+        }));
         setRoomTypeDistribution(typeData);
 
-        const activeStatuses = new Set(["confirmed", "checked_in", "checked_out", "completed"]);
+        const activeStatuses = new Set([
+          "confirmed",
+          "checked_in",
+          "checked_out",
+          "completed",
+        ]);
         const totalRooms = Math.max(1, roomItems.length);
         const trend = [];
         for (let i = 6; i >= 0; i -= 1) {
@@ -113,10 +171,20 @@ export default function AdminDashboard() {
           dayEnd.setHours(23, 59, 59, 999);
 
           const inUseRooms = bookingItems.reduce((sum, booking) => {
-            if (!activeStatuses.has(String(booking?.status || ""))) return sum;
-            const checkIn = booking?.check_in_date ? new Date(booking.check_in_date) : null;
-            const checkOut = booking?.check_out_date ? new Date(booking.check_out_date) : null;
-            if (!checkIn || !checkOut || Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+            if (!activeStatuses.has(String(booking?.status || "")))
+              return sum;
+            const checkIn = booking?.check_in_date
+              ? new Date(booking.check_in_date)
+              : null;
+            const checkOut = booking?.check_out_date
+              ? new Date(booking.check_out_date)
+              : null;
+            if (
+              !checkIn ||
+              !checkOut ||
+              Number.isNaN(checkIn.getTime()) ||
+              Number.isNaN(checkOut.getTime())
+            ) {
               return sum;
             }
             const overlaps = checkIn <= dayEnd && checkOut >= dayStart;
@@ -124,7 +192,10 @@ export default function AdminDashboard() {
             return sum + Math.max(1, Number(booking?.room_quantity || 1));
           }, 0);
 
-          const occupancy = Math.min(100, Math.round((inUseRooms / totalRooms) * 100));
+          const occupancy = Math.min(
+            100,
+            Math.round((inUseRooms / totalRooms) * 100)
+          );
           trend.push({
             day: day.toLocaleDateString("vi-VN", { weekday: "short" }),
             occupancy,
@@ -135,7 +206,10 @@ export default function AdminDashboard() {
         const byStarCount = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
         let ratingSum = 0;
         reviewItems.forEach((review) => {
-          const star = Math.max(1, Math.min(5, Math.round(Number(review?.rating || 0))));
+          const star = Math.max(
+            1,
+            Math.min(5, Math.round(Number(review?.rating || 0)))
+          );
           byStarCount[star] += 1;
           ratingSum += star;
         });
@@ -144,7 +218,10 @@ export default function AdminDashboard() {
         const byStar = [5, 4, 3, 2, 1].map((star) => ({
           star,
           count: byStarCount[star],
-          pct: totalReview > 0 ? Math.round((byStarCount[star] / totalReview) * 100) : 0,
+          pct:
+            totalReview > 0
+              ? Math.round((byStarCount[star] / totalReview) * 100)
+              : 0,
         }));
         setRatingSummary({ avg, total: totalReview, byStar });
       } catch (error) {
@@ -154,6 +231,17 @@ export default function AdminDashboard() {
 
     fetchStats();
   }, []);
+
+  const dailyChartData =
+    dailyViewMode === "30days"
+      ? revenueOverview.dailyRevenueChart.map((d) => ({
+          ...d,
+          displayKey: d.label,
+        }))
+      : revenueOverview.dailyRevenueCurrentMonth.map((d) => ({
+          ...d,
+          displayKey: d.day,
+        }));
 
   return (
     <div className="dashboard">
@@ -173,7 +261,10 @@ export default function AdminDashboard() {
           <p className="link">Xem booking →</p>
         </div>
 
-        <div className="card" onClick={() => navigate("/admin/users-pagination")}>
+        <div
+          className="card"
+          onClick={() => navigate("/admin/users-pagination")}
+        >
           <h4>👤 Tổng số người dùng</h4>
           <h1>{stats.users}</h1>
           <p className="link">Xem người dùng →</p>
@@ -205,16 +296,35 @@ export default function AdminDashboard() {
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={occupancyTrend}>
               <defs>
-                <linearGradient id="occupancyFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.65} />
-                  <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.08} />
+                <linearGradient
+                  id="occupancyFill"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="0%"
+                    stopColor="#f59e0b"
+                    stopOpacity={0.65}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="#f59e0b"
+                    stopOpacity={0.08}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" />
               <YAxis domain={[0, 100]} />
               <Tooltip formatter={(value) => `${value}%`} />
-              <Area type="monotone" dataKey="occupancy" stroke="#f59e0b" fill="url(#occupancyFill)" />
+              <Area
+                type="monotone"
+                dataKey="occupancy"
+                stroke="#f59e0b"
+                fill="url(#occupancyFill)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </section>
@@ -230,10 +340,15 @@ export default function AdminDashboard() {
                 cx="50%"
                 cy="50%"
                 outerRadius={74}
-                label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`}
+                label={({ name, percent }) =>
+                  `${name} ${Math.round(percent * 100)}%`
+                }
               >
                 {roomTypeDistribution.map((_, idx) => (
-                  <Cell key={`type-${idx}`} fill={roomTypePalette[idx % roomTypePalette.length]} />
+                  <Cell
+                    key={`type-${idx}`}
+                    fill={roomTypePalette[idx % roomTypePalette.length]}
+                  />
                 ))}
               </Pie>
               <Tooltip formatter={(value) => `${value} phòng`} />
@@ -246,15 +361,22 @@ export default function AdminDashboard() {
         <section className="chart-card">
           <h4>⭐ Đánh Giá Khách Hàng</h4>
           <div className="dashboard-rating-head">
-            <div className="dashboard-rating-avg">{ratingSummary.avg.toFixed(1)}</div>
-            <div className="dashboard-rating-meta">/5 từ {ratingSummary.total} đánh giá</div>
+            <div className="dashboard-rating-avg">
+              {ratingSummary.avg.toFixed(1)}
+            </div>
+            <div className="dashboard-rating-meta">
+              /5 từ {ratingSummary.total} đánh giá
+            </div>
           </div>
           <div className="dashboard-rating-bars">
             {ratingSummary.byStar.map((row) => (
               <div key={row.star} className="dashboard-rating-row">
                 <span>{row.star} ⭐</span>
                 <div className="dashboard-rating-track">
-                  <div className="dashboard-rating-fill" style={{ width: `${row.pct}%` }} />
+                  <div
+                    className="dashboard-rating-fill"
+                    style={{ width: `${row.pct}%` }}
+                  />
                 </div>
                 <strong>{row.count}</strong>
               </div>
@@ -269,12 +391,23 @@ export default function AdminDashboard() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
-              <Tooltip formatter={(value) => `${Number(value).toLocaleString("vi-VN")} đ`} />
-              <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} />
+              <Tooltip
+                formatter={(value) =>
+                  `${Number(value).toLocaleString("vi-VN")} đ`
+                }
+              />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#3b82f6"
+                strokeWidth={3}
+                dot={{ r: 3 }}
+              />
             </LineChart>
           </ResponsiveContainer>
           <p className="dashboard-note">
-            Theo dõi theo tháng ({currentYear}) để nhận biết giai đoạn cao điểm và thấp điểm.
+            Theo dõi theo tháng ({currentYear}) để nhận biết giai đoạn cao
+            điểm và thấp điểm.
           </p>
         </section>
       </div>
@@ -287,23 +420,236 @@ export default function AdminDashboard() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
-              <Tooltip formatter={(value) => `${Number(value).toLocaleString("vi-VN")} đ`} />
-              <Bar dataKey="revenue" fill="#2563eb" radius={[8, 8, 0, 0]} />
+              <Tooltip
+                formatter={(value) =>
+                  `${Number(value).toLocaleString("vi-VN")} đ`
+                }
+              />
+              <Bar
+                dataKey="revenue"
+                fill="#2563eb"
+                radius={[8, 8, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="chart-card">
-          <h4>Doanh thu theo tuần (tháng {currentMonthLabel}/{currentYear})</h4>
+          <h4>
+            Doanh thu theo tuần (tháng {currentMonthLabel}/{currentYear})
+          </h4>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={revenueOverview.weeklyRevenueCurrentMonth}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="week" />
               <YAxis />
-              <Tooltip formatter={(value) => `${Number(value).toLocaleString("vi-VN")} đ`} />
-              <Bar dataKey="revenue" fill="#7c3aed" radius={[8, 8, 0, 0]} />
+              <Tooltip
+                formatter={(value) =>
+                  `${Number(value).toLocaleString("vi-VN")} đ`
+                }
+              />
+              <Bar
+                dataKey="revenue"
+                fill="#7c3aed"
+                radius={[8, 8, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="chart-card" style={{ marginTop: 18 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 10,
+            marginBottom: 12,
+          }}
+        >
+          <h4 style={{ margin: 0 }}>📆 Doanh thu theo ngày</h4>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+            }}
+          >
+            <button
+              onClick={() => setDailyViewMode("30days")}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 20,
+                border: "1.5px solid",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: 13,
+                transition: "all 0.2s",
+                borderColor: dailyViewMode === "30days" ? "#2563eb" : "#cbd5e1",
+                background:
+                  dailyViewMode === "30days" ? "#2563eb" : "transparent",
+                color: dailyViewMode === "30days" ? "#fff" : "#64748b",
+              }}
+            >
+              30 ngày gần nhất
+            </button>
+            <button
+              onClick={() => setDailyViewMode("current_month")}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 20,
+                border: "1.5px solid",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: 13,
+                transition: "all 0.2s",
+                borderColor:
+                  dailyViewMode === "current_month" ? "#2563eb" : "#cbd5e1",
+                background:
+                  dailyViewMode === "current_month" ? "#2563eb" : "transparent",
+                color:
+                  dailyViewMode === "current_month" ? "#fff" : "#64748b",
+              }}
+            >
+              Tháng {currentMonthLabel}/{currentYear}
+            </button>
+          </div>
+        </div>
+
+        <p className="dashboard-note" style={{ marginTop: 0, marginBottom: 10 }}>
+          {dailyViewMode === "30days"
+            ? "Doanh thu từng ngày trong 30 ngày gần nhất (theo ngày check-in)."
+            : `Doanh thu từng ngày trong tháng ${currentMonthLabel}/${currentYear} (theo ngày check-in).`}
+        </p>
+
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart
+            data={dailyChartData}
+            margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+          >
+            <defs>
+              <linearGradient id="dailyGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
+                <stop offset="100%" stopColor="#059669" stopOpacity={0.75} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="displayKey"
+              tick={{ fontSize: 11 }}
+              interval={
+                dailyViewMode === "30days"
+                  ? Math.floor(dailyChartData.length / 10)
+                  : 0
+              }
+            />
+            <YAxis
+              tickFormatter={(value) =>
+                value >= 1_000_000
+                  ? `${(value / 1_000_000).toFixed(1)}M`
+                  : value >= 1_000
+                  ? `${(value / 1_000).toFixed(0)}K`
+                  : value
+              }
+              tick={{ fontSize: 11 }}
+            />
+            <Tooltip content={<DailyTooltip />} />
+            <Bar
+              dataKey="revenue"
+              fill="url(#dailyGrad)"
+              radius={[5, 5, 0, 0]}
+              maxBarSize={32}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            marginTop: 14,
+            flexWrap: "wrap",
+          }}
+        >
+          {(() => {
+            const values = dailyChartData.map((d) => d.revenue);
+            const total = values.reduce((a, b) => a + b, 0);
+            const max = values.length ? Math.max(...values) : 0;
+            const avg = values.length
+              ? Math.round(total / values.length)
+              : 0;
+            const maxDay = dailyChartData.find((d) => d.revenue === max);
+            return (
+              <>
+                <div
+                  style={{
+                    background: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: 10,
+                    padding: "8px 16px",
+                    flex: 1,
+                    minWidth: 140,
+                  }}
+                >
+                  <div
+                    style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}
+                  >
+                    TỔNG KỲ NÀY
+                  </div>
+                  <div
+                    style={{ fontSize: 16, fontWeight: 700, color: "#166534" }}
+                  >
+                    {total.toLocaleString("vi-VN")} đ
+                  </div>
+                </div>
+                <div
+                  style={{
+                    background: "#eff6ff",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: 10,
+                    padding: "8px 16px",
+                    flex: 1,
+                    minWidth: 140,
+                  }}
+                >
+                  <div
+                    style={{ fontSize: 11, color: "#2563eb", fontWeight: 600 }}
+                  >
+                    TRUNG BÌNH / NGÀY
+                  </div>
+                  <div
+                    style={{ fontSize: 16, fontWeight: 700, color: "#1e3a8a" }}
+                  >
+                    {avg.toLocaleString("vi-VN")} đ
+                  </div>
+                </div>
+                <div
+                  style={{
+                    background: "#fefce8",
+                    border: "1px solid #fde68a",
+                    borderRadius: 10,
+                    padding: "8px 16px",
+                    flex: 1,
+                    minWidth: 140,
+                  }}
+                >
+                  <div
+                    style={{ fontSize: 11, color: "#d97706", fontWeight: 600 }}
+                  >
+                    NGÀY CAO NHẤT
+                  </div>
+                  <div
+                    style={{ fontSize: 16, fontWeight: 700, color: "#92400e" }}
+                  >
+                    {maxDay ? maxDay.displayKey : "—"} —{" "}
+                    {max.toLocaleString("vi-VN")} đ
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -312,7 +658,12 @@ export default function AdminDashboard() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+              <tr
+                style={{
+                  textAlign: "left",
+                  borderBottom: "1px solid rgba(0,0,0,0.08)",
+                }}
+              >
                 <th style={{ padding: "10px 8px" }}>Tên khách</th>
                 <th style={{ padding: "10px 8px" }}>Nhận / Trả</th>
                 <th style={{ padding: "10px 8px" }}>Trạng thái</th>
@@ -323,27 +674,54 @@ export default function AdminDashboard() {
             <tbody>
               {recentBookings.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: "12px 8px", color: "#64748b" }}>
+                  <td
+                    colSpan="5"
+                    style={{ padding: "12px 8px", color: "#64748b" }}
+                  >
                     Chưa có booking.
                   </td>
                 </tr>
               ) : (
                 recentBookings.map((b) => (
-                  <tr key={b._id} style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                    <td style={{ padding: "10px 8px", fontWeight: 700 }}>{b.guest_name || b.user_id?.name || "—"}</td>
-                    <td style={{ padding: "10px 8px" }}>
-                      {b.check_in_date ? new Date(b.check_in_date).toLocaleDateString("vi-VN") : "—"} →{" "}
-                      {b.check_out_date ? new Date(b.check_out_date).toLocaleDateString("vi-VN") : "—"}
+                  <tr
+                    key={b._id}
+                    style={{
+                      borderBottom: "1px solid rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    <td
+                      style={{ padding: "10px 8px", fontWeight: 700 }}
+                    >
+                      {b.guest_name || b.user_id?.name || "—"}
                     </td>
-                    <td style={{ padding: "10px 8px" }}>{b.status || "—"}</td>
-                    <td style={{ padding: "10px 8px" }}>{(Number(b.total_price) || 0).toLocaleString("vi-VN")} đ</td>
                     <td style={{ padding: "10px 8px" }}>
-                      {Array.isArray(b.assigned_room_ids) && b.assigned_room_ids.length > 0
+                      {b.check_in_date
+                        ? new Date(b.check_in_date).toLocaleDateString("vi-VN")
+                        : "—"}{" "}
+                      →{" "}
+                      {b.check_out_date
+                        ? new Date(b.check_out_date).toLocaleDateString(
+                            "vi-VN"
+                          )
+                        : "—"}
+                    </td>
+                    <td style={{ padding: "10px 8px" }}>
+                      {b.status || "—"}
+                    </td>
+                    <td style={{ padding: "10px 8px" }}>
+                      {(Number(b.total_price) || 0).toLocaleString("vi-VN")} đ
+                    </td>
+                    <td style={{ padding: "10px 8px" }}>
+                      {Array.isArray(b.assigned_room_ids) &&
+                      b.assigned_room_ids.length > 0
                         ? b.assigned_room_ids
                             .map((r) => `${r?.room_no || ""}`.trim())
                             .filter(Boolean)
                             .join(", ")
-                        : b.assigned_room_id?.room_no || b.room_id?.room_no || b.room_type_id?.name || "Chưa gán"}
+                        : b.assigned_room_id?.room_no ||
+                          b.room_id?.room_no ||
+                          b.room_type_id?.name ||
+                          "Chưa gán"}
                     </td>
                   </tr>
                 ))
@@ -352,7 +730,11 @@ export default function AdminDashboard() {
           </table>
         </div>
         <div style={{ marginTop: 10 }}>
-          <button className="card" style={{ padding: 12 }} onClick={() => navigate("/admin/bookings/all")}>
+          <button
+            className="card"
+            style={{ padding: 12 }}
+            onClick={() => navigate("/admin/bookings/all")}
+          >
             Xem tất cả booking →
           </button>
         </div>

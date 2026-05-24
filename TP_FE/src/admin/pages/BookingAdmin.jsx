@@ -414,11 +414,11 @@ export default function BookingAdmin() {
             </div>
           ) : null}
           <div className="ba-actions-risk">
-            {b.status !== "checked_out" && b.status !== "completed" && (
+            {/* {b.status !== "checked_out" && b.status !== "completed" && (
               <button type="button" className="btn-cancel" onClick={() => cancelBooking(b)}>
                 Hủy booking
               </button>
-            )}
+            )} */}
             <button type="button" className="ba-btn ba-btn--danger" onClick={() => removeBooking(b._id)}>
               Xóa
             </button>

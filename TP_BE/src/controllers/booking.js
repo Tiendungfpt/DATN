@@ -713,7 +713,7 @@ export const downloadBookingInvoice = async (req, res) => {
     const st = mapStatusForApi(booking.status);
     if (st !== OUT_COMPLETED || !booking.invoice_id) {
       return res.status(403).json({
-        message: "Invoice exists only after check-out (no Invoice yet)",
+        message: "Hóa đơn chỉ tồn tại sau khi trả phòng",
       });
     }
 
@@ -724,13 +724,14 @@ export const downloadBookingInvoice = async (req, res) => {
 
     if (isOwner && invoice.status !== "paid") {
       return res.status(403).json({
-        message: "Hóa đơn chưa được đánh dấu thanh toán",
+        message: "Hóa đơn chưa được thanh toán",
       });
     }
 
     const doc = new PDFDocument({ size: "A4", margin: 50 });
-    const fileName = `${invoice.invoice_number || "invoice"}.pdf`;
+    const fileName = `${invoice.invoice_number || "hoa-don"}.pdf`;
 
+    // Font setup (giữ nguyên)
     const regularFontPath = resolveExistingPath([
       "C:/Windows/Fonts/arial.ttf",
       "C:/Windows/Fonts/tahoma.ttf",
@@ -761,17 +762,24 @@ export const downloadBookingInvoice = async (req, res) => {
     const left = 50;
     const right = pageWidth - 50;
 
+    // Header
     doc.rect(0, 0, pageWidth, 110).fill("#0d6efd");
     doc
       .fillColor("#ffffff")
       .font(fontBold)
       .fontSize(24)
-      .text("THINH PHAT HOTEL", left, 30, { align: "left" });
-    doc.font(fontRegular).fontSize(12).text("INVOICE (POST CHECK-OUT)", left, 62);
+      .text("KHÁCH SẠN THỊNH PHÁT", left, 30, { align: "left" });
+
+    doc
+      .font(fontRegular)
+      .fontSize(12)
+      .text("HÓA ĐƠN (SAU TRẢ PHÒNG)", left, 62);
+
     doc
       .font(fontRegular)
       .fontSize(11)
       .text(`Số HĐ: ${invoice.invoice_number}`, left, 88, { align: "left" });
+
     doc
       .font(fontRegular)
       .fontSize(11)
@@ -780,25 +788,29 @@ export const downloadBookingInvoice = async (req, res) => {
         width: right - left,
       });
 
+    // Khung nội dung
     doc
       .roundedRect(left, 130, right - left, 520, 8)
       .lineWidth(1)
       .strokeColor("#e5e7eb")
       .stroke();
 
-    doc.fillColor("#0f172a").font(fontBold).fontSize(12).text("CUSTOMER", left + 28, 150);
+    // Thông tin khách hàng
+    doc
+      .fillColor("#0f172a")
+      .font(fontBold)
+      .fontSize(12)
+      .text("THÔNG TIN KHÁCH HÀNG", left + 28, 150);
+
     doc
       .font(fontRegular)
       .fontSize(11)
-      .text(`Name: ${booking.user_id?.name || booking.guest_name || "Guest"}`, left + 28, 175)
-      .text(
-        `Email: ${booking.guest_email || booking.user_id?.email || "N/A"}`,
-        left + 28,
-        195,
-      )
-      .text(`CCCD: ${booking.guest_id_number || "—"}`, left + 28, 215)
-      .text(`Phone: ${booking.guest_phone || "—"}`, left + 28, 235);
+      .text(`Tên: ${booking.user_id?.name || booking.guest_name || "Khách lẻ"}`, left + 28, 175)
+      .text(`Email: ${booking.guest_email || booking.user_id?.email || "N/A"}`, left + 28, 195)
+      .text(`CCCD/CMND: ${booking.guest_id_number || "—"}`, left + 28, 215)
+      .text(`Điện thoại: ${booking.guest_phone || "—"}`, left + 28, 235);
 
+    // Thông tin lưu trú
     const roomsLine =
       (booking.assigned_room_ids || [])
         .map((r) => `${r.name || ""} ${r.room_no || ""}`.trim())
@@ -809,17 +821,14 @@ export const downloadBookingInvoice = async (req, res) => {
       .fillColor("#111827")
       .font(fontBold)
       .fontSize(12)
-      .text("Stay", left + 28, 270)
+      .text("THÔNG TIN LƯU TRÚ", left + 28, 270)
       .font(fontRegular)
       .fontSize(11)
       .text(
         `Loại phòng: ${
           Array.isArray(booking.line_items) && booking.line_items.length > 0
             ? booking.line_items
-                .map(
-                  (li) =>
-                    `${li.room_type_id?.name || "—"} x${li.quantity ||1}`,
-                )
+                .map((li) => `${li.room_type_id?.name || "—"} x${li.quantity || 1}`)
                 .join("; ")
             : booking.room_type_id?.name || "—"
         }`,
@@ -827,36 +836,39 @@ export const downloadBookingInvoice = async (req, res) => {
         290,
       )
       .text(`Phòng: ${roomsLine}`, left + 28, 310)
-      .text(`Check-in: ${formatDateVi(booking.check_in_date)}`, left + 28, 330)
-      .text(`Check-out: ${formatDateVi(booking.check_out_date)}`, left + 28, 350);
+      .text(`Nhận phòng: ${formatDateVi(booking.check_in_date)}`, left + 28, 330)
+      .text(`Trả phòng: ${formatDateVi(booking.check_out_date)}`, left + 28, 350);
 
+    // Chi tiết thanh toán
     doc
       .font(fontBold)
       .fontSize(13)
-      .text("Amounts", left + 28, 400)
+      .text("CHI TIẾT THANH TOÁN", left + 28, 400)
       .font(fontRegular)
       .fontSize(11)
       .fillColor("#111827")
       .text(`Tiền phòng: ${formatCurrencyVND(invoice.room_subtotal)}`, left + 28, 425)
       .text(`Dịch vụ: ${formatCurrencyVND(invoice.service_subtotal)}`, left + 28, 445)
-      .text(`Prepaid: ${formatCurrencyVND(invoice.prepaid_amount)}`, left + 28, 465)
-      .text(`Phải thu (checkout): ${formatCurrencyVND(invoice.balance_due)}`, left + 28, 485);
+      .text(`Đã thanh toán trước: ${formatCurrencyVND(invoice.prepaid_amount)}`, left + 28, 465)
+      .text(`Phải thu thêm: ${formatCurrencyVND(invoice.balance_due)}`, left + 28, 485);
 
+    // Tổng tiền
     doc
       .font(fontBold)
       .fontSize(14)
       .fillColor("#0f172a")
-      .text(`Grand total: ${formatCurrencyVND(invoice.grand_total)}`, left + 28, 515);
+      .text(`TỔNG CỘNG: ${formatCurrencyVND(invoice.grand_total)}`, left + 28, 515);
 
+    // Footer
     doc
       .fillColor("#6b7280")
       .font(fontItalic)
       .fontSize(10)
       .text(
-        "Thank you for choosing Thinh Phat Hotel.",
+        "Cảm ơn quý khách đã lựa chọn Khách sạn Thịnh Phát.\nHẹn gặp lại quý khách!",
         left,
-        720,
-        { align: "center", width: right - left },
+        710,
+        { align: "center", width: right - left }
       );
 
     doc.end();
